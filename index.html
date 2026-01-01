@@ -6,11 +6,10 @@
 <title>Key Drill — PWA</title>
 
 <!--
-PWA note:
-- Install/offline needs HTTPS or localhost.
-- Quick local server:
-  Python 3:  python -m http.server 5173
-  Then open: http://localhost:5173/key-drill-pwa.html
+GitHub Pages PWA notes:
+- Rename this file to index.html and place it in your repo root.
+- GitHub → Settings → Pages → Deploy from branch → main → /(root)
+- Your URL will be: https://YOURNAME.github.io/REPO_NAME/
 -->
 
 <style>
@@ -382,77 +381,14 @@ PWA note:
 </div>
 
 <script>
-/* =========================
-   PWA-in-one-file setup
-   - Creates manifest + icons as blob URLs
-   - Registers service worker from blob
-   ========================= */
-
+/*************************************************
+ * PWA-in-one-file (GitHub Pages friendly)
+ * - Generates icons + manifest at runtime
+ * - Registers a blob service worker with scope "./"
+ *************************************************/
 (async function setupPWA(){
-  // Some browsers won’t allow PWA features on file://
   const isSecure = (location.protocol === "https:" || location.hostname === "localhost" || location.hostname === "127.0.0.1");
-  if(!isSecure){
-    // Still runs as a normal app.
-    return;
-  }
-
-  // Create simple icons (192 + 512) as PNG data URLs using canvas
-  function makeIcon(size){
-    const c = document.createElement("canvas");
-    c.width = c.height = size;
-    const ctx = c.getContext("2d");
-
-    // background
-    const g = ctx.createLinearGradient(0,0,size,size);
-    g.addColorStop(0, "#2a2a2a");
-    g.addColorStop(1, "#121212");
-    ctx.fillStyle = g;
-    ctx.fillRect(0,0,size,size);
-
-    // border
-    ctx.strokeStyle = "#444";
-    ctx.lineWidth = Math.max(8, size * 0.03);
-    ctx.strokeRect(ctx.lineWidth/2, ctx.lineWidth/2, size-ctx.lineWidth, size-ctx.lineWidth);
-
-    // green face
-    const pad = size * 0.18;
-    const w = size - pad*2;
-    const r = w * 0.18;
-    ctx.fillStyle = "#1b8e3d";
-    roundRect(ctx, pad, pad, w, w, r);
-    ctx.fill();
-
-    // top highlight
-    const gg = ctx.createLinearGradient(0,pad,0,pad+w);
-    gg.addColorStop(0, "rgba(56,212,106,1)");
-    gg.addColorStop(1, "rgba(27,142,61,1)");
-    ctx.fillStyle = gg;
-    roundRect(ctx, pad, pad, w, w, r);
-    ctx.fill();
-
-    // eyes
-    ctx.fillStyle = "#fff";
-    const eyeR = w * 0.09;
-    ctx.beginPath(); ctx.arc(pad + w*0.32, pad + w*0.38, eyeR, 0, Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.arc(pad + w*0.68, pad + w*0.38, eyeR, 0, Math.PI*2); ctx.fill();
-
-    // smile
-    ctx.strokeStyle = "rgba(0,0,0,.55)";
-    ctx.lineWidth = Math.max(6, w*0.06);
-    ctx.lineCap = "round";
-    ctx.beginPath();
-    ctx.arc(pad + w*0.5, pad + w*0.58, w*0.22, 0, Math.PI, false);
-    ctx.stroke();
-
-    // "KD" label
-    ctx.fillStyle = "#ffcc00";
-    ctx.font = `900 ${Math.floor(size*0.18)}px Arial`;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText("KD", size/2, size*0.79);
-
-    return c.toDataURL("image/png");
-  }
+  if(!isSecure) return;
 
   function roundRect(ctx,x,y,w,h,r){
     ctx.beginPath();
@@ -464,14 +400,62 @@ PWA note:
     ctx.closePath();
   }
 
+  function makeIcon(size){
+    const c = document.createElement("canvas");
+    c.width = c.height = size;
+    const ctx = c.getContext("2d");
+
+    const g = ctx.createLinearGradient(0,0,size,size);
+    g.addColorStop(0, "#2a2a2a");
+    g.addColorStop(1, "#121212");
+    ctx.fillStyle = g;
+    ctx.fillRect(0,0,size,size);
+
+    ctx.strokeStyle = "#444";
+    ctx.lineWidth = Math.max(8, size * 0.03);
+    ctx.strokeRect(ctx.lineWidth/2, ctx.lineWidth/2, size-ctx.lineWidth, size-ctx.lineWidth);
+
+    const pad = size * 0.18;
+    const w = size - pad*2;
+    const r = w * 0.18;
+
+    const gg = ctx.createLinearGradient(0,pad,0,pad+w);
+    gg.addColorStop(0, "rgba(56,212,106,1)");
+    gg.addColorStop(1, "rgba(27,142,61,1)");
+    ctx.fillStyle = gg;
+    roundRect(ctx, pad, pad, w, w, r);
+    ctx.fill();
+
+    ctx.fillStyle = "#fff";
+    const eyeR = w * 0.09;
+    ctx.beginPath(); ctx.arc(pad + w*0.32, pad + w*0.38, eyeR, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(pad + w*0.68, pad + w*0.38, eyeR, 0, Math.PI*2); ctx.fill();
+
+    ctx.strokeStyle = "rgba(0,0,0,.55)";
+    ctx.lineWidth = Math.max(6, w*0.06);
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.arc(pad + w*0.5, pad + w*0.58, w*0.22, 0, Math.PI, false);
+    ctx.stroke();
+
+    ctx.fillStyle = "#ffcc00";
+    ctx.font = `900 ${Math.floor(size*0.18)}px Arial`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("KD", size/2, size*0.79);
+
+    return c.toDataURL("image/png");
+  }
+
   const icon192 = makeIcon(192);
   const icon512 = makeIcon(512);
 
-  // Create manifest blob URL
+  // GitHub Pages-friendly: start_url/scope should be "./" for project pages
   const manifest = {
     name: "Key Drill",
     short_name: "KeyDrill",
-    start_url: "./" + (location.pathname.split("/").pop() || ""),
+    start_url: "./",
+    scope: "./",
     display: "standalone",
     background_color: "#1e1e1e",
     theme_color: "#1e1e1e",
@@ -492,7 +476,6 @@ PWA note:
   }
   link.href = manifestURL;
 
-  // iOS home screen icon
   let appleIcon = document.querySelector('link[rel="apple-touch-icon"]');
   if(!appleIcon){
     appleIcon = document.createElement("link");
@@ -501,18 +484,19 @@ PWA note:
   }
   appleIcon.href = icon512;
 
-  // Register a service worker from a Blob (still single-file)
   if("serviceWorker" in navigator){
     const swCode = `
-      const CACHE = "keydrill-onefile-v1";
+      const CACHE = "keydrill-onefile-v2";
+      const PRECACHE = ["./", "./index.html"];
+
       self.addEventListener("install", (event) => {
         event.waitUntil((async () => {
           const cache = await caches.open(CACHE);
-          // Cache the app shell (this page)
-          try { await cache.addAll([self.registration.scope]); } catch(e) {}
+          try { await cache.addAll(PRECACHE); } catch(e) {}
           self.skipWaiting();
         })());
       });
+
       self.addEventListener("activate", (event) => {
         event.waitUntil((async () => {
           const keys = await caches.keys();
@@ -520,41 +504,43 @@ PWA note:
           self.clients.claim();
         })());
       });
+
       self.addEventListener("fetch", (event) => {
         const req = event.request;
         event.respondWith((async () => {
           const cache = await caches.open(CACHE);
           const cached = await cache.match(req, { ignoreSearch: true });
           if(cached) return cached;
+
           try{
             const fresh = await fetch(req);
-            // Cache same-origin GETs
             if(req.method === "GET" && new URL(req.url).origin === location.origin){
               cache.put(req, fresh.clone());
             }
             return fresh;
           }catch(e){
-            // Offline fallback: app shell
-            const fallback = await cache.match(self.registration.scope, { ignoreSearch: true });
+            // Offline fallback to app shell
+            const fallback = await cache.match("./", { ignoreSearch: true }) || await cache.match("./index.html", { ignoreSearch: true });
             return fallback || new Response("Offline", { status: 200, headers: { "Content-Type": "text/plain" } });
           }
         })());
       });
     `;
+
     const swBlob = new Blob([swCode], { type: "text/javascript" });
     const swURL = URL.createObjectURL(swBlob);
+
     try{
       await navigator.serviceWorker.register(swURL, { scope: "./" });
     }catch(e){
-      // If it fails, app still runs normally.
+      // App still runs normally.
     }
   }
 })();
 
-/* =========================
-   App logic (game)
-   ========================= */
-
+/*************************************************
+ * Game logic
+ *************************************************/
 const ANSWER_PAUSE_MS = 2000;
 
 const questionBox = document.getElementById("questionBox");
@@ -858,7 +844,9 @@ window.addEventListener("keydown", (e) => {
   if(k === "s") skipQuestion();
 });
 
-/* Install prompt button */
+/*************************************************
+ * Install button (Chrome/Edge on GitHub Pages)
+ *************************************************/
 let deferredPrompt = null;
 window.addEventListener("beforeinstallprompt", (e) => {
   e.preventDefault();
