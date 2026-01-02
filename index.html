@@ -37,11 +37,13 @@ GitHub Pages PWA notes:
     align-items:center;
     justify-content:center;
     padding:16px;
-    overflow:hidden;
+    overflow-x:hidden;
+    overflow-y:auto;
+    -webkit-text-size-adjust: 100%;
   }
 
   .app{
-    width:min(980px, 98vw);
+    width: min(980px, calc(100vw - 32px));
     display:grid;
     grid-template-rows:auto auto auto 1fr auto;
     gap:14px;
@@ -86,7 +88,10 @@ GitHub Pages PWA notes:
     font-size: clamp(12px, 1.6vw, 15px);
     color:var(--muted);
     user-select:none;
-    white-space:nowrap;
+    max-width: 100%;
+    white-space:normal;
+    overflow:hidden;
+    text-overflow:ellipsis;
   }
   .pill strong{ color:var(--text); font-weight:800; }
 
@@ -127,7 +132,111 @@ GitHub Pages PWA notes:
     flex-wrap:wrap;
   }
 
-  .answers{
+  /* Stair progress (simple line art) */
+  .progressWrap{
+    border:2px solid var(--border);
+    border-radius:14px;
+    background:#101010;
+    padding:10px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+  }
+  .progressLeft{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    min-width: 0;
+  }
+  .progressTitle{
+    font-weight:900;
+    color:var(--text);
+    font-size:14px;
+    white-space:nowrap;
+  }
+  .progressHint{
+    font-size:12px;
+    color:var(--muted);
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .stairSvg{
+    width: min(260px, 42vw);
+    height: 90px;
+    display:block;
+  }
+  /* Current step highlight */
+  #stepHighlight{
+    transition: d 180ms ease;
+  }
+  .stepPulse{
+    animation: stepPulse 720ms ease-in-out infinite;
+  }
+  @keyframes stepPulse{
+    0%{ opacity:0.55; }
+    50%{ opacity:1; }
+    100%{ opacity:0.55; }
+  }
+
+  .stairSvg .figureWrap{ }
+  .stairSvg .figureInner{
+    transition: transform 260ms ease;
+    transform-origin: 0px 12px;
+  }
+
+  /* Constant walk cycle (jointed legs) */
+  .stairSvg .figureInner{ transition: transform 260ms ease; transform-origin: 0px 12px; }
+
+  /* Make SVG transforms behave consistently */
+  .stairSvg g{ transform-box: fill-box; }
+
+  .stairSvg .figureInner.running .thighL,
+  .stairSvg .figureInner.running .thighR,
+  .stairSvg .figureInner.running .shinL,
+  .stairSvg .figureInner.running .shinR{
+    transform-origin: 0px 0px;
+  }
+
+  /* Alternate leg swing */
+  .stairSvg .figureInner.running .thighL{ animation: thighSwingL 520ms linear infinite; }
+  .stairSvg .figureInner.running .shinL{ animation: shinSwingL 520ms linear infinite; }
+  .stairSvg .figureInner.running .thighR{ animation: thighSwingR 520ms linear infinite; }
+  .stairSvg .figureInner.running .shinR{ animation: shinSwingR 520ms linear infinite; }
+
+  /* Subtle body bob */
+  .stairSvg .figureInner.running{ animation: bodyBob 520ms linear infinite; }
+
+  @keyframes thighSwingL{ 0%{ transform: rotate(18deg); } 50%{ transform: rotate(-18deg); } 100%{ transform: rotate(18deg);} }
+  @keyframes shinSwingL{ 0%{ transform: rotate(-10deg); } 50%{ transform: rotate(22deg); } 100%{ transform: rotate(-10deg);} }
+  @keyframes thighSwingR{ 0%{ transform: rotate(-18deg); } 50%{ transform: rotate(18deg); } 100%{ transform: rotate(-18deg);} }
+  @keyframes shinSwingR{ 0%{ transform: rotate(22deg); } 50%{ transform: rotate(-10deg); } 100%{ transform: rotate(22deg);} }
+  @keyframes bodyBob{ 0%{ transform: translateY(0); } 50%{ transform: translateY(-1.5px); } 100%{ transform: translateY(0);} }
+
+  .stairSvg .figureWrap.tumble{
+    animation: tumble 520ms ease;
+    transform-origin: center;
+  }
+  @keyframes tumble{
+    0%{ transform: rotate(0deg) translate(0,0); }
+    30%{ transform: rotate(-85deg) translate(-6px,10px); }
+    65%{ transform: rotate(35deg) translate(8px,14px); }
+    100%{ transform: rotate(0deg) translate(0,0); }
+  }
+
+  .stairSvg.fallShake{
+    animation: fallShake .35s ease;
+  }
+  @keyframes fallShake{
+    0%{ transform: translateX(0); }
+    25%{ transform: translateX(-4px); }
+    50%{ transform: translateX(4px); }
+    75%{ transform: translateX(-3px); }
+    100%{ transform: translateX(0); }
+  }
+
+  .answers{ 
     display:grid;
     grid-template-columns: repeat(7, minmax(0, 1fr));
     gap:10px;
@@ -137,6 +246,23 @@ GitHub Pages PWA notes:
   }
   @media (max-width: 420px){
     .answers{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+
+  /* Mobile fit fixes */
+  @media (max-width: 520px){
+    body{ padding:10px; }
+    .app{ padding:12px; gap:10px; border-width:3px; width: calc(100vw - 20px); }
+    .pillRow{ justify-content:flex-start; }
+    .pill{ padding:8px 10px; }
+    .questionBox{ padding:12px; }
+    .progressWrap{ padding:10px; }
+    .progressLeft{ flex-wrap:wrap; }
+    .stairSvg{ width: min(320px, 86vw); height: 86px; }
+
+    .bottomRow{ flex-direction:column; align-items:stretch; }
+    .controls{ width:100%; }
+    .controls .btn{ flex:1 1 auto; }
+    .status{ text-align:center; }
   }
 
   button.answer{
@@ -213,6 +339,58 @@ GitHub Pages PWA notes:
     justify-content:center;
   }
   .overlayFX.show{ opacity:1; }
+
+  /* End modal (clickable) */
+  .overlayModal{
+    position:absolute;
+    inset:0;
+    opacity:0;
+    pointer-events:none;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background: rgba(0,0,0,0.55);
+    transition: opacity .15s ease;
+  }
+  .overlayModal.show{
+    opacity:1;
+    pointer-events:auto;
+  }
+  .modalCard{
+    width:min(560px, 92%);
+    border:3px solid var(--border);
+    border-radius:18px;
+    background: #121212;
+    box-shadow: 0 18px 40px rgba(0,0,0,.65);
+    padding:18px 16px;
+  }
+  .modalTitle{
+    font-size: clamp(20px, 3vw, 30px);
+    font-weight:1000;
+    margin-bottom:6px;
+  }
+  .modalBody{
+    color: var(--muted);
+    font-size: 14px;
+    margin-bottom:10px;
+  }
+  .modalStats{
+    border:2px solid var(--border);
+    border-radius:14px;
+    padding:10px 12px;
+    background:#0f0f0f;
+    color:#fff;
+    font-weight:900;
+    display:flex;
+    gap:14px;
+    flex-wrap:wrap;
+    margin-bottom:12px;
+  }
+  .modalBtns{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+  }
 
   .fxCard{
     width:min(520px, 92%);
@@ -330,6 +508,8 @@ GitHub Pages PWA notes:
       <div class="pill">Mode: <strong id="modeLabel">Major</strong></div>
       <div class="pill">Streak: <strong id="streakLabel">0</strong></div>
       <div class="pill">Score: <strong id="scoreLabel">0</strong></div>
+      <div class="pill">Steps: <strong id="stepsLabel">0</strong></div>
+      <div class="pill">Tries: <strong id="triesLabel">3</strong></div>
       <div class="pill">Q#: <strong id="qLabel">1</strong></div>
     </div>
   </div>
@@ -342,6 +522,72 @@ GitHub Pages PWA notes:
   <div class="msg">
     <div id="subText">Answer by clicking one of the 7 notes.</div>
     <div id="hintText">Accidentals shown as ♭ / ♯</div>
+  </div>
+
+  <div class="progressWrap" aria-label="Stair progress">
+    <div class="progressLeft">
+      <svg class="stairSvg" id="stairSvg" viewBox="0 0 220 120" role="img" aria-label="Stairs with stick figure">
+        <defs>
+          <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="2.2" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
+        <path id="stairsPath" d="" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"></path>
+        <path id="stepHighlight" d="" fill="none" stroke="#ffcc00" stroke-width="6" stroke-linecap="round" opacity="0.95" filter="url(#glow)"></path>
+        <g class="figureWrap" id="figureWrap" transform="translate(0,0)">
+          <g class="figureInner" id="figure" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <!-- Jointed stick figure (line art) drawn around (0,0) -->
+            <!-- Head -->
+            <circle cx="0" cy="-12" r="6"></circle>
+            <!-- Neck/Body -->
+            <line x1="0" y1="-6" x2="0" y2="18"></line>
+            <!-- Arms -->
+            <g id="armL" transform="translate(0,2)">
+              <line x1="0" y1="0" x2="-12" y2="6"></line>
+              <circle cx="-12" cy="6" r="2"></circle>
+            </g>
+            <g id="armR" transform="translate(0,2)">
+              <line x1="0" y1="0" x2="12" y2="6"></line>
+              <circle cx="12" cy="6" r="2"></circle>
+            </g>
+            <!-- Hip joint -->
+            <circle cx="0" cy="18" r="2"></circle>
+
+            <!-- Left leg: hip -> knee -> ankle (nested groups so CSS rotation looks natural) -->
+            <g id="legL" transform="translate(0,18)">
+              <g class="thighL">
+                <line x1="0" y1="0" x2="-6" y2="12"></line>
+                <circle class="knee" cx="-6" cy="12" r="2"></circle>
+                <g class="shinL" transform="translate(-6,12)">
+                  <line x1="0" y1="0" x2="-4" y2="14"></line>
+                  <circle class="ankle" cx="-4" cy="14" r="2"></circle>
+                </g>
+              </g>
+            </g>
+
+            <!-- Right leg -->
+            <g id="legR" transform="translate(0,18)">
+              <g class="thighR">
+                <line x1="0" y1="0" x2="6" y2="12"></line>
+                <circle class="knee" cx="6" cy="12" r="2"></circle>
+                <g class="shinR" transform="translate(6,12)">
+                  <line x1="0" y1="0" x2="4" y2="14"></line>
+                  <circle class="ankle" cx="4" cy="14" r="2"></circle>
+                </g>
+              </g>
+            </g>
+          </g>
+        </g>
+      </svg>
+      <div>
+        <div class="progressTitle">Stair Climb</div>
+        <div class="progressHint">Correct = up 1 step • Wrong/Time = down 2 steps</div>
+      </div>
+    </div>
   </div>
 
   <div class="answers" id="answers"></div>
@@ -375,6 +621,19 @@ GitHub Pages PWA notes:
       <div class="fxText">
         <div class="big" id="fxGoodBig">Correct!</div>
         <div class="small" id="fxGoodSmall">Nice — keep going…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GAME OVER / WIN modal -->
+  <div class="overlayModal" id="overlayEnd" aria-hidden="true">
+    <div class="modalCard" role="dialog" aria-modal="true" aria-labelledby="endTitle">
+      <div class="modalTitle" id="endTitle">Game Over</div>
+      <div class="modalBody" id="endBody">You fell down the stairs.</div>
+      <div class="modalStats" id="endStats"></div>
+      <div class="modalBtns">
+        <button class="btn primary" id="restartBtn">Restart</button>
+        <button class="btn" id="closeEndBtn">Close</button>
       </div>
     </div>
   </div>
@@ -553,6 +812,8 @@ const modeLabel = document.getElementById("modeLabel");
 const streakLabel = document.getElementById("streakLabel");
 const scoreLabel  = document.getElementById("scoreLabel");
 const qLabel      = document.getElementById("qLabel");
+const stepsLabel  = document.getElementById("stepsLabel");
+const triesLabel  = document.getElementById("triesLabel");
 
 const overlayBad = document.getElementById("overlayBad");
 const overlayGood = document.getElementById("overlayGood");
@@ -560,6 +821,13 @@ const fxBadBig = document.getElementById("fxBadBig");
 const fxBadSmall = document.getElementById("fxBadSmall");
 const fxGoodBig = document.getElementById("fxGoodBig");
 const fxGoodSmall = document.getElementById("fxGoodSmall");
+
+const overlayEnd = document.getElementById("overlayEnd");
+const endTitle = document.getElementById("endTitle");
+const endBody = document.getElementById("endBody");
+const endStats = document.getElementById("endStats");
+const restartBtn = document.getElementById("restartBtn");
+const closeEndBtn = document.getElementById("closeEndBtn");
 
 const startBtn = document.getElementById("startBtn");
 const skipBtn  = document.getElementById("skipBtn");
@@ -583,6 +851,10 @@ const DEGREE_BANK_MINOR = ["1","2","b3","4","5","b6","b7","b2","3","6","7","#4",
 
 const KEY_BANK = ["C","G","D","A","E","B","F#","F","Bb","Eb","Ab","Db"];
 
+const MAX_STEPS = 12;
+const STEP_UP = 1;
+const STEP_DOWN = 2;
+
 let state = {
   running:false,
   locked:false,
@@ -593,7 +865,9 @@ let state = {
   secondsPerQ: 10,
   timeLeft: 10,
   timerId:null,
-  current:null
+  current:null,
+  climb: 0,
+  firstTriesLeft: 3
 };
 
 function shuffle(arr){
@@ -657,6 +931,8 @@ function updateHUD(){
   modeLabel.textContent = state.mode;
   streakLabel.textContent = String(state.streak);
   scoreLabel.textContent = String(state.score);
+  stepsLabel.textContent = String(state.climb);
+  triesLabel.textContent = (state.qNum === 1) ? String(state.firstTriesLeft) : "—";
 }
 
 function stopTimer(){
@@ -701,6 +977,127 @@ function soundWrong(){
 }
 function soundTick(){
   beep({freq:1000, duration:0.03, type:"square", gain:0.05});
+}
+
+/*************************************************
+ * STAIR PROGRESS (SVG line art)
+ *************************************************/
+const stairSvg = document.getElementById("stairSvg");
+const stairsPath = document.getElementById("stairsPath");
+const stepHighlight = document.getElementById("stepHighlight");
+const figureWrap = document.getElementById("figureWrap");
+const figure = document.getElementById("figure");
+
+function initStairs(){
+  // Stair geometry
+  const startX = 26;
+  const startY = 98;
+  const stepW = 14;
+  const stepH = 7;
+  const platformLen = 18;
+
+  // Option 1: flat step platforms (disconnected segments)
+  // Draw each step as a short horizontal line, plus a small riser at the far right.
+  let d = "";
+  for(let i=0;i<=MAX_STEPS;i++){
+    const x0 = startX + stepW * i;
+    const y  = startY - stepH * i;
+    const x1 = x0 + platformLen;
+    d += `M ${x0} ${y} L ${x1} ${y} `;
+    d += `M ${x1} ${y} L ${x1} ${y - stepH} `;
+  }
+  stairsPath.setAttribute("d", d.trim());
+
+  // Store for positioning
+  stairSvg.dataset.startX = String(startX);
+  stairSvg.dataset.startY = String(startY);
+  stairSvg.dataset.stepW = String(stepW);
+  stairSvg.dataset.stepH = String(stepH);
+  stairSvg.dataset.platformLen = String(platformLen);
+
+  renderFigure();
+}
+
+function clamp(n, min, max){
+  return Math.max(min, Math.min(max, n));
+}
+
+function updateStepHighlight(){
+  const startX = Number(stairSvg.dataset.startX || 26);
+  const startY = Number(stairSvg.dataset.startY || 98);
+  const stepW = Number(stairSvg.dataset.stepW || 14);
+  const stepH = Number(stairSvg.dataset.stepH || 7);
+  const platformLen = Number(stairSvg.dataset.platformLen || 18);
+
+  const i = clamp(state.climb, 0, MAX_STEPS);
+  const x0 = startX + stepW * i;
+  const y  = startY - stepH * i;
+  const x1 = x0 + platformLen;
+
+  stepHighlight.setAttribute("d", `M ${x0} ${y} L ${x1} ${y}`);
+  stepHighlight.classList.add("stepPulse");
+}
+
+function renderFigure(){
+  const startX = Number(stairSvg.dataset.startX || 30);
+  const startY = Number(stairSvg.dataset.startY || 98);
+  const stepW = Number(stairSvg.dataset.stepW || 14);
+  const stepH = Number(stairSvg.dataset.stepH || 7);
+
+  // position the figure at the center of the current step
+  const i = clamp(state.climb, 0, MAX_STEPS);
+  const platformLen = Number(stairSvg.dataset.platformLen || 18);
+
+  // Center the figure over the current platform segment
+  const x0 = startX + stepW * i;
+  const x = x0 + platformLen * 0.5;
+
+  // Lift the figure so it stands above the platform
+  const y = startY - stepH * i - 28;
+  figureWrap.setAttribute("transform", `translate(${x},${y})`);
+  updateStepHighlight();
+}
+
+function setRunner(active){
+  figure.classList.toggle("running", !!active);
+}
+
+function doFallFX(){
+  stairSvg.classList.remove("fallShake");
+  void stairSvg.offsetWidth;
+  stairSvg.classList.add("fallShake");
+  figureWrap.classList.remove("tumble");
+  void figureWrap.getBBox();
+  figureWrap.classList.add("tumble");
+}
+
+function moveClimb(delta, {shake=false, suppressEnd=false} = {}){
+  const before = state.climb;
+  state.climb = clamp(state.climb + delta, 0, MAX_STEPS);
+  if(state.climb !== before){
+    renderFigure();
+    updateHUD();
+  }
+
+  // End conditions
+  if(!suppressEnd){
+    if(delta > 0 && state.climb >= MAX_STEPS){
+      endGame({ title: "You Win!", body: "You made it to the top of the stairs.", variant: "win" });
+      return;
+    }
+    if(delta < 0 && state.climb === 0){
+      endGame({ title: "Game Over", body: "You fell to the bottom of the stairs.", variant: "lose" });
+      return;
+    }
+  }
+  if(shake){
+    doFallFX();
+  }
+}
+
+function resetClimb(){
+  state.climb = 0;
+  renderFigure();
 }
 
 function startTimer(){
@@ -757,6 +1154,16 @@ function unlockAfterFeedback(){
   setButtonsEnabled(true);
 }
 
+function replayCurrentQuestion(){
+  if(!state.running) return;
+  hideOverlays();
+  setQuestionUI(state.current);
+  renderAnswers(buildOptions(state.current.answerNote));
+  setButtonsEnabled(true);
+  startTimer();
+  statusText.textContent = "Try again!";
+}
+
 function nextQuestion(){
   if(!state.running) return;
   hideOverlays();
@@ -783,6 +1190,9 @@ function onAnswer(note){
     statusText.textContent = `✅ Correct: ${pretty(correct)} (+${bonus})`;
     showGood("Correct!", `Yes — ${pretty(correct)}.`);
     soundCorrect();
+
+    // Stair climb: up 1 step
+    moveClimb(STEP_UP);
   } else {
     state.score = Math.max(0, state.score - 4);
     state.streak = 0;
@@ -790,6 +1200,33 @@ function onAnswer(note){
     statusText.textContent = `❌ Wrong: you picked ${pretty(note)}.`;
     showBad("Wrong!", `Correct was ${pretty(correct)}.`);
     soundWrong();
+    // First-question grace: 3 tries while still on the ground floor
+    if(state.qNum === 1 && state.climb === 0){
+      state.firstTriesLeft = Math.max(0, state.firstTriesLeft - 1);
+      updateHUD();
+
+      if(state.firstTriesLeft <= 0){
+        // No tries left → game over
+        doFallFX();
+        endGame({ title: "Game Over", body: "Out of tries on Question 1.", variant: "lose" });
+        return;
+      }
+
+      // Feedback + fall FX, then retry SAME question (do not advance qNum)
+      doFallFX();
+      statusText.textContent = `❌ Wrong — Try again (Q1). Tries left: ${state.firstTriesLeft}`;
+      showBad("Try again!", `Tries left for Question 1: ${state.firstTriesLeft}`);
+
+      setTimeout(() => {
+        unlockAfterFeedback();
+        replayCurrentQuestion();
+      }, ANSWER_PAUSE_MS);
+
+      return;
+    }
+
+    // Stair fall: down 2 steps
+    moveClimb(-STEP_DOWN, { shake:true });
   }
 
   state.qNum += 1;
@@ -813,7 +1250,39 @@ function timeUp(){
 
   statusText.textContent = "⏱️ Time up!";
   soundWrong();
-  showBad("Time!", correct ? `Correct was ${pretty(correct)}.` : "Try the next one…");
+
+  // Stair fall: down 2 steps
+  // First-question grace: 3 tries while still on the ground floor
+  if(state.qNum === 1 && state.climb === 0){
+    state.firstTriesLeft = Math.max(0, state.firstTriesLeft - 1);
+    updateHUD();
+
+    if(state.firstTriesLeft <= 0){
+      doFallFX();
+      endGame({ title: "Game Over", body: "Out of tries on Question 1 (time ran out).", variant: "lose" });
+      return;
+    }
+
+    doFallFX();
+    showBad("Try again!", `Time up — Tries left for Question 1: ${state.firstTriesLeft}`);
+
+    setTimeout(() => {
+      unlockAfterFeedback();
+      replayCurrentQuestion();
+    }, ANSWER_PAUSE_MS);
+
+    return;
+  }
+
+  // If already at bottom after Q1, game over
+  if(state.climb === 0){
+    endGame({ title: "Game Over", body: "Time ran out at the bottom of the stairs.", variant: "lose" });
+    return;
+  }
+
+  moveClimb(-STEP_DOWN, { shake:true });
+
+  showBad("Time!",  correct ? `Correct was ${pretty(correct)}.` : "Try the next one…");
 
   state.qNum += 1;
 
@@ -830,6 +1299,12 @@ function startGame(){
   state.qNum = 1;
   state.score = 0;
   state.streak = 0;
+  state.current = null;
+  state.climb = 0;
+  state.firstTriesLeft = 3;
+  hideEnd();
+  setRunner(true);
+  renderFigure();
   updateHUD();
   statusText.textContent = "Game started.";
   nextQuestion();
@@ -838,12 +1313,16 @@ function startGame(){
 function resetGame(){
   stopTimer();
   hideOverlays();
+  hideEnd();
   state.running = false;
   state.locked = false;
   state.score = 0;
   state.streak = 0;
   state.qNum = 1;
   state.current = null;
+  state.firstTriesLeft = 3;
+  resetClimb();
+  setRunner(false);
   updateHUD();
 
   questionText.textContent = "Press Start";
@@ -875,6 +1354,14 @@ function toggleMode(){
     nextQuestion();
   }
 }
+
+restartBtn.addEventListener("click", () => {
+  resetGame();
+  startGame();
+});
+closeEndBtn.addEventListener("click", () => {
+  hideEnd();
+});
 
 startBtn.addEventListener("click", startGame);
 resetBtn.addEventListener("click", resetGame);
@@ -910,7 +1397,34 @@ installBtn.addEventListener("click", async () => {
   statusText.textContent = "Installed (or install dismissed).";
 });
 
+function showEnd(){
+  overlayEnd.classList.add("show");
+  overlayEnd.setAttribute("aria-hidden", "false");
+}
+function hideEnd(){
+  overlayEnd.classList.remove("show");
+  overlayEnd.setAttribute("aria-hidden", "true");
+}
+function endGame({title="Game Over", body="", variant="lose"} = {}){
+  stopTimer();
+  hideOverlays();
+  state.running = false;
+  state.locked = true;
+  setButtonsEnabled(false);
+  setRunner(false);
+
+  endTitle.textContent = title;
+  endBody.textContent = body;
+  endStats.textContent = `Score: ${state.score} • Streak: ${state.streak} • Steps: ${state.climb} • Q#: ${state.qNum}`;
+
+  endTitle.style.color = (variant === "win") ? "var(--good)" : "var(--bad)";
+  statusText.textContent = title;
+  showEnd();
+}
+
 updateHUD();
+initStairs();
+setRunner(false);
 </script>
 </body>
 </html>
