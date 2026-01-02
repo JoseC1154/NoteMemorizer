@@ -716,10 +716,50 @@ installBtn.addEventListener('click', async () => {
   apple.href=icon512;
 
   if('serviceWorker' in navigator){
-    const swCode=`const CACHE='keydrill-v5';\nconst PRECACHE=['./','./index.html','./styles.css','./keydrill.js'];\n\nself.addEventListener('install',e=>e.waitUntil((async()=>{\n  const c=await caches.open(CACHE);\n  try{await c.addAll(PRECACHE);}catch{}\n  self.skipWaiting();\n})()));\n\nself.addEventListener('activate',e=>e.waitUntil((async()=>{\n  const ks=await caches.keys();\n  await Promise.all(ks.map(k=>k!==CACHE?caches.delete(k):null));\n  self.clients.claim();\n})()));\n\nself.addEventListener('fetch',e=>e.respondWith((async()=>{\n  const c=await caches.open(CACHE);\n  const m=await c.match(e.request,{ignoreSearch:true});\n  if(m) return m;\n  try{\n    const f=await fetch(e.request);\n    if(e.request.method==='GET' && new URL(e.request.url).origin===location.origin){\n      c.put(e.request,f.clone());\n    }\n    return f;\n  }catch{\n    return (await c.match('./',{ignoreSearch:true})) || new Response('Offline');\n  }\n})()));`;
+    const swCode=`const CACHE='keydrill-v6';
+const PRECACHE=['./','./index.html','./styles.css','./keydrill.js'];
+
+self.addEventListener('install',e=>e.waitUntil((async()=>{
+  const c=await caches.open(CACHE);
+  try{await c.addAll(PRECACHE);}catch{}
+  self.skipWaiting();
+})()));
+
+self.addEventListener('activate',e=>e.waitUntil((async()=>{
+  const ks=await caches.keys();
+  await Promise.all(ks.map(k=>k!==CACHE?caches.delete(k):null));
+  self.clients.claim();
+})()));
+
+// Allow the page to force-activate an updated SW
+self.addEventListener('message',(e)=>{
+  if(e?.data && e.data.type==='SKIP_WAITING') self.skipWaiting();
+});
+
+self.addEventListener('fetch',e=>e.respondWith((async()=>{
+  const c=await caches.open(CACHE);
+  const m=await c.match(e.request,{ignoreSearch:true});
+  if(m) return m;
+  try{
+    const f=await fetch(e.request);
+    if(e.request.method==='GET' && new URL(e.request.url).origin===location.origin){
+      c.put(e.request,f.clone());
+    }
+    return f;
+  }catch{
+    return (await c.match('./',{ignoreSearch:true})) || new Response('Offline');
+  }
+})()));`;
 
     const swURL=URL.createObjectURL(new Blob([swCode],{type:'text/javascript'}));
-    try{ await navigator.serviceWorker.register(swURL,{scope:'./'});}catch{}
+    try{ 
+      const reg = await navigator.serviceWorker.register(swURL,{scope:'./'});
+      // Force update/activation so GitHub Pages doesn't keep an old cached JS
+      try{ await reg.update(); }catch{}
+      if(reg.waiting){
+        try{ reg.waiting.postMessage({type:'SKIP_WAITING'}); }catch{}
+      }
+    }catch{}
   }
 })();
 
