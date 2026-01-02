@@ -1,9 +1,8 @@
 /* Key Drill — JS (GitHub Pages / PWA)
- * FIXED:
- * - Do NOT use the old blank/duplicate canvas.
- * - Stick figure feet sit ON the highlighted step.
- * - Stairs slide under a fixed figure.
- * - Step numbers added.
+ * Files:
+ * - index.html
+ * - styles.css
+ * - keydrill.js
  */
 
 /*************************************************
@@ -48,7 +47,7 @@ const endStats    = $("endStats");
 const restartBtn  = $("restartBtn");
 const closeEndBtn = $("closeEndBtn");
 
-// SVG
+// Stairs SVG
 const stairSvg      = $("stairSvg");
 const stairsPath    = $("stairsPath");
 const stepHighlight = $("stepHighlight");
@@ -70,7 +69,7 @@ const DEFAULT_SECONDS_PER_Q = 10;
 const state = {
   running: false,
   locked: false,
-  mode: "Major",
+  mode: "Major", // or "Minor"
   score: 0,
   streak: 0,
   qNum: 1,
@@ -89,19 +88,32 @@ const KEYS = ["C","C#","D","Eb","E","F","F#","G","Ab","A","Bb","B"];
 const MAJOR_STEPS = [0,2,4,5,7,9,11];
 const NAT_MINOR_STEPS = [0,2,3,5,7,8,10];
 
+// Prompt degrees like: 2b, b2, #4, 7, etc.
+// (We accept both "2b" and "b2" by normalizing.)
 const DEGREE_POOL = [
   "1","2","3","4","5","6","7",
   "b2","#2","b3","#3","b5","#4","#5","b6","#6","b7","#7"
 ];
 
-function pretty(note){ return note.replace(/b/g,"♭").replace(/#/g,"♯"); }
-function keyToIndex(k){ return KEYS.indexOf(k); }
-function noteFromIndex(i){ return KEYS[((i%12)+12)%12]; }
+function pretty(note){
+  return note.replace(/b/g,"♭").replace(/#/g,"♯");
+}
+
+function keyToIndex(k){
+  return KEYS.indexOf(k);
+}
+
+function noteFromIndex(i){
+  const n = ((i % 12) + 12) % 12;
+  return KEYS[n];
+}
 
 function normalizeDegreeToken(token){
+  // Convert "2b" -> "b2", "4#" -> "#4" etc.
   const t = token.trim();
   const m = t.match(/^([1-7])([b#]+)$/);
-  return m ? (m[2] + m[1]) : t;
+  if(m) return m[2] + m[1];
+  return t;
 }
 
 function parseDegree(deg){
@@ -129,7 +141,10 @@ function computeAnswer(key, mode, degreeToken){
   return applyAccidental(base, acc);
 }
 
-function randomPick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+function randomPick(arr){
+  return arr[Math.floor(Math.random()*arr.length)];
+}
+
 function shuffle(arr){
   const a = arr.slice();
   for(let i=a.length-1;i>0;i--){
@@ -147,6 +162,7 @@ function getAudioCtx(){
   if(!audioCtx){ audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
   return audioCtx;
 }
+
 function beep({freq=440, duration=0.12, type="sine", gain=0.12}){
   const ctx = getAudioCtx();
   const o = ctx.createOscillator();
@@ -158,60 +174,32 @@ function beep({freq=440, duration=0.12, type="sine", gain=0.12}){
   o.start();
   o.stop(ctx.currentTime + duration);
 }
-function soundCorrect(){ beep({freq:880, duration:0.09, gain:0.14}); setTimeout(()=>beep({freq:1175, duration:0.12, gain:0.14}), 90); }
-function soundWrong(){ beep({freq:220, duration:0.18, type:"square", gain:0.12}); }
-function soundTick(){ beep({freq:1000, duration:0.03, type:"square", gain:0.05}); }
+
+function soundCorrect(){
+  beep({freq:880, duration:0.09, gain:0.14});
+  setTimeout(()=>beep({freq:1175, duration:0.12, gain:0.14}), 90);
+}
+
+function soundWrong(){
+  beep({freq:220, duration:0.18, type:"square", gain:0.12});
+}
+
+function soundTick(){
+  beep({freq:1000, duration:0.03, type:"square", gain:0.05});
+}
 
 /*************************************************
- * Stairs (move stairs; fixed figure)
+ * Stairs (platforms + highlight)
  *************************************************/
-let stairsGroup = null;
-let numbersGroup = null;
-
-function ensureStairsGroup(){
-  stairsGroup = $("stairsGroup");
-  if(stairsGroup) return;
-
-  const ns = "http://www.w3.org/2000/svg";
-  const g = document.createElementNS(ns, "g");
-  g.setAttribute("id", "stairsGroup");
-  stairSvg.insertBefore(g, figureWrap); // behind figure
-  if(stairsPath) g.appendChild(stairsPath);
-  if(stepHighlight) g.appendChild(stepHighlight);
-  stairsGroup = g;
-}
-
-function ensureNumbersGroup(){
-  ensureStairsGroup();
-  numbersGroup = $("stepNumbers");
-  if(numbersGroup) return;
-  const ns = "http://www.w3.org/2000/svg";
-  const g = document.createElementNS(ns, "g");
-  g.setAttribute("id", "stepNumbers");
-  g.setAttribute("fill", "#ffffff");
-  g.setAttribute("opacity", "0.9");
-  g.setAttribute("font-family", "Arial, sans-serif");
-  g.setAttribute("font-weight", "900");
-  g.setAttribute("font-size", "9");
-  stairsGroup.appendChild(g);
-  numbersGroup = g;
-}
-
 function initStairs(){
-  ensureNumbersGroup();
-
-  const startX = 10;
+  const startX = 26;
   const startY = 98;
   const stepW = 14;
   const stepH = 7;
   const platformLen = 18;
 
-  const BASE_INDEX = 5;
-  const EXTRA = 14;
-  const STEPS_DRAW = MAX_STEPS + BASE_INDEX + EXTRA;
-
   let d = "";
-  for(let i=0;i<=STEPS_DRAW;i++){
+  for(let i=0;i<=MAX_STEPS;i++){
     const x0 = startX + stepW * i;
     const y  = startY - stepH * i;
     const x1 = x0 + platformLen;
@@ -225,46 +213,18 @@ function initStairs(){
   stairSvg.dataset.stepW = String(stepW);
   stairSvg.dataset.stepH = String(stepH);
   stairSvg.dataset.platformLen = String(platformLen);
-  stairSvg.dataset.baseIndex = String(BASE_INDEX);
-
-  // Place figure so ANKLES sit on the step.
-  // Our figure ankle y is ~44px below its local origin.
-  const ANKLE_Y = 44;
-  const homeX0 = startX + stepW * BASE_INDEX;
-  const homeX  = homeX0 + platformLen * 0.55;
-  const stepY  = startY - stepH * BASE_INDEX;
-  const homeY  = stepY - ANKLE_Y;
-  figureWrap.setAttribute("transform", `translate(${homeX},${homeY})`);
-
-  // Build step numbers for game steps 1..MAX_STEPS (fixed to world, moves with stairs)
-  numbersGroup.innerHTML = "";
-  const ns = "http://www.w3.org/2000/svg";
-  for(let n=1; n<=MAX_STEPS; n++){
-    const i = BASE_INDEX + n; // step index in the drawn staircase
-    const x0 = startX + stepW * i;
-    const y  = startY - stepH * i;
-    const t = document.createElementNS(ns, "text");
-    t.textContent = String(n);
-    t.setAttribute("x", String(x0 + 2));
-    t.setAttribute("y", String(y - 2));
-    t.setAttribute("paint-order", "stroke");
-    t.setAttribute("stroke", "rgba(0,0,0,0.65)");
-    t.setAttribute("stroke-width", "2");
-    numbersGroup.appendChild(t);
-  }
 
   renderFigure();
 }
 
 function updateStepHighlight(){
-  const startX = Number(stairSvg.dataset.startX || 10);
+  const startX = Number(stairSvg.dataset.startX || 26);
   const startY = Number(stairSvg.dataset.startY || 98);
   const stepW = Number(stairSvg.dataset.stepW || 14);
   const stepH = Number(stairSvg.dataset.stepH || 7);
   const platformLen = Number(stairSvg.dataset.platformLen || 18);
-  const BASE_INDEX = Number(stairSvg.dataset.baseIndex || 5);
 
-  const i = BASE_INDEX + clamp(state.climb, 0, MAX_STEPS);
+  const i = clamp(state.climb, 0, MAX_STEPS);
   const x0 = startX + stepW * i;
   const y  = startY - stepH * i;
   const x1 = x0 + platformLen;
@@ -274,12 +234,18 @@ function updateStepHighlight(){
 }
 
 function renderFigure(){
-  ensureNumbersGroup();
+  const startX = Number(stairSvg.dataset.startX || 26);
+  const startY = Number(stairSvg.dataset.startY || 98);
   const stepW = Number(stairSvg.dataset.stepW || 14);
   const stepH = Number(stairSvg.dataset.stepH || 7);
-  const dx = -stepW * state.climb;
-  const dy =  stepH * state.climb;
-  stairsGroup.setAttribute("transform", `translate(${dx},${dy})`);
+  const platformLen = Number(stairSvg.dataset.platformLen || 18);
+
+  const i = clamp(state.climb, 0, MAX_STEPS);
+  const x0 = startX + stepW * i;
+  const x = x0 + platformLen * 0.5;
+  const y = startY - stepH * i - 28;
+
+  figureWrap.setAttribute("transform", `translate(${x},${y})`);
   updateStepHighlight();
 }
 
@@ -293,7 +259,9 @@ function doFallFX(){
   figureWrap.classList.add("tumble");
 }
 
-function setRunner(active){ figure.classList.toggle("running", !!active); }
+function setRunner(active){
+  figure.classList.toggle("running", !!active);
+}
 
 function moveClimb(delta, {shake=false, suppressEnd=false} = {}){
   const before = state.climb;
@@ -318,7 +286,10 @@ function moveClimb(delta, {shake=false, suppressEnd=false} = {}){
   }
 }
 
-function resetClimb(){ state.climb = 0; renderFigure(); }
+function resetClimb(){
+  state.climb = 0;
+  renderFigure();
+}
 
 /*************************************************
  * UI helpers
@@ -362,8 +333,15 @@ function showGood(big, small){
   overlayGood.setAttribute("aria-hidden","false");
 }
 
-function lockForFeedback(){ state.locked = true; setButtonsEnabled(false); }
-function unlockAfterFeedback(){ state.locked = false; hideOverlays(); }
+function lockForFeedback(){
+  state.locked = true;
+  setButtonsEnabled(false);
+}
+
+function unlockAfterFeedback(){
+  state.locked = false;
+  hideOverlays();
+}
 
 /*************************************************
  * Question generation
@@ -372,11 +350,17 @@ function makeQuestion(){
   const key = randomPick(KEYS);
   const degree = randomPick(DEGREE_POOL);
   const answer = computeAnswer(key, state.mode, degree);
-  return { key, degree, answerNote: answer, prompt: `What is the ${degree} in the key of ${key} ${state.mode}?` };
+  return {
+    key,
+    degree,
+    answerNote: answer,
+    prompt: `What is the ${degree} in the key of ${key} ${state.mode}?`
+  };
 }
 
 function buildOptions(correct){
-  const others = shuffle(KEYS.filter(n => n !== correct)).slice(0, 6);
+  const pool = KEYS.slice();
+  const others = shuffle(pool.filter(n => n !== correct)).slice(0, 6);
   return shuffle([correct, ...others]);
 }
 
@@ -425,7 +409,9 @@ function paintTimer(){
   if(state.timeLeft <= 0) timerText.classList.add("timeOut");
 }
 
-function stopTimer(){ if(state.timerId){ clearInterval(state.timerId); state.timerId = null; } }
+function stopTimer(){
+  if(state.timerId){ clearInterval(state.timerId); state.timerId = null; }
+}
 
 function startTimer(){
   stopTimer();
@@ -442,8 +428,15 @@ function startTimer(){
 /*************************************************
  * End modal
  *************************************************/
-function showEnd(){ overlayEnd.classList.add("show"); overlayEnd.setAttribute("aria-hidden", "false"); }
-function hideEnd(){ overlayEnd.classList.remove("show"); overlayEnd.setAttribute("aria-hidden", "true"); }
+function showEnd(){
+  overlayEnd.classList.add("show");
+  overlayEnd.setAttribute("aria-hidden", "false");
+}
+
+function hideEnd(){
+  overlayEnd.classList.remove("show");
+  overlayEnd.setAttribute("aria-hidden", "true");
+}
 
 function endGame({title="Game Over", body="", variant="lose"} = {}){
   stopTimer();
@@ -478,30 +471,40 @@ function onAnswer(note){
     const bonus = 10 + Math.min(10, state.streak);
     state.score += bonus;
     state.streak += 1;
+
     statusText.textContent = `✅ Correct: ${pretty(correct)} (+${bonus})`;
     showGood("Correct!", `Yes — ${pretty(correct)}.`);
     soundCorrect();
     moveClimb(STEP_UP);
+
   } else {
+    // Q1 grace: 3 tries at ground floor
     if(state.qNum === 1 && state.climb === 0){
       state.firstTriesLeft = Math.max(0, state.firstTriesLeft - 1);
       updateHUD();
+
       if(state.firstTriesLeft <= 0){
         doFallFX();
         soundWrong();
         endGame({ title: "Game Over", body: "Out of tries on Question 1.", variant: "lose" });
         return;
       }
+
       doFallFX();
       soundWrong();
       statusText.textContent = `❌ Wrong — Try again (Q1). Tries left: ${state.firstTriesLeft}`;
       showBad("Try again!", `Tries left for Question 1: ${state.firstTriesLeft}`);
-      setTimeout(() => { unlockAfterFeedback(); replayCurrentQuestion(); }, ANSWER_PAUSE_MS);
+
+      setTimeout(() => {
+        unlockAfterFeedback();
+        replayCurrentQuestion();
+      }, ANSWER_PAUSE_MS);
       return;
     }
 
     state.score = Math.max(0, state.score - 4);
     state.streak = 0;
+
     statusText.textContent = `❌ Wrong: you picked ${pretty(note)}.`;
     showBad("Wrong!", `Correct was ${pretty(correct)}.`);
     soundWrong();
@@ -509,6 +512,7 @@ function onAnswer(note){
   }
 
   updateHUD();
+
   setTimeout(() => {
     unlockAfterFeedback();
     if(!state.running) return;
@@ -528,17 +532,24 @@ function timeUp(){
   statusText.textContent = "⏱️ Time up!";
   soundWrong();
 
+  // Q1 grace
   if(state.qNum === 1 && state.climb === 0){
     state.firstTriesLeft = Math.max(0, state.firstTriesLeft - 1);
     updateHUD();
+
     if(state.firstTriesLeft <= 0){
       doFallFX();
       endGame({ title: "Game Over", body: "Out of tries on Question 1 (time ran out).", variant: "lose" });
       return;
     }
+
     doFallFX();
     showBad("Try again!", `Time up — Tries left for Question 1: ${state.firstTriesLeft}`);
-    setTimeout(() => { unlockAfterFeedback(); replayCurrentQuestion(); }, ANSWER_PAUSE_MS);
+
+    setTimeout(() => {
+      unlockAfterFeedback();
+      replayCurrentQuestion();
+    }, ANSWER_PAUSE_MS);
     return;
   }
 
@@ -646,6 +657,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
   deferredPrompt = e;
   installBtn.style.display = "inline-block";
 });
+
 installBtn.addEventListener('click', async () => {
   if(!deferredPrompt) return;
   deferredPrompt.prompt();
@@ -716,7 +728,7 @@ installBtn.addEventListener('click', async () => {
   apple.href=icon512;
 
   if('serviceWorker' in navigator){
-    const swCode=`const CACHE='keydrill-v5';\nconst PRECACHE=['./','./index.html','./styles.css','./keydrill.js'];\n\nself.addEventListener('install',e=>e.waitUntil((async()=>{\n  const c=await caches.open(CACHE);\n  try{await c.addAll(PRECACHE);}catch{}\n  self.skipWaiting();\n})()));\n\nself.addEventListener('activate',e=>e.waitUntil((async()=>{\n  const ks=await caches.keys();\n  await Promise.all(ks.map(k=>k!==CACHE?caches.delete(k):null));\n  self.clients.claim();\n})()));\n\nself.addEventListener('fetch',e=>e.respondWith((async()=>{\n  const c=await caches.open(CACHE);\n  const m=await c.match(e.request,{ignoreSearch:true});\n  if(m) return m;\n  try{\n    const f=await fetch(e.request);\n    if(e.request.method==='GET' && new URL(e.request.url).origin===location.origin){\n      c.put(e.request,f.clone());\n    }\n    return f;\n  }catch{\n    return (await c.match('./',{ignoreSearch:true})) || new Response('Offline');\n  }\n})()));`;
+    const swCode=`const CACHE='keydrill-v2';\nconst PRECACHE=['./','./index.html','./styles.css','./keydrill.js'];\n\nself.addEventListener('install',e=>e.waitUntil((async()=>{\n  const c=await caches.open(CACHE);\n  try{await c.addAll(PRECACHE);}catch{}\n  self.skipWaiting();\n})()));\n\nself.addEventListener('activate',e=>e.waitUntil((async()=>{\n  const ks=await caches.keys();\n  await Promise.all(ks.map(k=>k!==CACHE?caches.delete(k):null));\n  self.clients.claim();\n})()));\n\nself.addEventListener('fetch',e=>e.respondWith((async()=>{\n  const c=await caches.open(CACHE);\n  const m=await c.match(e.request,{ignoreSearch:true});\n  if(m) return m;\n  try{\n    const f=await fetch(e.request);\n    if(e.request.method==='GET' && new URL(e.request.url).origin===location.origin){\n      c.put(e.request,f.clone());\n    }\n    return f;\n  }catch{\n    return (await c.match('./',{ignoreSearch:true})) || new Response('Offline');\n  }\n})()));`;
 
     const swURL=URL.createObjectURL(new Blob([swCode],{type:'text/javascript'}));
     try{ await navigator.serviceWorker.register(swURL,{scope:'./'});}catch{}
@@ -740,6 +752,7 @@ setRunner(false);
 setButtonsEnabled(false);
 skipBtn.disabled = true;
 
+// Keyboard shortcuts (desktop)
 window.addEventListener('keydown', (e) => {
   if(e.key === 'Enter' && !state.running) startGame();
   if(e.key === 'r' || e.key === 'R') resetGame();
