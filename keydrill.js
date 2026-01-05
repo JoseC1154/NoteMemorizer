@@ -176,9 +176,16 @@
   const state = {
     active: false,
     questionIndex: 0,
-    triesLeft: 0,
+
+    // Endless mode: lives + streak
+    lives: 0,
+    maxLives: 0,
+    streak: 0,
+    speedLevel: 0, // every 20 streak lowers time by 1s (persists for the run)
+
     timerId: null,
     secondsLeft: 0,
+    questionSeconds: 0,
     locked: false,
     current: null // { keyRoot, degreeLabel, correctNote, options[] }
   };
@@ -272,16 +279,43 @@
     state.timerId = null;
   }
 
+  function getEffectiveSecondsPerQuestion() {
+    // After 20 correct streak, drop by 1 second (persists). Every additional 20 streak drops another second.
+    return clamp(settings.secondsPerQuestion - state.speedLevel, 3, 20);
+  }
+
+  function updateRiskVisual() {
+    // Risk based on (a) low lives and (b) low remaining time.
+    const livesDen = Math.max(1, state.maxLives);
+    const timeDen = Math.max(1, state.questionSeconds);
+
+    const riskLives = clamp(1 - (state.lives / livesDen), 0, 1);
+    const riskTime = clamp(1 - (state.secondsLeft / timeDen), 0, 1);
+
+    const risk = clamp(Math.max(riskLives, riskTime), 0, 1);
+
+    // CSS variable (if you later wire it in styles.css)
+    document.documentElement.style.setProperty("--risk", String(risk));
+
+    // Immediate background shift: blue (safe) -> red (danger)
+    const hue = Math.round(210 - (210 * risk));
+    document.body.style.background = `radial-gradient(1200px 900px at 50% 0%, hsl(${hue} 70% 25%) 0%, #070A12 55%, #02030a 100%)`;
+  }
+
   function startTimer() {
     stopTimer();
-    state.secondsLeft = settings.secondsPerQuestion;
+
+    state.questionSeconds = getEffectiveSecondsPerQuestion();
+    state.secondsLeft = state.questionSeconds;
     elTimer.textContent = String(state.secondsLeft);
+    updateRiskVisual();
 
     state.timerId = setInterval(() => {
       if (!state.active || state.locked) return;
 
       state.secondsLeft -= 1;
       elTimer.textContent = String(state.secondsLeft);
+      updateRiskVisual();
 
       if (state.secondsLeft > 0) soundTick();
 
@@ -294,77 +328,125 @@
 
   // =========================
   // Game rules
-  // =========================
-  function nextQuestion() {
-    const enabledKeys = settings.keysEnabled.length ? settings.keysEnabled : [...ALL_KEYS];
-    const keyRoot = pickRandom(enabledKeys);
+    const riskTime = clamp(1 - (sfunction nextQuestion() {
+    // Endless questions
+    state.questionIndex += 1;n), 0, 1);
 
-    const degreePool = settings.degreeMode === "diatonic"
-      ? DIATONIC_DEGREES
-      : CHROMATIC_DEGREES;
-
-    const degreeLabel = pickRandom(degreePool);
-    const correctNote = degreeToNote(keyRoot, degreeLabel, settings.degreeMode);
-    const options = buildOptions(correctNote);
-
-    state.current = { keyRoot, degreeLabel, correctNote, options };
-    renderQuestion();
-    renderAnswers();
-    startTimer();
+    const risk = clamp(Math.max(riskLives, riskTime), 0, 1);
+    document.documentElement.style.setProperty("--risk", String(risk));
   }
 
-  function startGame() {
+  function startTimer() {
+    stopTimer();
+
+    state.questionSeconds = getEffectiveSecondsPerQuestion();
+    state.secondsLeft = state.questionSeconds;
+
+    elTimer.textContent = String(state.secondsLeft);
+    updateRiskVisual();
+
+    state.timerId = setInterval(() => {
+      if (!state.active || state.locked) return;
+
+      state.secondsLeft -= 1;
+      elTimer.textContent = String(state.secondsLeft);
+      function startGame() {
     ensureAudio();
+
     state.active = true;
-    state.locked = false; // allow restart after game over
+    state.locked = false;
+
     state.questionIndex = 0;
-    state.triesLeft = 3; // Question 1 allows 3 tries
+    state.streak = 0;
+    state.speedLevel = 0;
+
+    // Start with 3 lives (matches the original "3 tries" feeling, now used for endless mode)
+    state.lives = 3;
+    state.maxLives = 3;
+
     state.current = null;
     setStatusNeutral("Ready.");
+    updateRiskVisual();
     nextQuestion();
-  }
-
-  function endGame(message) {
+  }st efunction endGame(message) {
     state.active = false;
     state.current = null;
     stopTimer();
     lockAnswers(true);
     elTimer.textContent = "--";
+    updateRiskVisual();
     flashStatus(false, message);
     elQuestionText.textContent = "Game Over. Press New to try again.";
   }
 
-  function advanceAfterCorrect() {
-    stopTimer();
-    state.questionIndex += 1;
-
-    // After question 1, later failures end the game
-    state.triesLeft = 1;
-
+  function nextAfterFeedback() {
     setTimeout(() => {
       if (!state.active) return;
+      lockAnswers(false);
       nextQuestion();
-    }, 250);
+    }, 450);
   }
 
   function handleCorrect(chosen) {
     soundCorrect();
-    flashStatus(true, `Correct: ${chosen}`);
-    lockAnswers(true);
 
-    setTimeout(() => {
-      if (!state.active) return;
-      lockAnswers(false);
-      advanceAfterCorrect();
-    }, 450);
+    state.streak += 1;
+
+    // After 10 correct streak the user gets an extra life (every 10)
+    let awardedLife = false;
+    if (state.streak > 0 && state.streak % 10 === 0) {
+      state.lives += 1;
+      state.maxLives = Math.max(state.maxLives, s
+
+    if (awardedLife) {
+      flashStatus(true, `Correct: ${chosen} — +1 life! (Lives: ${state.lives})`);
+    } else {
+      flashStatus(true, `Correct: ${chosen} (Streak: ${state.streak})`);
+    }
+
+    lockAnswers(true);
+    stopTimer();
+    nextAfterFeedback();
   }
 
   function handleWrong(chosen) {
     soundWrong();
 
-    if (state.questionIndex === 0) {
-      state.triesLeft -= 1;
-      if (state.triesLeft <= 0) {
+    state.streak = 0;
+    state.lives -= 1;
+    updateRiskVisual();
+
+    if (state.lives <= 0) {
+      flashStatus(false, `Wrong: ${chosen} — 0 lives left.`);
+      endGame("No lives left.");
+      return;
+    }
+
+    flashStatus(false, `Wrong: ${chosen} — lives left: ${state.lives}`);
+    lockAnswers(true);
+    stopTimer();
+    nextAfterFeedback();
+  }
+
+  function handleTimeout() {
+    soundWrong();
+
+    state.streak = 0;
+    state.lives -= 1;
+    updateRiskVisual();
+
+    if (state.lives <= 0) {
+      flashStatus(false, "Time out — 0 lives left.");
+      endGame("Time out.");
+      return;
+    }
+
+    flashStatus(false, `Time out — lives left: ${state.lives}`);
+    lockAnswers(true);
+    nextAfterFeedback();
+  }
+
+  function onAnswerClicke.triesLeft <= 0) {
         flashStatus(false, `Wrong: ${chosen} — no tries left.`);
         endGame("No tries left.");
         return;
