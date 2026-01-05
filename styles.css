@@ -103,25 +103,27 @@ body{
 .questionBox{
   border:3px solid var(--border);
   border-radius:14px;
-  padding:14px 14px;
+  padding:16px 18px; /* restored larger size */
   background:#101010;
   display:flex;
   align-items:center;
   justify-content:space-between;
-  gap:12px;
+  gap:16px;
   position:relative;
   overflow:hidden;
+  min-height:72px; /* prevent shrink */
 }
 
 .question{
-  font-size: clamp(18px, 3.2vw, 34px);
+  font-size: clamp(20px, 3.4vw, 36px);
   font-weight:900;
   letter-spacing:0.2px;
   min-width:0;
+  line-height:1.15;
 }
 
 .timer{
-  font-size: clamp(16px, 2.6vw, 30px);
+  font-size: clamp(18px, 2.8vw, 32px);
   font-weight:900;
   color:var(--accent);
   min-width: 4ch;
@@ -426,10 +428,7 @@ button.btn{
   100%{ transform: translateX(0); }
 }
 
-/* (Stairs removed) Keep only app shake for wrong answers */
-  50%{ transform: translate(var(--tx,0), var(--ty,0)) rotate(-14deg); }
-  100%{ transform: translate(var(--tx,0), var(--ty,0)) rotate(0deg); }
-}
+/* (Stairs removed) */
 
 /* Overlays (right/wrong)
    Support BOTH class="overlay" and #overlayBad/#overlayGood */
