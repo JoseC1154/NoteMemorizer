@@ -175,11 +175,13 @@ function createSettingsModal(){
       .kd-btn:hover{filter:brightness(1.12)}
       .kd-modalBack{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;padding:14px}
       .kd-modalBack.show{display:flex}
-      .kd-modal{width:min(860px,100%);background:rgba(12,12,12,.94);border:1px solid rgba(255,255,255,.16);border-radius:18px;box-shadow:0 24px 70px rgba(0,0,0,.65);backdrop-filter: blur(10px);overflow:hidden}
-      .kd-modalHead{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.12)}
+      .kd-modal{width:min(860px,100%);max-height:calc(100dvh - 28px);background:rgba(12,12,12,.94);border:1px solid rgba(255,255,255,.16);border-radius:18px;box-shadow:0 24px 70px rgba(0,0,0,.65);backdrop-filter: blur(10px);overflow:hidden;display:flex;flex-direction:column}
+      .kd-modalHead{display:flex;gap:10px;align-items:flex-start;justify-content:space-between;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.12)}
+      @media (max-width:520px){.kd-modalHead{flex-direction:column;align-items:stretch}.kd-modalHead .kd-row{justify-content:flex-end}}
       .kd-modalTitle{font-weight:950;letter-spacing:.6px}
-      .kd-modalBody{padding:14px;display:grid;grid-template-columns: 1.2fr .8fr;gap:14px}
+      .kd-modalBody{padding:14px;display:grid;grid-template-columns: 1.2fr .8fr;gap:14px;overflow:auto;-webkit-overflow-scrolling:touch;min-height:0}
       @media (max-width:780px){.kd-modalBody{grid-template-columns:1fr}}
+      @media (max-width:520px){.kd-modalBack{padding:10px}.kd-modalBody{padding:12px;gap:12px}.kd-card{padding:10px}}
       .kd-card{border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);border-radius:16px;padding:12px}
       .kd-sub{opacity:.85;font-size:.92rem;margin-top:4px}
       .kd-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin-top:10px}
@@ -188,6 +190,7 @@ function createSettingsModal(){
       .kd-chip input{transform:scale(1.1)}
       .kd-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}
       .kd-field{display:flex;gap:10px;align-items:center;justify-content:space-between;margin-top:10px}
+      @media (max-width:520px){.kd-field{flex-direction:column;align-items:stretch}.kd-field label{display:flex;justify-content:space-between}}
       .kd-field label{font-weight:900}
       .kd-field input[type="range"]{width:100%}
       .kd-pill{padding:6px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.16);background:rgba(0,0,0,.25);font-weight:900}
@@ -212,7 +215,7 @@ function createSettingsModal(){
   back.setAttribute("aria-hidden","true");
 
   back.innerHTML = `
-    <div class="kd-modal" role="dialog" aria-modal="true" aria-label="Settings">
+    <div class="kd-modal" role="dialog" aria-modal="true" aria-label="Settings" tabindex="-1">
       <div class="kd-modalHead">
         <div>
           <div class="kd-modalTitle">Settings</div>
