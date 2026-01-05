@@ -1,159 +1,101 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Key Drill — PWA</title>
-
-<!--
-GitHub Pages PWA notes:
-- Rename this file to index.html and place it in your repo root.
-- GitHub → Settings → Pages → Deploy from branch → main → /(root)
-- Your URL will be: https://YOURNAME.github.io/REPO_NAME/
--->
-
-<link rel="stylesheet" href="styles.css" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>KeyDrill</title>
+  <link rel="stylesheet" href="styles.css" />
 </head>
-
 <body>
-<div class="app" id="app">
-  <div class="topRow">
-    <div class="title">Key Drill</div>
-    <div class="pillRow">
-      <div class="pill">Mode: <strong id="modeLabel">Major</strong></div>
-      <div class="pill">Streak: <strong id="streakLabel">0</strong></div>
-      <div class="pill">Score: <strong id="scoreLabel">0</strong></div>
-      <div class="pill">Steps: <strong id="stepsLabel">0</strong></div>
-      <div class="pill">Tries: <strong id="triesLabel">3</strong></div>
-      <div class="pill">Q#: <strong id="qLabel">1</strong></div>
-    </div>
-  </div>
-
-  <div class="questionBox" id="questionBox">
-    <div class="question" id="questionText">Press Start</div>
-    <div class="timer" id="timerText">--</div>
-  </div>
-
-  <div class="msg">
-    <div id="subText">Answer by clicking one of the 7 notes.</div>
-    <div id="hintText">Accidentals shown as ♭ / ♯</div>
-  </div>
-
-  <div class="progressWrap" aria-label="Stair progress">
-    <div class="progressLeft">
-      <svg class="stairSvg" id="stairSvg" viewBox="0 0 220 120" role="img" aria-label="Stairs with stick figure">
-        <defs>
-          <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur stdDeviation="2.2" result="blur" />
-            <feMerge>
-              <feMergeNode in="blur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
-        </defs>
-        <path id="stairsPath" d="" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"></path>
-        <path id="stepHighlight" d="" fill="none" stroke="#ffcc00" stroke-width="6" stroke-linecap="round" opacity="0.95" filter="url(#glow)"></path>
-        <g class="figureWrap" id="figureWrap" transform="translate(0,0)">
-          <g class="figureInner" id="figure" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-            <!-- Jointed stick figure (line art) drawn around (0,0) -->
-            <!-- Head -->
-            <circle cx="0" cy="-12" r="6"></circle>
-            <!-- Neck/Body -->
-            <line x1="0" y1="-6" x2="0" y2="18"></line>
-            <!-- Arms -->
-            <g id="armL" transform="translate(0,2)">
-              <line x1="0" y1="0" x2="-12" y2="6"></line>
-              <circle cx="-12" cy="6" r="2"></circle>
-            </g>
-            <g id="armR" transform="translate(0,2)">
-              <line x1="0" y1="0" x2="12" y2="6"></line>
-              <circle cx="12" cy="6" r="2"></circle>
-            </g>
-            <!-- Hip joint -->
-            <circle cx="0" cy="18" r="2"></circle>
-
-            <!-- Left leg: hip -> knee -> ankle -->
-            <g id="legL" transform="translate(0,18)">
-              <g class="thighL">
-                <line x1="0" y1="0" x2="-6" y2="12"></line>
-                <circle class="knee" cx="-6" cy="12" r="2"></circle>
-                <g class="shinL" transform="translate(-6,12)">
-                  <line x1="0" y1="0" x2="-4" y2="14"></line>
-                  <circle class="ankle" cx="-4" cy="14" r="2"></circle>
-                </g>
-              </g>
-            </g>
-
-            <!-- Right leg -->
-            <g id="legR" transform="translate(0,18)">
-              <g class="thighR">
-                <line x1="0" y1="0" x2="6" y2="12"></line>
-                <circle class="knee" cx="6" cy="12" r="2"></circle>
-                <g class="shinR" transform="translate(6,12)">
-                  <line x1="0" y1="0" x2="4" y2="14"></line>
-                  <circle class="ankle" cx="4" cy="14" r="2"></circle>
-                </g>
-              </g>
-            </g>
-          </g>
-        </g>
-      </svg>
-      <div>
-        <div class="progressTitle">Stair Climb</div>
-        <div class="progressHint">Correct = up 1 step • Wrong/Time = down 2 steps</div>
+  <div class="app" id="app">
+    <header class="header" role="banner">
+      <div class="titleBlock">
+        <h1 class="title">KeyDrill</h1>
+        <p class="subtitle">Keys &amp; Scale Degrees</p>
       </div>
-    </div>
-  </div>
 
-  <div class="answers" id="answers"></div>
-
-  <div class="bottomRow">
-    <div class="controls">
-      <button class="btn primary" id="startBtn">Start</button>
-      <button class="btn" id="skipBtn">Skip</button>
-      <button class="btn" id="modeBtn">Toggle Major/Minor</button>
-      <button class="btn" id="resetBtn">Reset</button>
-      <button class="btn" id="installBtn" style="display:none;">Install</button>
-    </div>
-    <div class="status" id="statusText">Ready.</div>
-  </div>
-
-  <!-- BAD overlay -->
-  <div class="overlayFX" id="overlayBad" aria-hidden="true">
-    <div class="fxCard bad">
-      <div class="ghost"></div>
-      <div class="fxText">
-        <div class="big" id="fxBadBig">Wrong!</div>
-        <div class="small" id="fxBadSmall">Try the next one…</div>
+      <div class="controls" aria-label="Game controls">
+        <button class="btn" id="btnNew" type="button">New</button>
+        <button class="btn" id="btnSettings" type="button" aria-haspopup="dialog" aria-controls="settingsModal">Settings</button>
       </div>
+    </header>
+
+    <main class="main" role="main">
+      <section class="questionBox" aria-live="polite" aria-atomic="true">
+        <div class="questionText" id="questionText">Press New to begin.</div>
+        <div class="timerRow">
+          <div class="timerLabel">Time</div>
+          <div class="timer" id="timer">--</div>
+        </div>
+      </section>
+
+      <section class="statusPanel" id="statusPanel" aria-live="polite" aria-atomic="true">
+        <div class="statusInner">
+          <div class="face faceGood" aria-hidden="true"></div>
+          <div class="face faceBad" aria-hidden="true"></div>
+          <div class="statusText" id="statusText">Ready.</div>
+        </div>
+      </section>
+
+      <section class="answers" aria-label="Answer choices">
+        <div class="answerGrid" id="answerGrid">
+          <button class="answerBtn" type="button" data-idx="0">—</button>
+          <button class="answerBtn" type="button" data-idx="1">—</button>
+          <button class="answerBtn" type="button" data-idx="2">—</button>
+          <button class="answerBtn" type="button" data-idx="3">—</button>
+          <button class="answerBtn" type="button" data-idx="4">—</button>
+          <button class="answerBtn" type="button" data-idx="5">—</button>
+          <button class="answerBtn" type="button" data-idx="6">—</button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Settings Modal -->
+  <div class="modalOverlay" id="settingsOverlay" hidden></div>
+  <div class="modal" id="settingsModal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle" hidden>
+    <div class="modalHeader">
+      <h2 id="settingsTitle">Settings</h2>
+      <button class="iconBtn" id="btnCloseSettings" type="button" aria-label="Close settings">×</button>
+    </div>
+
+    <div class="modalBody">
+      <section class="settingGroup">
+        <h3 class="settingLabel">Keys to Master</h3>
+        <p class="settingHint">Toggle one or more keys. (Can’t be zero — will fall back to all.)</p>
+        <div class="keyToggles" id="keyToggles" aria-label="Keys to master"></div>
+      </section>
+
+      <section class="settingGroup">
+        <h3 class="settingLabel">Seconds per Question</h3>
+        <div class="sliderRow">
+          <input id="secondsSlider" class="slider" type="range" min="3" max="20" step="1" value="8" />
+          <div class="sliderValue" id="secondsValue">8s</div>
+        </div>
+      </section>
+
+      <section class="settingGroup">
+        <h3 class="settingLabel">Degree Mode</h3>
+        <div class="segmented" role="radiogroup" aria-label="Degree mode">
+          <button class="segBtn" id="modeDiatonic" type="button" role="radio" aria-checked="true" data-mode="diatonic">Diatonic</button>
+          <button class="segBtn" id="modeChromatic" type="button" role="radio" aria-checked="false" data-mode="chromatic">Chromatic</button>
+        </div>
+      </section>
+
+      <section class="settingGroup">
+        <h3 class="settingLabel">Audio</h3>
+        <div class="toggleRow">
+          <button class="toggleBtn" id="toggleSound" type="button" aria-pressed="true">Sounds: On</button>
+          <button class="toggleBtn" id="toggleTick" type="button" aria-pressed="false">Tick: Off</button>
+        </div>
+      </section>
+    </div>
+
+    <div class="modalFooter">
+      <button class="btn primary" id="btnSaveSettings" type="button">Save</button>
     </div>
   </div>
 
-  <!-- GOOD overlay -->
-  <div class="overlayFX" id="overlayGood" aria-hidden="true">
-    <div class="fxCard good">
-      <div class="face"></div>
-      <div class="fxText">
-        <div class="big" id="fxGoodBig">Correct!</div>
-        <div class="small" id="fxGoodSmall">Nice — keep going…</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- GAME OVER / WIN modal -->
-  <div class="overlayModal" id="overlayEnd" aria-hidden="true">
-    <div class="modalCard" role="dialog" aria-modal="true" aria-labelledby="endTitle">
-      <div class="modalTitle" id="endTitle">Game Over</div>
-      <div class="modalBody" id="endBody">You fell down the stairs.</div>
-      <div class="modalStats" id="endStats"></div>
-      <div class="modalBtns">
-        <button class="btn primary" id="restartBtn">Restart</button>
-        <button class="btn" id="closeEndBtn">Close</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<script src="keydrill.js" defer></script>
+  <script src="keydrill.js" defer></script>
 </body>
 </html>
