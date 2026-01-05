@@ -186,17 +186,41 @@ function createSettingsModal(){
       .kd-sub{opacity:.85;font-size:.92rem;margin-top:4px}
       .kd-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin-top:10px}
       @media (max-width:520px){.kd-grid{grid-template-columns:repeat(4,minmax(0,1fr));}}
-      .kd-chip{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:12px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);user-select:none}
-      .kd-chip input{transform:scale(1.1)}
+
+      /* Key toggle buttons (replace checkboxes) */
+      .kd-keyBtn{display:flex;align-items:center;justify-content:center;gap:8px;padding:10px 10px;border-radius:14px;border:1px solid rgba(255,255,255,.14);
+        background:rgba(255,255,255,.06);color:#fff;font-weight:950;cursor:pointer;user-select:none;min-width:0}
+      .kd-keyBtn:hover{filter:brightness(1.12)}
+      .kd-keyBtn.active{border-color:rgba(56,212,106,.75);background:rgba(56,212,106,.26);
+        box-shadow:0 0 0 2px rgba(56,212,106,.18) inset, 0 10px 26px rgba(0,0,0,.35), 0 0 22px rgba(56,212,106,.20);
+        text-shadow:0 0 10px rgba(56,212,106,.35)}
+      .kd-keyBtn:focus{outline:2px solid rgba(255,255,255,.35);outline-offset:2px}
+
+      /* Range: extend closer to edges */
+      .kd-rangeWrap{margin-top:10px;margin-inline:-8px}
+      @media (max-width:520px){.kd-rangeWrap{margin-inline:-10px}}
+      .kd-rangeWrap input[type="range"]{width:100%}
       .kd-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}
       .kd-field{display:flex;gap:10px;align-items:center;justify-content:space-between;margin-top:10px}
-      @media (max-width:520px){.kd-field{flex-direction:column;align-items:stretch}.kd-field label{display:flex;justify-content:space-between}}
+      @media (max-width:520px){.kd-field{flex-direction:column;align-items:stretch}.kd-field label{display:flex;justify-content:space-between}} 
       .kd-field label{font-weight:900}
-      .kd-field input[type="range"]{width:100%}
       .kd-pill{padding:6px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.16);background:rgba(0,0,0,.25);font-weight:900}
       .kd-smallBtn{padding:8px 10px;border-radius:12px;border:1px solid rgba(255,255,255,.18);background:rgba(0,0,0,.35);color:#fff;font-weight:850;cursor:pointer}
       .kd-smallBtn:hover{filter:brightness(1.12)}
       .kd-note{opacity:.82;font-size:.9rem;line-height:1.25;margin-top:10px}
+
+      /* --- Core layout safety (prevents buttons from spilling out on small screens) --- */
+      #app{max-width:100%;box-sizing:border-box;overflow:hidden}
+      .controls{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;align-items:center}
+      .controls > *{min-width:0}
+      .controls button, .controls select{max-width:100%;flex:1 1 auto}
+      @media (max-width:520px){
+        .controls button, .controls select{flex:1 1 44%;}
+      }
+      #answers{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+      @media (max-width:760px){#answers{grid-template-columns:repeat(3,minmax(0,1fr));}}
+      @media (max-width:520px){#answers{grid-template-columns:repeat(2,minmax(0,1fr));}}
+      #answers .answer{min-width:0;width:100%}
     `;
     document.head.appendChild(style);
   }
@@ -234,10 +258,9 @@ function createSettingsModal(){
             </div>
             <div class="kd-row">
               <button type="button" class="kd-smallBtn" id="kdAll">All</button>
-              <button type="button" class="kd-smallBtn" id="kdNone">None</button>
             </div>
           </div>
-          <div class="kd-grid" id="kdKeyGrid"></div>
+          <div class="kd-grid" id="kdKeyGrid" aria-label="Keys to master"></div>
           <div class="kd-note">Tip: if you enable only <span class="kd-pill">C</span>, you’ll drill ALL degrees/accidentals in the key of C (based on your selected degree set).</div>
         </div>
 
@@ -248,7 +271,7 @@ function createSettingsModal(){
             <label for="kdSec">Seconds per question</label>
             <span class="kd-pill" id="kdSecVal"></span>
           </div>
-          <input id="kdSec" type="range" min="3" max="25" step="1" />
+          <div class="kd-rangeWrap"><input id="kdSec" type="range" min="3" max="25" step="1" /></div>
 
           <div class="kd-field">
             <label>Degrees</label>
@@ -286,23 +309,23 @@ function createSettingsModal(){
     const enabled = new Set(state.settings.masterKeys);
 
     KEYS.forEach(k => {
-      const chip = document.createElement("label");
-      chip.className = "kd-chip";
-      const cb = document.createElement("input");
-      cb.type = "checkbox";
-      cb.checked = enabled.has(k);
-      cb.addEventListener("change", () => {
+      const btnKey = document.createElement("button");
+      btnKey.type = "button";
+      btnKey.className = "kd-keyBtn" + (enabled.has(k) ? " active" : "");
+      btnKey.textContent = pretty(k);
+      btnKey.setAttribute("aria-pressed", enabled.has(k) ? "true" : "false");
+      btnKey.dataset.key = k;
+
+      btnKey.addEventListener("click", () => {
         const next = new Set(state.settings.masterKeys);
-        if(cb.checked) next.add(k); else next.delete(k);
-        setMasterKeys(Array.from(next));
-        // Keep UI consistent (never let it look empty even if user turned all off)
+        if(next.has(k)) next.delete(k); else next.add(k);
+        // Never allow empty: if user turns all off, revert to All (logical default)
+        const arr = Array.from(next);
+        setMasterKeys(arr);
         renderKeys();
       });
-      const span = document.createElement("span");
-      span.textContent = pretty(k);
-      chip.appendChild(cb);
-      chip.appendChild(span);
-      keyGrid.appendChild(chip);
+
+      keyGrid.appendChild(btnKey);
     });
   }
 
@@ -334,9 +357,8 @@ function createSettingsModal(){
     if(e.target === back) close();
   });
 
-  // All/None
+  // All
   back.querySelector("#kdAll").addEventListener("click", () => { setMasterKeys(KEYS); renderKeys(); });
-  back.querySelector("#kdNone").addEventListener("click", () => { setMasterKeys([]); renderKeys(); });
 
   // Seconds
   sec.addEventListener("input", () => {
