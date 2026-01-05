@@ -316,6 +316,7 @@
   function startGame() {
     ensureAudio();
     state.active = true;
+    state.locked = false; // allow restart after game over
     state.questionIndex = 0;
     state.triesLeft = 3; // Question 1 allows 3 tries
     state.current = null;
@@ -510,7 +511,16 @@
     saveSettings();
     closeSettings();
 
-    renderAnswers();
+    // Apply settings immediately (including chromatic mode)
+    if (state.active) {
+      stopTimer();
+      state.locked = false;
+      lockAnswers(false);
+      nextQuestion();
+    } else {
+      renderAnswers();
+    }
+
     setStatusNeutral("Settings saved.");
   });
 
