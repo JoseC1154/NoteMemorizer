@@ -1,563 +1,430 @@
-:root{
-  --bg:#1e1e1e;
-  --panel:#2a2a2a;
-  --panel2:#232323;
-  --text:#ffffff;
-  --muted:#b9b9b9;
-  --accent:#ffcc00;
-  --good:#38d46a;
-  --bad:#ff4b4b;
-  --border:#444;
-  --shadow: rgba(0,0,0,0.55);
-}
+/* Basic reset only */
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; }
 
-*{ box-sizing:border-box; }
-html, body{ width:100%; }
+/* App layout */
+:root{
+  --bg0: #070A12;
+  --bg1: #0A1022;
+  --panel: rgba(255,255,255,0.06);
+  --panel2: rgba(255,255,255,0.09);
+  --border: rgba(255,255,255,0.14);
+  --text: rgba(255,255,255,0.92);
+  --muted: rgba(255,255,255,0.72);
+  --shadow: 0 14px 45px rgba(0,0,0,0.55);
+  --radius: 16px;
+}
 
 body{
-  margin:0;
-  background: radial-gradient(1200px 800px at 50% 0%, #2a2a2a 0%, var(--bg) 60%);
-  color:var(--text);
-  font-family: Arial, sans-serif;
-  display:flex;
-  min-height:100dvh;
-  align-items:center;
-  justify-content:center;
-  padding:16px;
-  overflow-x:hidden;
-  overflow-y:auto;
-  -webkit-text-size-adjust: 100%;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  color: var(--text);
+  background: radial-gradient(1200px 900px at 50% 0%, #15214a 0%, var(--bg0) 55%, #02030a 100%);
 }
 
-/* On small screens, don’t vertically “center-crop” the app — let it start at top and scroll */
-@media (max-width: 520px){
-  body{ align-items:flex-start; padding:12px; }
+.app{
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 14px;
+  gap: 12px;
+  max-width: 860px;
+  margin: 0 auto;
 }
 
-/* Support either .app or #app */
-.app,
-#app{
-  width: min(980px, calc(100vw - 32px));
-  max-width: 100%;
-  max-height: calc(100dvh - 32px);
-  overflow: auto;
-  -webkit-overflow-scrolling: touch;
-  display:grid;
-  grid-template-rows:auto auto auto 1fr auto;
-  gap:14px;
-  padding:16px;
-  border:4px solid var(--border);
-  border-radius:18px;
-  background: linear-gradient(180deg, var(--panel) 0%, var(--panel2) 100%);
-  box-shadow: 0 14px 35px var(--shadow);
-  position:relative;
+.header{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 14px;
+  border: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03));
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
 }
 
-@media (max-width: 520px){
-  .app,
-  #app{ width: calc(100vw - 24px); max-height: calc(100dvh - 24px); padding:12px; gap:12px; }
+.titleBlock{ display:flex; flex-direction:column; gap:2px; }
+.title{ margin: 0; font-size: 22px; letter-spacing: 0.3px; }
+.subtitle{ margin: 0; font-size: 12px; color: var(--muted); }
+
+.controls{ display:flex; gap: 10px; align-items:center; }
+
+.btn{
+  appearance: none;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.06);
+  color: var(--text);
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-weight: 650;
+  letter-spacing: 0.2px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.btn:active{ transform: translateY(1px); }
+.btn.primary{
+  background: linear-gradient(180deg, rgba(64,230,160,0.20), rgba(64,230,160,0.10));
+  border-color: rgba(64,230,160,0.35);
 }
 
-.topRow{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:12px;
-  flex-wrap:wrap;
+.iconBtn{
+  appearance: none;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.06);
+  color: var(--text);
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  font-size: 22px;
+  cursor: pointer;
 }
 
-.title{
-  font-size: clamp(18px, 2.2vw, 26px);
-  font-weight:800;
-  letter-spacing:0.4px;
-  min-width:0;
+.main{
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
 }
-
-.pillRow{
-  display:flex;
-  gap:10px;
-  flex-wrap:wrap;
-  align-items:center;
-  justify-content:flex-end;
-  min-width:0;
-}
-
-.pill{
-  display:flex;
-  align-items:center;
-  gap:8px;
-  padding:10px 12px;
-  border:2px solid var(--border);
-  border-radius:999px;
-  background:#141414;
-  font-size: clamp(12px, 1.6vw, 15px);
-  color:var(--muted);
-  user-select:none;
-  max-width: 100%;
-  white-space:normal;
-  overflow:hidden;
-  text-overflow:ellipsis;
-}
-.pill strong{ color:var(--text); font-weight:800; }
 
 .questionBox{
-  border:3px solid var(--border);
-  border-radius:14px;
-  padding:16px 18px; /* restored larger size */
-  background:#101010;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:16px;
-  position:relative;
-  overflow:hidden;
-  min-height:72px; /* prevent shrink */
+  border: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.03));
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 16px;
+  display: grid;
+  gap: 12px;
 }
 
-.question{
-  font-size: clamp(20px, 3.4vw, 36px);
-  font-weight:900;
-  letter-spacing:0.2px;
-  min-width:0;
-  line-height:1.15;
-}
-
-.timer{
-  font-size: clamp(18px, 2.8vw, 32px);
-  font-weight:900;
-  color:var(--accent);
-  min-width: 4ch;
-  text-align:right;
-  flex:0 0 auto;
-}
-
-.msg{
-  margin-top:-6px;
-  font-size: clamp(12px, 1.7vw, 15px);
-  color: var(--muted);
-  display:flex;
-  justify-content:space-between;
-  gap:10px;
-  flex-wrap:wrap;
-}
-
-/* Progress / Status panel (replaces stairs + stick figure)
-   JS can toggle .good / .bad on .progressWrap for feedback.
-   This area is now for faces + status + motion graphics. */
-.progressWrap{
-  border:2px solid var(--border);
-  border-radius:14px;
-  background:#101010;
-  padding:12px;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:12px;
-  min-width:0;
-  position:relative;
-  overflow:hidden;
-}
-
-/* Animated direction bar */
-.progressWrap::before{
-  content:"";
-  position:absolute;
-  inset:-40% -60%;
-  background: linear-gradient(90deg,
-    rgba(60,140,255,.35) 0%,
-    rgba(60,140,255,.05) 18%,
-    rgba(255,90,90,.05) 55%,
-    rgba(255,90,90,.35) 100%);
-  filter: blur(14px);
-  opacity:.55;
-  transform: translateX(-18%);
-  animation: drift 4.2s linear infinite;
-  pointer-events:none;
-}
-
-/* When doing well, bias toward blue; when doing poorly, bias toward red */
-.progressWrap.good::before{ opacity:.65; animation-duration: 3.4s; }
-.progressWrap.bad::before{ opacity:.70; animation-duration: 3.4s; }
-.progressWrap.good::before{ filter: blur(14px) saturate(1.15); }
-.progressWrap.bad::before{ filter: blur(14px) saturate(1.15); }
-
-@keyframes drift{
-  0%{ transform: translateX(-22%) translateY(-2%) rotate(-2deg); }
-  50%{ transform: translateX(22%) translateY(2%) rotate(2deg); }
-  100%{ transform: translateX(-22%) translateY(-2%) rotate(-2deg); }
-}
-
-/* Face badge (no HTML needed): shown via classes .good / .bad */
-.progressWrap::after{
-  content:"";
-  position:absolute;
-  left:12px;
-  top:50%;
-  transform: translateY(-50%);
-  width:52px;
-  height:52px;
-  border-radius:50%;
-  border:2px solid rgba(255,255,255,.18);
-  background:
-    radial-gradient(circle at 34% 38%, rgba(255,255,255,.95) 0 4px, transparent 5px),
-    radial-gradient(circle at 66% 38%, rgba(255,255,255,.95) 0 4px, transparent 5px),
-    radial-gradient(circle at 50% 50%, rgba(185,185,185,.12) 0 999px);
-  opacity:0;
-  pointer-events:none;
-}
-
-.progressWrap.good::after{
-  opacity:1;
-  border-color: rgba(56,212,106,.55);
-  background:
-    radial-gradient(circle at 34% 38%, rgba(255,255,255,.95) 0 4px, transparent 5px),
-    radial-gradient(circle at 66% 38%, rgba(255,255,255,.95) 0 4px, transparent 5px),
-    radial-gradient(circle at 50% 50%, rgba(56,212,106,.22) 0 999px);
-}
-
-.progressWrap.bad::after{
-  opacity:1;
-  border-color: rgba(255,75,75,.55);
-  background:
-    radial-gradient(circle at 34% 38%, rgba(255,255,255,.95) 0 4px, transparent 5px),
-    radial-gradient(circle at 66% 38%, rgba(255,255,255,.95) 0 4px, transparent 5px),
-    radial-gradient(circle at 50% 50%, rgba(255,75,75,.18) 0 999px);
-}
-
-/* Optional mouth element if you add <div class="statusMouth"></div> inside progressWrap */
-.statusMouth{ display:none; }
-.progressWrap.good .statusMouth,
-.progressWrap.bad .statusMouth{
-  display:block;
-  position:absolute;
-  left:12px;
-  top:50%;
-  transform: translate(0, -50%);
-  width:52px;
-  height:52px;
-  pointer-events:none;
-}
-
-.progressWrap.good .statusMouth::before,
-.progressWrap.bad .statusMouth::before{
-  content:"";
-  position:absolute;
-  left:50%;
-  top:30px;
-  transform: translateX(-50%);
-  width:26px;
-  height:12px;
-  border:3px solid rgba(255,255,255,.9);
-  border-top-color: transparent;
-  border-left-color: transparent;
-  border-right-color: transparent;
-  border-radius: 0 0 40px 40px;
-}
-
-.progressWrap.bad .statusMouth::before{
-  top:32px;
-  border-bottom-color: transparent;
-  border-top-color: rgba(255,255,255,.9);
-  border-radius: 40px 40px 0 0;
-}
-
-/* Layout for existing text inside progressWrap */
-.progressLeft{ 
-  display:flex;
-  align-items:center;
-  gap:10px;
-  min-width:0;
-  position:relative;
-  z-index:1;
-  padding-left: 60px; /* room for face */
-}
-.progressTitle{ font-weight:950; color:var(--text); font-size:14px; white-space:nowrap; }
-.progressHint{ font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-
-/* Remove old stair SVG if still present */
-.stairSvg{ display:none !important; }
-
-/* Current step highlight */
-#stepHighlight{ transition: d 180ms ease; }
-.stepPulse{ animation: stepPulse 720ms ease-in-out infinite; }
-@keyframes stepPulse{
-  0%{ opacity:0.55; }
-  50%{ opacity:1; }
-  100%{ opacity:0.55; }
-}
-
-/* ==============================
-   ANSWERS: fully responsive
-   - auto-fit ensures buttons reflow naturally
-   - minmax prevents overflow
-   ============================== */
-.answers,
-#answers{
-  display:grid;
-  gap:10px;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  width:100%;
-}
-@media (max-width: 520px){
-  .answers,
-  #answers{ grid-template-columns: repeat(2, minmax(0, 1fr)); gap:10px; }
-}
-@media (max-width: 360px){
-  .answers,
-  #answers{ grid-template-columns: repeat(2, minmax(0, 1fr)); gap:8px; }
-}
-
-/* Buttons: answer buttons stretch to cell width */
-button.answer,
-.answer{
-  width:100%;
-  max-width:100%;
-  min-width:0;
-  border:3px solid var(--border);
-  background:#0f0f0f;
-  color:var(--text);
-  border-radius:14px;
-  padding: clamp(10px, 2.2vw, 14px) clamp(8px, 2vw, 10px);
-  font-size: clamp(14px, 2.2vw, 20px);
-  font-weight:900;
-  cursor:pointer;
-  overflow:hidden;
-  text-overflow:ellipsis;
-  white-space:nowrap;
-}
-
-/* keep original selector for compatibility */
-button.answer:disabled{ opacity:0.55; cursor:not-allowed; }
-button.answer:hover{ filter: brightness(1.08); }
-button.answer:active{ transform: translateY(1px); }
-
-.bottomRow{
-  display:flex;
-  justify-content:space-between;
-  gap:10px;
-  flex-wrap:wrap;
-  align-items:center;
-  min-width:0;
-}
-
-/* Controls: responsive wrapping + equal-width buttons on small screens */
-.controls,
-#controls{
-  display:flex;
-  gap:10px;
-  flex-wrap:wrap;
-  align-items:center;
-  min-width:0;
-}
-
-.btn,
-button.btn,
-.controls button,
-.controls select{
-  max-width:100%;
-  min-width:0;
-}
-
-.btn,
-button.btn{
-  padding:10px 12px;
-  border-radius:12px;
-  border:2px solid var(--border);
-  background:#0f0f0f;
-  color:#fff;
-  font-weight:900;
-  cursor:pointer;
-}
-
-@media (max-width: 520px){
-  .controls > *{ flex: 1 1 calc(50% - 10px); }
-  .btn, button.btn{ width:100%; }
-}
-
-.status{ font-size:14px; color:var(--muted); min-width:0; }
-
-/* ==============================
-   LANDSCAPE / HORIZONTAL MODE
-   Hide non-essential UI (question + timer + answers only)
-   ============================== */
-@media (orientation: landscape) and (max-height: 520px){
-  .topRow,
-  .pillRow,
-  .progressWrap,
-  .bottomRow,
-  .controls,
-  .status,
-  .msg{
-    display:none !important;
-  }
-
-  .app,
-  #app{
-    grid-template-rows: auto 1fr;
-    padding:12px;
-    gap:10px;
-    max-height: calc(100dvh - 24px);
-  }
-
-  .question{
-    font-size: clamp(18px, 4vw, 32px);
-  }
-
-  .answers,
-  #answers{
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap:8px;
-  }
-}
-
-.timeLow{ color: #ff8f1f !important; }
-.timeOut{ color: var(--bad) !important; }
-
-/* ==============================
-   Effects + overlays (required by JS)
-   ============================== */
-
-/* App shake on wrong */
-.shake{ animation: appShake 260ms ease-in-out; }
-@keyframes appShake{
-  0%{ transform: translateX(0); }
-  20%{ transform: translateX(-8px); }
-  40%{ transform: translateX(8px); }
-  60%{ transform: translateX(-6px); }
-  80%{ transform: translateX(6px); }
-  100%{ transform: translateX(0); }
-}
-
-/* (Stairs removed) */
-
-/* Overlays (right/wrong)
-   Support BOTH class="overlay" and #overlayBad/#overlayGood */
-.overlay,
-#overlayBad,
-#overlayGood{
-  position:absolute;
-  inset:0;
-  display:none;
-  align-items:center;
-  justify-content:center;
-  z-index:50;
-  background: rgba(0,0,0,.55);
-  backdrop-filter: blur(6px);
-}
-.overlay.show,
-#overlayBad.show,
-#overlayGood.show{ display:flex; }
-
-.fxCard{
-  width:min(560px, calc(100% - 24px));
-  border:2px solid rgba(255,255,255,.16);
-  background: rgba(12,12,12,.92);
-  border-radius:18px;
-  padding:18px 16px;
-  box-shadow: 0 24px 70px rgba(0,0,0,.65);
-  text-align:center;
-  position:relative;
-}
-
-/* Ensure the face appears even if HTML doesn’t include a .face element */
-#overlayGood .fxCard,
-#overlayBad .fxCard{ padding-top: 128px; }
-
-#overlayGood .fxCard::before,
-#overlayBad  .fxCard::before{
-  content:"";
-  position:absolute;
-  top:18px;
-  left:50%;
-  transform:translateX(-50%);
-  width:92px;
-  height:92px;
-  border-radius:50%;
-  border:3px solid rgba(255,255,255,.18);
-  background:
-    radial-gradient(circle at 34% 38%, rgba(255,255,255,.95) 0 5px, transparent 6px),
-    radial-gradient(circle at 66% 38%, rgba(255,255,255,.95) 0 5px, transparent 6px),
-    radial-gradient(circle at 50% 50%, transparent 0 999px);
-}
-
-#overlayGood .fxCard::before{
-  background:
-    radial-gradient(circle at 34% 38%, rgba(255,255,255,.95) 0 5px, transparent 6px),
-    radial-gradient(circle at 66% 38%, rgba(255,255,255,.95) 0 5px, transparent 6px),
-    radial-gradient(circle at 50% 50%, rgba(56,212,106,.26) 0 999px);
-  border-color: rgba(56,212,106,.60);
-}
-
-#overlayBad .fxCard::before{
-  background:
-    radial-gradient(circle at 34% 38%, rgba(255,255,255,.95) 0 5px, transparent 6px),
-    radial-gradient(circle at 66% 38%, rgba(255,255,255,.95) 0 5px, transparent 6px),
-    radial-gradient(circle at 50% 50%, rgba(255,75,75,.20) 0 999px);
-  border-color: rgba(255,75,75,.60);
-}
-
-#overlayGood .fxCard::after,
-#overlayBad  .fxCard::after{
-  content:"";
-  position:absolute;
-  top:74px;
-  left:50%;
-  transform:translateX(-50%);
-  width:44px;
-  height:22px;
-  border-radius: 0 0 40px 40px;
-  border:4px solid rgba(255,255,255,.90);
-  border-top-color: transparent;
-  border-left-color: transparent;
-  border-right-color: transparent;
-}
-
-#overlayBad .fxCard::after{
-  top:78px;
-  border-radius: 40px 40px 0 0;
-  border-bottom-color: transparent;
-  border-top-color: rgba(255,255,255,.90);
-}
-
-.fxBig{
-  font-size: clamp(24px, 6vw, 48px);
-  font-weight: 1000;
-  letter-spacing: .3px;
-  margin-bottom: 6px;
-}
-.fxSmall{
-  font-size: clamp(14px, 2.4vw, 18px);
-  color: var(--muted);
+.questionText{
+  font-size: clamp(18px, 4.2vw, 30px);
   font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: 0.2px;
 }
 
-/* End modal overlay (support BOTH .endBack and #overlayEnd) */
-.endBack,
-#overlayEnd{
-  position:fixed;
-  inset:0;
-  display:none;
+.timerRow{
+  display:flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(255,255,255,0.10);
+}
+.timerLabel{
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+.timer{
+  font-variant-numeric: tabular-nums;
+  font-size: 22px;
+  font-weight: 900;
+}
+
+/* Status panel with animated moving gradient */
+.statusPanel{
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  position: relative;
+  overflow: hidden;
+  min-height: 88px;
+  background: rgba(255,255,255,0.03);
+}
+.statusPanel::before{
+  content:"";
+  position:absolute;
+  inset: -40%;
+  background: linear-gradient(110deg,
+      rgba(20,180,255,0.65),
+      rgba(60,255,190,0.55),
+      rgba(255,60,60,0.55),
+      rgba(20,180,255,0.65));
+  background-size: 300% 300%;
+  animation: drift 5s linear infinite;
+  filter: blur(22px);
+  opacity: 0.55;
+  transform: translateZ(0);
+}
+@keyframes drift{
+  0% { background-position: 0% 50%; transform: translate(-2%, -2%) rotate(0deg); }
+  50%{ background-position: 100% 50%; transform: translate(2%, 2%) rotate(4deg); }
+  100%{ background-position: 0% 50%; transform: translate(-2%, -2%) rotate(0deg); }
+}
+
+/* Good / Bad emphasis (JS toggles ONLY these classes) */
+.statusPanel.good::before{ opacity: 0.65; filter: blur(20px) saturate(1.2); }
+.statusPanel.bad::before { opacity: 0.75; filter: blur(20px) saturate(1.3) contrast(1.05); }
+
+.statusInner{
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  padding: 14px 16px;
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  gap: 12px;
+  align-items: center;
+}
+
+.statusText{
+  font-size: 14px;
+  font-weight: 750;
+  color: rgba(255,255,255,0.92);
+  line-height: 1.2;
+}
+
+/* Faces rendered via CSS (no images) */
+.face{
+  width: 54px;
+  height: 54px;
+  border-radius: 999px;
+  border: 2px solid rgba(255,255,255,0.22);
+  background: rgba(0,0,0,0.28);
+  position: relative;
+  display: none; /* shown by good/bad only */
+  box-shadow: 0 10px 20px rgba(0,0,0,0.35);
+}
+.face::before, .face::after{
+  content:"";
+  position:absolute;
+  top: 18px;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.9);
+}
+.face::before{ left: 16px; }
+.face::after{ right: 16px; }
+
+/* Mouths via background strokes */
+.faceGood{
+  border-color: rgba(80,255,190,0.35);
+  background:
+    linear-gradient(rgba(230,255,248,0.92), rgba(230,255,248,0.92));
+  background-size: 22px 3px;
+  background-position: 50% 34px;
+  background-repeat: no-repeat;
+  box-shadow:
+    inset 0 -10px 0 rgba(60,255,190,0.08),
+    0 10px 20px rgba(0,0,0,0.35);
+}
+.faceBad{
+  border-color: rgba(255,90,90,0.42);
+  background:
+    linear-gradient(rgba(255,240,240,0.92), rgba(255,240,240,0.92));
+  background-size: 22px 3px;
+  background-position: 50% 37px;
+  background-repeat: no-repeat;
+  box-shadow:
+    inset 0 -10px 0 rgba(255,70,70,0.08),
+    0 10px 20px rgba(0,0,0,0.35);
+}
+
+/* Show the correct face based on panel class */
+.statusPanel.good .faceGood{ display:block; }
+.statusPanel.bad  .faceBad { display:block; }
+.statusPanel.good .faceBad { display:none; }
+.statusPanel.bad  .faceGood{ display:none; }
+
+/* Answers */
+.answers{
+  border: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03));
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 12px;
+}
+
+.answerGrid{
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.answerBtn{
+  appearance: none;
+  border: 1px solid rgba(255,255,255,0.16);
+  background: rgba(0,0,0,0.22);
+  color: var(--text);
+  border-radius: 14px;
+  padding: 14px 12px;
+  font-size: clamp(18px, 4.2vw, 26px);
+  font-weight: 900;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  min-height: 54px;
+  touch-action: manipulation;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.28);
+  transition: transform 120ms ease, background 180ms ease, border-color 180ms ease;
+}
+.answerBtn:active{ transform: translateY(1px) scale(0.99); }
+.answerBtn[disabled]{
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* 7th button spans full width */
+.answerBtn:nth-child(7){
+  grid-column: 1 / -1;
+}
+
+/* Modal */
+.modalOverlay{
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(6px);
+  z-index: 50;
+}
+
+.modal{
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(92vw, 560px);
+  max-height: 86vh;
+  overflow: auto;
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  background: rgba(10,14,26,0.92);
+  box-shadow: 0 28px 80px rgba(0,0,0,0.65);
+  z-index: 60;
+}
+
+.modalHeader{
+  display:flex;
   align-items:center;
-  justify-content:center;
-  background: rgba(0,0,0,.60);
-  z-index:9998;
-  padding:14px;
+  justify-content: space-between;
+  padding: 14px 14px 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.10);
 }
-.endBack.show,
-#overlayEnd.show{ display:flex; }
-
-.endModal{
-  width:min(720px, 100%);
-  max-height: calc(100dvh - 28px);
-  overflow:auto;
-  -webkit-overflow-scrolling: touch;
-  background: rgba(12,12,12,.94);
-  border:1px solid rgba(255,255,255,.16);
-  border-radius:18px;
-  box-shadow: 0 24px 70px rgba(0,0,0,.65);
-  padding:16px;
+.modalHeader h2{
+  margin: 0;
+  font-size: 18px;
+  letter-spacing: 0.2px;
 }
-.endModal h2{ margin:0 0 8px; font-size: clamp(20px, 4vw, 32px); }
-.endModal p{ margin:0 0 10px; color: var(--muted); font-weight:700; }
 
-/* (Stick figure removed) */
+.modalBody{
+  padding: 14px;
+  display: grid;
+  gap: 14px;
+}
+.modalFooter{
+  padding: 12px 14px 14px;
+  border-top: 1px solid rgba(255,255,255,0.10);
+  display:flex;
+  justify-content: flex-end;
+}
+
+.settingGroup{
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.04);
+  border-radius: 14px;
+  padding: 12px;
+  display:grid;
+  gap: 10px;
+}
+.settingLabel{
+  margin: 0;
+  font-size: 14px;
+  letter-spacing: 0.3px;
+}
+.settingHint{
+  margin: -6px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.keyToggles{
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+.keyBtn{
+  appearance:none;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(0,0,0,0.18);
+  color: var(--text);
+  border-radius: 12px;
+  padding: 10px 8px;
+  font-weight: 850;
+  cursor: pointer;
+}
+.keyBtn[aria-pressed="true"]{
+  background: rgba(60,255,190,0.12);
+  border-color: rgba(60,255,190,0.34);
+}
+
+.sliderRow{
+  display:flex;
+  align-items:center;
+  gap: 10px;
+}
+.slider{
+  width: 100%;
+}
+.sliderValue{
+  min-width: 46px;
+  text-align: right;
+  font-weight: 850;
+  font-variant-numeric: tabular-nums;
+}
+
+.segmented{
+  display:flex;
+  gap: 8px;
+}
+.segBtn{
+  flex:1;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(0,0,0,0.18);
+  color: var(--text);
+  border-radius: 12px;
+  padding: 10px 10px;
+  font-weight: 850;
+  cursor: pointer;
+}
+.segBtn[aria-checked="true"]{
+  background: rgba(20,180,255,0.13);
+  border-color: rgba(20,180,255,0.34);
+}
+
+.toggleRow{
+  display:flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.toggleBtn{
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(0,0,0,0.18);
+  color: var(--text);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-weight: 850;
+  cursor: pointer;
+}
+.toggleBtn[aria-pressed="true"]{
+  background: rgba(255,255,255,0.10);
+  border-color: rgba(255,255,255,0.22);
+}
+
+/* Responsive: landscape mobile hides non-essential UI (CSS only) */
+@media (orientation: landscape) and (max-height: 520px){
+  .header{ display:none; }
+  .statusPanel{ display:none; }
+  .app{ padding: 10px; gap: 10px; }
+  .questionBox{ padding: 12px; }
+  .answers{ padding: 10px; }
+}
+
+/* Ensure no overflow on mobile portrait */
+@media (max-width: 420px){
+  .keyToggles{ grid-template-columns: repeat(3, 1fr); }
+  .btn{ padding: 10px 10px; }
+}
