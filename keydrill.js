@@ -87,62 +87,113 @@ const state = {
  *************************************************/
 const KEYS = ["C","Db","D","Eb","E","F","F#","G","Ab","A","Bb","B"];
 
-// === Mastery filter (choose which KEYS can appear as the question key) ===
-const KEY_PREF_STORAGE = "keydrill.masterKeys.v1";
+// === Settings (Keys to master + other logical options) ===
+const SETTINGS_STORAGE = "keydrill.settings.v2";
 
-function loadMasterKeys(){
+const DEFAULT_SETTINGS = {
+  masterKeys: KEYS.slice(),     // which KEYS can appear as the question key
+  secondsPerQ: DEFAULT_SECONDS_PER_Q,
+  soundOn: true,
+  tickOn: true,
+  degreeSet: "chromatic",      // "diatonic" or "chromatic"
+};
+
+function loadSettings(){
   try{
-    const raw = localStorage.getItem(KEY_PREF_STORAGE);
-    if(!raw) return new Set(KEYS);
-    const arr = JSON.parse(raw);
-    const set = new Set((Array.isArray(arr) ? arr : []).filter(k => KEYS.includes(k)));
-    return (set.size ? set : new Set(KEYS));
+    const raw = localStorage.getItem(SETTINGS_STORAGE);
+    if(!raw) return { ...DEFAULT_SETTINGS };
+    const obj = JSON.parse(raw) || {};
+
+    const mk = Array.isArray(obj.masterKeys) ? obj.masterKeys.filter(k => KEYS.includes(k)) : null;
+
+    return {
+      masterKeys: (mk && mk.length) ? mk : DEFAULT_SETTINGS.masterKeys.slice(),
+      secondsPerQ: (Number.isFinite(+obj.secondsPerQ) && +obj.secondsPerQ >= 3 && +obj.secondsPerQ <= 60) ? Math.round(+obj.secondsPerQ) : DEFAULT_SETTINGS.secondsPerQ,
+      soundOn: (typeof obj.soundOn === "boolean") ? obj.soundOn : DEFAULT_SETTINGS.soundOn,
+      tickOn: (typeof obj.tickOn === "boolean") ? obj.tickOn : DEFAULT_SETTINGS.tickOn,
+      degreeSet: (obj.degreeSet === "diatonic" || obj.degreeSet === "chromatic") ? obj.degreeSet : DEFAULT_SETTINGS.degreeSet,
+    };
   }catch{
-    return new Set(KEYS);
+    return { ...DEFAULT_SETTINGS };
   }
 }
 
-function saveMasterKeys(set){
-  try{ localStorage.setItem(KEY_PREF_STORAGE, JSON.stringify(Array.from(set))); }catch{}
+function saveSettings(){
+  try{ localStorage.setItem(SETTINGS_STORAGE, JSON.stringify(state.settings)); }catch{}
 }
 
-state.masterKeys = loadMasterKeys();
+state.settings = loadSettings();
+state.secondsPerQ = state.settings.secondsPerQ;
 
 function getEnabledKeys(){
-  const enabled = KEYS.filter(k => state.masterKeys?.has(k));
+  const enabled = KEYS.filter(k => state.settings.masterKeys.includes(k));
   return enabled.length ? enabled : KEYS.slice();
 }
 
-function setMasterKeys(set){
-  state.masterKeys = new Set(set);
-  if(state.masterKeys.size === 0) state.masterKeys = new Set(KEYS);
-  saveMasterKeys(state.masterKeys);
-  statusText.textContent = `Key filter: ${Array.from(state.masterKeys).join(", ")}`;
+function setMasterKeys(keysArr){
+  const clean = (Array.isArray(keysArr) ? keysArr : []).filter(k => KEYS.includes(k));
+  state.settings.masterKeys = clean.length ? clean : KEYS.slice();
+  saveSettings();
 }
 
-function createKeyMasteryUI(){
-  // Inject a small toggle + drawer UI without requiring HTML edits
+function setSecondsPerQ(n){
+  const v = clamp(Math.round(+n || DEFAULT_SECONDS_PER_Q), 3, 60);
+  state.settings.secondsPerQ = v;
+  state.secondsPerQ = v;
+  saveSettings();
+  if(state.running && !state.locked){
+    // restart timer for the current question using the new value
+    startTimer();
+  }
+}
+
+function setSoundOn(on){
+  state.settings.soundOn = !!on;
+  saveSettings();
+}
+
+function setTickOn(on){
+  state.settings.tickOn = !!on;
+  saveSettings();
+}
+
+function setDegreeSet(v){
+  state.settings.degreeSet = (v === "diatonic") ? "diatonic" : "chromatic";
+  saveSettings();
+}
+
+function createSettingsModal(){
+  // Inject a Settings button + modal (no HTML edits required)
   const host = document.querySelector(".controls") || document.querySelector("header") || document.body;
 
-  // Style
-  if(!document.getElementById("keyMasteryStyle")){
+  // Styles
+  if(!document.getElementById("kdSettingsStyle")){
     const style = document.createElement("style");
-    style.id = "keyMasteryStyle";
+    style.id = "kdSettingsStyle";
     style.textContent = `
-      .km-btn{padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.18);background:rgba(0,0,0,.35);color:#fff;font-weight:800;cursor:pointer}
-      .km-btn:hover{filter:brightness(1.12)}
-      .km-drawer{position:fixed;inset:auto 12px 12px 12px;max-width:760px;margin:0 auto;z-index:9999;
-        background:rgba(12,12,12,.92);border:1px solid rgba(255,255,255,.16);border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.55);
-        padding:12px;backdrop-filter: blur(10px);display:none}
-      .km-drawer.show{display:block}
-      .km-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}
-      .km-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin-top:10px}
-      @media (max-width:520px){.km-grid{grid-template-columns:repeat(4,minmax(0,1fr));}}
-      .km-chip{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:12px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);user-select:none}
-      .km-chip input{transform:scale(1.1)}
-      .km-title{font-weight:900;letter-spacing:.5px}
-      .km-sub{opacity:.85;font-size:.92rem}
-      .km-actions{display:flex;gap:8px;flex-wrap:wrap}
+      .kd-btn{padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.18);background:rgba(0,0,0,.35);color:#fff;font-weight:800;cursor:pointer}
+      .kd-btn:hover{filter:brightness(1.12)}
+      .kd-modalBack{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;padding:14px}
+      .kd-modalBack.show{display:flex}
+      .kd-modal{width:min(860px,100%);background:rgba(12,12,12,.94);border:1px solid rgba(255,255,255,.16);border-radius:18px;box-shadow:0 24px 70px rgba(0,0,0,.65);backdrop-filter: blur(10px);overflow:hidden}
+      .kd-modalHead{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.12)}
+      .kd-modalTitle{font-weight:950;letter-spacing:.6px}
+      .kd-modalBody{padding:14px;display:grid;grid-template-columns: 1.2fr .8fr;gap:14px}
+      @media (max-width:780px){.kd-modalBody{grid-template-columns:1fr}}
+      .kd-card{border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);border-radius:16px;padding:12px}
+      .kd-sub{opacity:.85;font-size:.92rem;margin-top:4px}
+      .kd-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin-top:10px}
+      @media (max-width:520px){.kd-grid{grid-template-columns:repeat(4,minmax(0,1fr));}}
+      .kd-chip{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:12px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);user-select:none}
+      .kd-chip input{transform:scale(1.1)}
+      .kd-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+      .kd-field{display:flex;gap:10px;align-items:center;justify-content:space-between;margin-top:10px}
+      .kd-field label{font-weight:900}
+      .kd-field input[type="range"]{width:100%}
+      .kd-pill{padding:6px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.16);background:rgba(0,0,0,.25);font-weight:900}
+      .kd-smallBtn{padding:8px 10px;border-radius:12px;border:1px solid rgba(255,255,255,.18);background:rgba(0,0,0,.35);color:#fff;font-weight:850;cursor:pointer}
+      .kd-smallBtn:hover{filter:brightness(1.12)}
+      .kd-note{opacity:.82;font-size:.9rem;line-height:1.25;margin-top:10px}
     `;
     document.head.appendChild(style);
   }
@@ -150,73 +201,155 @@ function createKeyMasteryUI(){
   // Button
   const btn = document.createElement("button");
   btn.type = "button";
-  btn.className = "km-btn";
-  btn.id = "masterKeysBtn";
-  btn.textContent = "Keys";
+  btn.className = "kd-btn";
+  btn.id = "settingsBtn";
+  btn.textContent = "Settings";
 
-  // Drawer
-  const drawer = document.createElement("div");
-  drawer.className = "km-drawer";
-  drawer.id = "masterKeysDrawer";
-  drawer.setAttribute("aria-hidden","true");
+  // Modal
+  const back = document.createElement("div");
+  back.className = "kd-modalBack";
+  back.id = "kdSettingsBack";
+  back.setAttribute("aria-hidden","true");
 
-  drawer.innerHTML = `
-    <div class="km-row">
-      <div>
-        <div class="km-title">Keys to practice</div>
-        <div class="km-sub">Turn keys on/off. Questions will only use enabled keys.</div>
+  back.innerHTML = `
+    <div class="kd-modal" role="dialog" aria-modal="true" aria-label="Settings">
+      <div class="kd-modalHead">
+        <div>
+          <div class="kd-modalTitle">Settings</div>
+          <div class="kd-sub">Choose keys to master + timing + sounds.</div>
+        </div>
+        <div class="kd-row">
+          <button type="button" class="kd-smallBtn" id="kdClose">Close</button>
+        </div>
       </div>
-      <div class="km-actions">
-        <button type="button" class="km-btn" id="kmAll">All</button>
-        <button type="button" class="km-btn" id="kmNone">None</button>
-        <button type="button" class="km-btn" id="kmClose">Close</button>
+      <div class="kd-modalBody">
+        <div class="kd-card">
+          <div class="kd-row">
+            <div>
+              <div style="font-weight:950">Keys to Master</div>
+              <div class="kd-sub">Questions will only use enabled keys (you can enable multiple).</div>
+            </div>
+            <div class="kd-row">
+              <button type="button" class="kd-smallBtn" id="kdAll">All</button>
+              <button type="button" class="kd-smallBtn" id="kdNone">None</button>
+            </div>
+          </div>
+          <div class="kd-grid" id="kdKeyGrid"></div>
+          <div class="kd-note">Tip: if you enable only <span class="kd-pill">C</span>, you’ll drill ALL degrees/accidentals in the key of C (based on your selected degree set).</div>
+        </div>
+
+        <div class="kd-card">
+          <div style="font-weight:950">Game Options</div>
+
+          <div class="kd-field">
+            <label for="kdSec">Seconds per question</label>
+            <span class="kd-pill" id="kdSecVal"></span>
+          </div>
+          <input id="kdSec" type="range" min="3" max="25" step="1" />
+
+          <div class="kd-field">
+            <label>Degrees</label>
+            <select id="kdDegreeSet" class="kd-smallBtn" style="padding:8px 10px;">
+              <option value="chromatic">Chromatic (includes ♭/♯ degrees)</option>
+              <option value="diatonic">Diatonic (1–7 only)</option>
+            </select>
+          </div>
+
+          <div class="kd-field">
+            <label for="kdSound">Sounds</label>
+            <input id="kdSound" type="checkbox" />
+          </div>
+
+          <div class="kd-field">
+            <label for="kdTick">Timer tick</label>
+            <input id="kdTick" type="checkbox" />
+          </div>
+
+          <div class="kd-note">These settings save automatically on this device (GitHub Pages/PWA friendly).</div>
+        </div>
       </div>
     </div>
-    <div class="km-grid" id="kmGrid"></div>
   `;
 
-  const grid = drawer.querySelector("#kmGrid");
+  const keyGrid = back.querySelector("#kdKeyGrid");
+  const sec = back.querySelector("#kdSec");
+  const secVal = back.querySelector("#kdSecVal");
+  const degreeSel = back.querySelector("#kdDegreeSet");
+  const soundCb = back.querySelector("#kdSound");
+  const tickCb = back.querySelector("#kdTick");
 
-  function render(){
-    grid.innerHTML = "";
+  function renderKeys(){
+    keyGrid.innerHTML = "";
+    const enabled = new Set(state.settings.masterKeys);
+
     KEYS.forEach(k => {
       const chip = document.createElement("label");
-      chip.className = "km-chip";
+      chip.className = "kd-chip";
       const cb = document.createElement("input");
       cb.type = "checkbox";
-      cb.checked = state.masterKeys.has(k);
+      cb.checked = enabled.has(k);
       cb.addEventListener("change", () => {
-        const next = new Set(state.masterKeys);
+        const next = new Set(state.settings.masterKeys);
         if(cb.checked) next.add(k); else next.delete(k);
-        setMasterKeys(next);
-        render();
+        setMasterKeys(Array.from(next));
+        // Keep UI consistent (never let it look empty even if user turned all off)
+        renderKeys();
       });
       const span = document.createElement("span");
       span.textContent = pretty(k);
       chip.appendChild(cb);
       chip.appendChild(span);
-      grid.appendChild(chip);
+      keyGrid.appendChild(chip);
     });
   }
 
-  function open(){ drawer.classList.add("show"); drawer.setAttribute("aria-hidden","false"); }
-  function close(){ drawer.classList.remove("show"); drawer.setAttribute("aria-hidden","true"); }
+  function syncOptionControls(){
+    sec.value = String(clamp(state.settings.secondsPerQ, 3, 25));
+    secVal.textContent = String(state.settings.secondsPerQ);
+    degreeSel.value = state.settings.degreeSet;
+    soundCb.checked = !!state.settings.soundOn;
+    tickCb.checked = !!state.settings.tickOn;
+  }
 
-  btn.addEventListener("click", () => {
-    const openNow = drawer.classList.contains("show");
-    if(openNow) close(); else { render(); open(); }
+  function open(){
+    renderKeys();
+    syncOptionControls();
+    back.classList.add("show");
+    back.setAttribute("aria-hidden","false");
+  }
+
+  function close(){
+    back.classList.remove("show");
+    back.setAttribute("aria-hidden","true");
+  }
+
+  btn.addEventListener("click", open);
+  back.querySelector("#kdClose").addEventListener("click", close);
+
+  // Backdrop click closes
+  back.addEventListener("click", (e) => {
+    if(e.target === back) close();
   });
 
-  drawer.querySelector("#kmClose").addEventListener("click", close);
-  drawer.querySelector("#kmAll").addEventListener("click", () => { setMasterKeys(new Set(KEYS)); render(); });
-  drawer.querySelector("#kmNone").addEventListener("click", () => { setMasterKeys(new Set()); render(); });
+  // All/None
+  back.querySelector("#kdAll").addEventListener("click", () => { setMasterKeys(KEYS); renderKeys(); });
+  back.querySelector("#kdNone").addEventListener("click", () => { setMasterKeys([]); renderKeys(); });
 
-  // Close on outside tap
-  document.addEventListener("click", (e) => {
-    if(!drawer.classList.contains("show")) return;
-    if(e.target === btn || drawer.contains(e.target)) return;
-    close();
+  // Seconds
+  sec.addEventListener("input", () => {
+    secVal.textContent = String(sec.value);
   });
+  sec.addEventListener("change", () => {
+    setSecondsPerQ(sec.value);
+    secVal.textContent = String(state.settings.secondsPerQ);
+  });
+
+  // Degree set
+  degreeSel.addEventListener("change", () => setDegreeSet(degreeSel.value));
+
+  // Sounds
+  soundCb.addEventListener("change", () => setSoundOn(soundCb.checked));
+  tickCb.addEventListener("change", () => setTickOn(tickCb.checked));
 
   // Mount next to reset if possible
   try{
@@ -228,22 +361,22 @@ function createKeyMasteryUI(){
   }catch{
     document.body.appendChild(btn);
   }
-  document.body.appendChild(drawer);
+  document.body.appendChild(back);
 
-  // Sync label
-  setInterval(() => {
-    const n = getEnabledKeys().length;
-    btn.textContent = (n === KEYS.length) ? "Keys" : `Keys (${n})`;
-  }, 800);
+  // ESC closes
+  window.addEventListener("keydown", (e) => {
+    if(e.key === "Escape" && back.classList.contains("show")) close();
+  });
 }
 
 const MAJOR_STEPS = [0,2,4,5,7,9,11];
 const NAT_MINOR_STEPS = [0,2,3,5,7,8,10];
 
-const DEGREE_POOL = [
+const DEGREE_POOL_CHROMATIC = [
   "1","2","3","4","5","6","7",
   "b2","#2","b3","#3","b5","#4","#5","b6","#6","b7","#7"
 ];
+const DEGREE_POOL_DIATONIC = ["1","2","3","4","5","6","7"];
 
 function pretty(note){ return note.replace(/b/g,"♭").replace(/#/g,"♯"); }
 function keyToIndex(k){ return KEYS.indexOf(k); }
@@ -309,9 +442,20 @@ function beep({freq=440, duration=0.12, type="sine", gain=0.12}){
   o.start();
   o.stop(ctx.currentTime + duration);
 }
-function soundCorrect(){ beep({freq:880, duration:0.09, gain:0.14}); setTimeout(()=>beep({freq:1175, duration:0.12, gain:0.14}), 90); }
-function soundWrong(){ beep({freq:220, duration:0.18, type:"square", gain:0.12}); }
-function soundTick(){ beep({freq:1000, duration:0.03, type:"square", gain:0.05}); }
+function soundCorrect(){
+  if(!state.settings?.soundOn) return;
+  beep({freq:880, duration:0.09, gain:0.14});
+  setTimeout(()=>beep({freq:1175, duration:0.12, gain:0.14}), 90);
+}
+function soundWrong(){
+  if(!state.settings?.soundOn) return;
+  beep({freq:220, duration:0.18, type:"square", gain:0.12});
+}
+function soundTick(){
+  if(!state.settings?.soundOn) return;
+  if(!state.settings?.tickOn) return;
+  beep({freq:1000, duration:0.03, type:"square", gain:0.05});
+}
 
 /*************************************************
  * Stairs (move stairs; fixed figure)
@@ -521,7 +665,8 @@ function unlockAfterFeedback(){ state.locked = false; hideOverlays(); }
  *************************************************/
 function makeQuestion(){
   const key = randomPick(getEnabledKeys());
-  const degree = randomPick(DEGREE_POOL);
+  const pool = (state.settings?.degreeSet === "diatonic") ? DEGREE_POOL_DIATONIC : DEGREE_POOL_CHROMATIC;
+  const degree = randomPick(pool);
   const answer = computeAnswer(key, state.mode, degree);
   return { key, degree, answerNote: answer, prompt: `What is the ${degree} in the key of ${key} ${state.mode}?` };
 }
@@ -937,7 +1082,7 @@ resetBtn.addEventListener("click", resetGame);
 
 updateHUD();
 initStairs();
-createKeyMasteryUI();
+createSettingsModal();
 setRunner(false);
 setButtonsEnabled(false);
 skipBtn.disabled = true;
