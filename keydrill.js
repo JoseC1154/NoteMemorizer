@@ -86,6 +86,157 @@ const state = {
  * Notes & helpers
  *************************************************/
 const KEYS = ["C","Db","D","Eb","E","F","F#","G","Ab","A","Bb","B"];
+
+// === Mastery filter (choose which KEYS can appear as the question key) ===
+const KEY_PREF_STORAGE = "keydrill.masterKeys.v1";
+
+function loadMasterKeys(){
+  try{
+    const raw = localStorage.getItem(KEY_PREF_STORAGE);
+    if(!raw) return new Set(KEYS);
+    const arr = JSON.parse(raw);
+    const set = new Set((Array.isArray(arr) ? arr : []).filter(k => KEYS.includes(k)));
+    return (set.size ? set : new Set(KEYS));
+  }catch{
+    return new Set(KEYS);
+  }
+}
+
+function saveMasterKeys(set){
+  try{ localStorage.setItem(KEY_PREF_STORAGE, JSON.stringify(Array.from(set))); }catch{}
+}
+
+state.masterKeys = loadMasterKeys();
+
+function getEnabledKeys(){
+  const enabled = KEYS.filter(k => state.masterKeys?.has(k));
+  return enabled.length ? enabled : KEYS.slice();
+}
+
+function setMasterKeys(set){
+  state.masterKeys = new Set(set);
+  if(state.masterKeys.size === 0) state.masterKeys = new Set(KEYS);
+  saveMasterKeys(state.masterKeys);
+  statusText.textContent = `Key filter: ${Array.from(state.masterKeys).join(", ")}`;
+}
+
+function createKeyMasteryUI(){
+  // Inject a small toggle + drawer UI without requiring HTML edits
+  const host = document.querySelector(".controls") || document.querySelector("header") || document.body;
+
+  // Style
+  if(!document.getElementById("keyMasteryStyle")){
+    const style = document.createElement("style");
+    style.id = "keyMasteryStyle";
+    style.textContent = `
+      .km-btn{padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.18);background:rgba(0,0,0,.35);color:#fff;font-weight:800;cursor:pointer}
+      .km-btn:hover{filter:brightness(1.12)}
+      .km-drawer{position:fixed;inset:auto 12px 12px 12px;max-width:760px;margin:0 auto;z-index:9999;
+        background:rgba(12,12,12,.92);border:1px solid rgba(255,255,255,.16);border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.55);
+        padding:12px;backdrop-filter: blur(10px);display:none}
+      .km-drawer.show{display:block}
+      .km-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+      .km-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin-top:10px}
+      @media (max-width:520px){.km-grid{grid-template-columns:repeat(4,minmax(0,1fr));}}
+      .km-chip{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:12px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);user-select:none}
+      .km-chip input{transform:scale(1.1)}
+      .km-title{font-weight:900;letter-spacing:.5px}
+      .km-sub{opacity:.85;font-size:.92rem}
+      .km-actions{display:flex;gap:8px;flex-wrap:wrap}
+    `;
+    document.head.appendChild(style);
+  }
+
+  // Button
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "km-btn";
+  btn.id = "masterKeysBtn";
+  btn.textContent = "Keys";
+
+  // Drawer
+  const drawer = document.createElement("div");
+  drawer.className = "km-drawer";
+  drawer.id = "masterKeysDrawer";
+  drawer.setAttribute("aria-hidden","true");
+
+  drawer.innerHTML = `
+    <div class="km-row">
+      <div>
+        <div class="km-title">Keys to practice</div>
+        <div class="km-sub">Turn keys on/off. Questions will only use enabled keys.</div>
+      </div>
+      <div class="km-actions">
+        <button type="button" class="km-btn" id="kmAll">All</button>
+        <button type="button" class="km-btn" id="kmNone">None</button>
+        <button type="button" class="km-btn" id="kmClose">Close</button>
+      </div>
+    </div>
+    <div class="km-grid" id="kmGrid"></div>
+  `;
+
+  const grid = drawer.querySelector("#kmGrid");
+
+  function render(){
+    grid.innerHTML = "";
+    KEYS.forEach(k => {
+      const chip = document.createElement("label");
+      chip.className = "km-chip";
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.checked = state.masterKeys.has(k);
+      cb.addEventListener("change", () => {
+        const next = new Set(state.masterKeys);
+        if(cb.checked) next.add(k); else next.delete(k);
+        setMasterKeys(next);
+        render();
+      });
+      const span = document.createElement("span");
+      span.textContent = pretty(k);
+      chip.appendChild(cb);
+      chip.appendChild(span);
+      grid.appendChild(chip);
+    });
+  }
+
+  function open(){ drawer.classList.add("show"); drawer.setAttribute("aria-hidden","false"); }
+  function close(){ drawer.classList.remove("show"); drawer.setAttribute("aria-hidden","true"); }
+
+  btn.addEventListener("click", () => {
+    const openNow = drawer.classList.contains("show");
+    if(openNow) close(); else { render(); open(); }
+  });
+
+  drawer.querySelector("#kmClose").addEventListener("click", close);
+  drawer.querySelector("#kmAll").addEventListener("click", () => { setMasterKeys(new Set(KEYS)); render(); });
+  drawer.querySelector("#kmNone").addEventListener("click", () => { setMasterKeys(new Set()); render(); });
+
+  // Close on outside tap
+  document.addEventListener("click", (e) => {
+    if(!drawer.classList.contains("show")) return;
+    if(e.target === btn || drawer.contains(e.target)) return;
+    close();
+  });
+
+  // Mount next to reset if possible
+  try{
+    if(resetBtn && resetBtn.parentElement){
+      resetBtn.parentElement.insertBefore(btn, resetBtn.nextSibling);
+    } else {
+      host.appendChild(btn);
+    }
+  }catch{
+    document.body.appendChild(btn);
+  }
+  document.body.appendChild(drawer);
+
+  // Sync label
+  setInterval(() => {
+    const n = getEnabledKeys().length;
+    btn.textContent = (n === KEYS.length) ? "Keys" : `Keys (${n})`;
+  }, 800);
+}
+
 const MAJOR_STEPS = [0,2,4,5,7,9,11];
 const NAT_MINOR_STEPS = [0,2,3,5,7,8,10];
 
@@ -369,14 +520,24 @@ function unlockAfterFeedback(){ state.locked = false; hideOverlays(); }
  * Question generation
  *************************************************/
 function makeQuestion(){
-  const key = randomPick(KEYS);
+  const key = randomPick(getEnabledKeys());
   const degree = randomPick(DEGREE_POOL);
   const answer = computeAnswer(key, state.mode, degree);
   return { key, degree, answerNote: answer, prompt: `What is the ${degree} in the key of ${key} ${state.mode}?` };
 }
 
 function buildOptions(correct){
-  const others = shuffle(KEYS.filter(n => n !== correct)).slice(0, 6);
+  // Prefer options from enabled keys; if fewer than 7, fill from full set.
+  const enabledPool = getEnabledKeys();
+  const basePool = enabledPool.includes(correct) ? enabledPool : [correct, ...enabledPool];
+  const otherFromEnabled = shuffle(basePool.filter(n => n !== correct));
+  let others = otherFromEnabled.slice(0, 6);
+
+  if(others.length < 6){
+    const fill = shuffle(KEYS.filter(n => n !== correct && !others.includes(n)));
+    others = others.concat(fill.slice(0, 6 - others.length));
+  }
+
   return shuffle([correct, ...others]);
 }
 
@@ -776,6 +937,7 @@ resetBtn.addEventListener("click", resetGame);
 
 updateHUD();
 initStairs();
+createKeyMasteryUI();
 setRunner(false);
 setButtonsEnabled(false);
 skipBtn.disabled = true;
