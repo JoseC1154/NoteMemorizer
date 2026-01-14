@@ -65,6 +65,8 @@
   const keyToggles = document.getElementById("keyToggles");
   const secondsSlider = document.getElementById("secondsSlider");
   const secondsValue = document.getElementById("secondsValue");
+  const modalDurationSlider = document.getElementById("modalDurationSlider");
+  const modalDurationValue = document.getElementById("modalDurationValue");
 
   const modeDiatonic = document.getElementById("modeDiatonic");
   const modeChromatic = document.getElementById("modeChromatic");
@@ -82,7 +84,8 @@
     secondsPerQuestion: 8,
     degreeMode: "diatonic", // "diatonic" | "chromatic"
     audioOn: true,
-    tickOn: false
+    tickOn: false,
+    modalDuration: 2000 // milliseconds
   };
 
   function clamp(n, a, b) {
@@ -108,6 +111,9 @@
       }
       if (typeof parsed.audioOn === "boolean") s.audioOn = parsed.audioOn;
       if (typeof parsed.tickOn === "boolean") s.tickOn = parsed.tickOn;
+      if (typeof parsed.modalDuration === "number") {
+        s.modalDuration = clamp(Math.round(parsed.modalDuration), 500, 5000);
+      }
 
       // Cannot allow zero keys (fallback to all)
       if (!s.keysEnabled.length) s.keysEnabled = [...ALL_KEYS];
@@ -194,6 +200,7 @@
     secondsLeft: 0,
     questionSeconds: 0,
     locked: false,
+    paused: false,
     current: null // { keyRoot, degreeLabel, correctNote, options[] }
   };
 
@@ -298,12 +305,11 @@
     elStatusOverlay.hidden = false;
 
     setTimeout(() => {
-      if (!state.active) return;
       elStatusPanel.classList.remove("good", "bad");
       // Hide modal
       elStatusPanel.hidden = true;
       elStatusOverlay.hidden = true;
-    }, 2000);
+    }, settings.modalDuration);
   }
 
   // =========================
@@ -542,8 +548,18 @@
     overlay.hidden = false;
     modal.hidden = false;
 
+    // Pause the game if it's active
+    if (state.active && !state.locked) {
+      state.paused = true;
+      stopTimer();
+      lockAnswers(true);
+    }
+
     secondsSlider.value = String(settings.secondsPerQuestion);
     secondsValue.textContent = `${settings.secondsPerQuestion}s`;
+
+    modalDurationSlider.value = String(settings.modalDuration);
+    modalDurationValue.textContent = `${(settings.modalDuration / 1000).toFixed(1)}s`;
 
     modeDiatonic.setAttribute("aria-checked", settings.degreeMode === "diatonic" ? "true" : "false");
     modeChromatic.setAttribute("aria-checked", settings.degreeMode === "chromatic" ? "true" : "false");
@@ -562,6 +578,13 @@
     overlay.hidden = true;
     modal.hidden = true;
     btnSettings.focus();
+
+    // Resume the game if it was paused
+    if (state.paused && state.active) {
+      state.paused = false;
+      lockAnswers(false);
+      startTimer();
+    }
   }
 
   function setMode(mode) {
@@ -583,6 +606,16 @@
   overlay.addEventListener("click", () => closeSettings());
   btnCloseSettings.addEventListener("click", () => closeSettings());
 
+  // Allow clicking status overlay to dismiss it
+  const statusOverlay = document.getElementById("statusOverlay");
+  if (statusOverlay) {
+    statusOverlay.addEventListener("click", () => {
+      elStatusPanel.hidden = true;
+      statusOverlay.hidden = true;
+      elStatusPanel.classList.remove("good", "bad");
+    });
+  }
+
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && !modal.hidden) {
       e.preventDefault();
@@ -593,6 +626,11 @@
   secondsSlider.addEventListener("input", () => {
     settings.secondsPerQuestion = clamp(Number(secondsSlider.value), 3, 20);
     secondsValue.textContent = `${settings.secondsPerQuestion}s`;
+  });
+
+  modalDurationSlider.addEventListener("input", () => {
+    settings.modalDuration = clamp(Number(modalDurationSlider.value), 500, 5000);
+    modalDurationValue.textContent = `${(settings.modalDuration / 1000).toFixed(1)}s`;
   });
 
   modeDiatonic.addEventListener("click", () => setMode("diatonic"));
