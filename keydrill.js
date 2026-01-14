@@ -286,14 +286,23 @@
     elLives.textContent = full + empty;
   }
   function flashStatus(isGood, text) {
+    const elStatusOverlay = document.getElementById("statusOverlay");
+    
     elStatusPanel.classList.remove("good", "bad");
     void elStatusPanel.offsetWidth;
     elStatusPanel.classList.add(isGood ? "good" : "bad");
     elStatusText.textContent = text;
+    
+    // Show modal
+    elStatusPanel.hidden = false;
+    elStatusOverlay.hidden = false;
 
     setTimeout(() => {
       if (!state.active) return;
       elStatusPanel.classList.remove("good", "bad");
+      // Hide modal
+      elStatusPanel.hidden = true;
+      elStatusOverlay.hidden = true;
     }, 2000);
   }
 
