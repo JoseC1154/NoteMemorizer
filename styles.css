@@ -36,31 +36,36 @@ body{
 
 .header {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
+  flex-direction: column;
+  gap: 0.5rem;
   padding: 0.75rem 1rem;
   background: rgba(255, 255, 255, 0.02);
   border-radius: var(--radius);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  overflow: hidden;
 }
 
-.headerLeft,
-.headerRight {
-  flex: 0 0 auto;
+.headerRow {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  min-width: 0;
+  justify-content: center;
+  gap: 0.75rem;
 }
 
-.headerLeft {
-  justify-content: flex-start;
+.headerTop {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
 }
 
-.headerRight {
-  justify-content: flex-end;
+.headerSpacer {
+  width: 40px;
+}
+
+.headerBottom {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
 }
 
 .headerStat {
@@ -68,41 +73,22 @@ body{
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 0.75rem;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
   font-size: 1.125rem;
   font-weight: 600;
   white-space: nowrap;
 }
 
-.statIcon {
-  font-size: 1.25rem;
-  flex-shrink: 0;
-}
-
 .statValue {
   color: var(--text);
   font-variant-numeric: tabular-nums;
-  flex-shrink: 0;
-}
-
-.titleBlock{ 
-  display: flex; 
-  flex-direction: column; 
-  gap: 2px; 
-  text-align: center;
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
 }
 
 .title{ 
   margin: 0; 
   font-size: 22px; 
   letter-spacing: 0.3px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  text-align: center;
+  justify-self: center;
 }
 
 .subtitle {
@@ -110,9 +96,6 @@ body{
   color: var(--text-secondary);
   margin: 0;
   font-weight: 400;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .version {
@@ -121,9 +104,6 @@ body{
   margin: 0;
   font-weight: 300;
   opacity: 0.7;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .controls {
@@ -156,8 +136,8 @@ body{
 
 .iconBtn{
   appearance: none;
-  border: 1px solid rgba(255,255,255,0.12);
-  background: rgba(255,255,255,0.06);
+  border: none;
+  background: transparent;
   color: var(--text);
   width: 40px;
   height: 40px;
@@ -168,6 +148,7 @@ body{
   align-items: center;
   justify-content: center;
   transition: all 0.15s ease;
+  justify-self: end;
 }
 .iconBtn:hover{ background: rgba(255,255,255,0.08); }
 
@@ -189,6 +170,24 @@ body{
   text-align: center;
   cursor: pointer;
   transition: all 0.2s ease;
+  position: relative;
+}
+
+.questionStats {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  right: 1rem;
+  display: flex;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.questionStat {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
 }
 
 .questionBox:hover {

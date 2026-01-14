@@ -10,29 +10,24 @@
 <body>
   <div class="app" id="app">
     <header class="header" role="banner">
-      <div class="headerLeft">
-        <div class="headerStat">
-          <span class="statIcon">⏱️</span>
-          <span class="statValue" id="timer">--</span>
-        </div>
-      </div>
-
-      <div class="titleBlock">
+      <div class="headerRow headerTop">
+        <div class="headerSpacer"></div>
         <h1 class="title">KeyDrill</h1>
+        <button class="iconBtn" id="btnSettings" type="button" aria-haspopup="dialog" aria-controls="settingsModal">⚙️</button>
+      </div>
+      
+      <div class="headerBottom">
         <p class="subtitle">Keys &amp; Scale Degrees</p>
         <p class="version" id="version">v1.1.0 • Updated 01/14/25</p>
-      </div>
-
-      <div class="headerRight">
-        <div class="headerStat">
-          <span class="statValue" id="lives">♥♥♥</span>
-        </div>
-        <button class="iconBtn" id="btnSettings" type="button" aria-haspopup="dialog" aria-controls="settingsModal">⚙️</button>
       </div>
     </header>
 
     <main class="main" role="main">
       <button class="questionBox" id="questionBox" type="button" aria-live="polite" aria-atomic="true">
+        <div class="questionStats">
+          <span class="questionStat" id="lives">♥♥♥</span>
+          <span class="questionStat" id="timer">--</span>
+        </div>
         <div class="questionText" id="questionText">Click to start!</div>
       </button>
 
