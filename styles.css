@@ -458,7 +458,6 @@ body{
 .answerBtn {
   appearance: none;
   border: 1px solid rgba(255,255,255,0.14);
-  background: rgba(0,0,0,0.25);
   color: var(--text);
   border-radius: 12px;
   padding: clamp(1rem, 3vh, 2rem) 1rem;
@@ -471,14 +470,42 @@ body{
   min-height: clamp(60px, 10vh, 100px);
   touch-action: manipulation;
   box-shadow: 0 8px 20px rgba(0,0,0,0.25);
-  transition: transform 120ms ease, background 180ms ease, border-color 180ms ease;
+  transition: transform 120ms ease, border-color 180ms ease;
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
+  overflow: hidden;
+  background: rgba(0,0,0,0.35);
+}
+
+.answerBtn::before {
+  content: "";
+  position: absolute;
+  inset: -40%;
+  background: linear-gradient(110deg,
+      rgba(20,180,255,0.35),
+      rgba(60,255,190,0.28),
+      rgba(255,60,60,0.28),
+      rgba(20,180,255,0.35));
+  background-size: 300% 300%;
+  animation: drift 5s linear infinite;
+  filter: blur(18px);
+  opacity: 0.4;
+  transform: translateZ(0);
+}
+
+.answerBtn > * {
+  position: relative;
+  z-index: 1;
+}
+
+.answerBtn:hover:not(:disabled)::before {
+  opacity: 0.55;
+  filter: blur(16px);
 }
 
 .answerBtn:hover:not(:disabled) {
-  background: rgba(0,0,0,0.18);
   border-color: rgba(255,255,255,0.22);
 }
 
