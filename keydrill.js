@@ -55,7 +55,6 @@
   const elAnswerGrid = document.getElementById("answerGrid");
   const answerButtons = Array.from(elAnswerGrid.querySelectorAll(".answerBtn"));
 
-  const btnNew = document.getElementById("btnNew");
   const btnSettings = document.getElementById("btnSettings");
 
   const overlay = document.getElementById("settingsOverlay");
