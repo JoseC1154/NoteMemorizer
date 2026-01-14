@@ -5,7 +5,7 @@
   // App Version
   // =========================
   const APP_VERSION = "1.1.0";
-  const LAST_UPDATED = "2025-01-14";
+  const LAST_UPDATED = "2025-01-14T16:30:00"; // ISO format: YYYY-MM-DDTHH:mm:ss
 
   // =========================
   // Canonical notes (CRITICAL)
@@ -47,6 +47,7 @@
   // DOM
   // =========================
   const elQuestionText = document.getElementById("questionText");
+  const elQuestionBox = document.getElementById("questionBox");
   const elTimer = document.getElementById("timer");
   const elLives = document.getElementById("lives");
   const elStatusPanel = document.getElementById("statusPanel");
@@ -250,7 +251,7 @@
   function renderQuestion() {
     const q = state.current;
     if (!q) {
-      elQuestionText.textContent = "Press New to begin.";
+      elQuestionText.textContent = "Click to start!";
       elTimer.textContent = "--";
       return;
     }
@@ -566,7 +567,7 @@
   // =========================
   answerButtons.forEach(b => b.addEventListener("click", () => onAnswerClick(b)));
 
-  btnNew.addEventListener("click", () => startGame());
+  elQuestionBox.addEventListener("click", () => startGame());
 
   btnSettings.addEventListener("click", () => openSettings());
   overlay.addEventListener("click", () => closeSettings());
@@ -622,6 +623,18 @@
   });
 
   // Initial render
+  const lastUpdatedDate = new Date(LAST_UPDATED);
+  const month = String(lastUpdatedDate.getMonth() + 1).padStart(2, '0');
+  const day = String(lastUpdatedDate.getDate()).padStart(2, '0');
+  const year = String(lastUpdatedDate.getFullYear()).slice(-2);
+  const dateStr = `${month}/${day}/${year}`;
+  
+  let hours = lastUpdatedDate.getHours();
+  const minutes = String(lastUpdatedDate.getMinutes()).padStart(2, '0');
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12 || 12;
+  const timeStr = `${hours}:${minutes} ${ampm}`;
+  
   document.getElementById("version").textContent = 
-    `v${APP_VERSION} • Updated ${new Date(LAST_UPDATED).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+    `v${APP_VERSION} • Updated ${dateStr} ${timeStr}`;
 })();

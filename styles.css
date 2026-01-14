@@ -152,12 +152,26 @@ body{
 }
 
 .questionBox {
+  appearance: none;
+  width: 100%;
   border: 1px solid var(--border);
   background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.04));
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   padding: 4rem 2rem;
   text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.questionBox:hover {
+  background: linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.06));
+  border-color: rgba(255,255,255,0.18);
+  transform: translateY(-2px);
+}
+
+.questionBox:active {
+  transform: translateY(0);
 }
 
 .questionText {

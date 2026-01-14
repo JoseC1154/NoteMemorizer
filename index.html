@@ -27,15 +27,14 @@
         <div class="headerStat">
           <span class="statValue" id="lives">♥♥♥</span>
         </div>
-        <button class="btn primary" id="btnNew" type="button">New</button>
         <button class="iconBtn" id="btnSettings" type="button" aria-haspopup="dialog" aria-controls="settingsModal">⚙️</button>
       </div>
     </header>
 
     <main class="main" role="main">
-      <section class="questionBox" aria-live="polite" aria-atomic="true">
-        <div class="questionText" id="questionText">Press New to begin.</div>
-      </section>
+      <button class="questionBox" id="questionBox" type="button" aria-live="polite" aria-atomic="true">
+        <div class="questionText" id="questionText">Click to start!</div>
+      </button>
 
       <section class="statusPanel" id="statusPanel" aria-live="polite" aria-atomic="true">
         <div class="statusGradient"></div>
