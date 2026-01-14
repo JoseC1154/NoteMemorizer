@@ -10,49 +10,34 @@
 <body>
   <div class="app" id="app">
     <header class="header" role="banner">
+      <div class="headerLeft">
+        <div class="headerStat">
+          <span class="statIcon">⏱️</span>
+          <span class="statValue" id="timer">--</span>
+        </div>
+      </div>
+
       <div class="titleBlock">
         <h1 class="title">KeyDrill</h1>
         <p class="subtitle">Keys &amp; Scale Degrees</p>
         <p class="version" id="version">v1.1.0 • Updated Jan 14, 2025</p>
       </div>
 
-      <div class="controls" aria-label="Game controls">
-        <button class="btn" id="btnNew" type="button">New</button>
-        <button class="btn" id="btnSettings" type="button" aria-haspopup="dialog" aria-controls="settingsModal">Settings</button>
+      <div class="headerRight">
+        <div class="headerStat">
+          <span class="statValue" id="lives">♥♥♥</span>
+        </div>
       </div>
     </header>
 
     <main class="main" role="main">
       <section class="questionBox" aria-live="polite" aria-atomic="true">
         <div class="questionText" id="questionText">Press New to begin.</div>
-        <div class="timerRow">
-          <div class="timerLabel">Time</div>
-          <div class="timer" id="timer">--</div>
-        </div>
-        <div class="livesRow">
-          <div class="livesLabel">Lives</div>
-          <div class="lives" id="lives">♥♥♥</div>
-        </div>
       </section>
 
-      <section class="statusPanel" id="statusPanel" aria-live="polite" aria-atomic="true">
-        <div class="statusInner">
-          <div class="face faceGood" aria-hidden="true"></div>
-          <div class="face faceBad" aria-hidden="true"></div>
-          <div class="statusText" id="statusText">Ready.</div>
-        </div>
-      </section>
-
-      <section class="answers" aria-label="Answer choices">
-        <div class="answerGrid" id="answerGrid">
-          <button class="answerBtn" type="button" data-idx="0">—</button>
-          <button class="answerBtn" type="button" data-idx="1">—</button>
-          <button class="answerBtn" type="button" data-idx="2">—</button>
-          <button class="answerBtn" type="button" data-idx="3">—</button>
-          <button class="answerBtn" type="button" data-idx="4">—</button>
-          <button class="answerBtn" type="button" data-idx="5">—</button>
-          <button class="answerBtn" type="button" data-idx="6">—</button>
-        </div>
+      <section class="controls" aria-label="Game controls">
+        <button class="btn" id="btnNew" type="button">New</button>
+        <button class="btn" id="btnSettings" type="button" aria-haspopup="dialog" aria-controls="settingsModal">Settings</button>
       </section>
     </main>
   </div>
