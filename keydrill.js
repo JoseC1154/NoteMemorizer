@@ -427,7 +427,7 @@
       if (!state.active) return;
       lockAnswers(false);
       nextQuestion();
-    }, 450);
+    }, settings.modalDuration + 100);
   }
 
   function handleCorrect(chosen) {
