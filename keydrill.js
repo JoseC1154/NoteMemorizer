@@ -2,6 +2,12 @@
   "use strict";
 
   // =========================
+  // App Version
+  // =========================
+  const APP_VERSION = "1.1.0";
+  const LAST_UPDATED = "2025-01-14";
+
+  // =========================
   // Canonical notes (CRITICAL)
   // =========================
   const NOTE_LIST = ["C","Db","D","Eb","E","F","F#","G","Ab","A","Bb","B"];
@@ -601,7 +607,6 @@
   });
 
   // Initial render
-  renderQuestion();
-  renderAnswers();
-  setStatusNeutral("Ready.");
+  document.getElementById("version").textContent = 
+    `v${APP_VERSION} • Updated ${new Date(LAST_UPDATED).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
 })();

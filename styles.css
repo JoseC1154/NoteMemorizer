@@ -11,7 +11,8 @@ body { margin: 0; }
   --panel2: rgba(255,255,255,0.09);
   --border: rgba(255,255,255,0.14);
   --text: rgba(255,255,255,0.92);
-  --muted: rgba(255,255,255,0.72);
+  --text-secondary: rgba(255,255,255,0.72);
+  --text-tertiary: rgba(255,255,255,0.54);
   --shadow: 0 14px 45px rgba(0,0,0,0.55);
   --radius: 16px;
 }
@@ -46,7 +47,20 @@ body{
 
 .titleBlock{ display:flex; flex-direction:column; gap:2px; }
 .title{ margin: 0; font-size: 22px; letter-spacing: 0.3px; }
-.subtitle{ margin: 0; font-size: 12px; color: var(--muted); }
+.subtitle {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin: 0;
+  font-weight: 400;
+}
+
+.version {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  margin: 0.25rem 0 0 0;
+  font-weight: 300;
+  opacity: 0.7;
+}
 
 .controls{ display:flex; gap: 10px; align-items:center; }
 
