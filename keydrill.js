@@ -51,6 +51,7 @@
   const elTimer = document.getElementById("timer");
   const elLives = document.getElementById("lives");
   const elLevelInfo = document.getElementById("levelInfo");
+  const elHeader = document.querySelector(".header");
   const elStatusPanel = document.getElementById("statusPanel");
   const elStatusText = document.getElementById("statusText");
   const elAnswerGrid = document.getElementById("answerGrid");
@@ -71,6 +72,10 @@
 
   const modePractice = document.getElementById("modePractice");
   const modeProgression = document.getElementById("modeProgression");
+  const difficultyEasy = document.getElementById("difficultyEasy");
+  const difficultyModerate = document.getElementById("difficultyModerate");
+  const difficultyHard = document.getElementById("difficultyHard");
+  const progressionDifficultySection = document.getElementById("progressionDifficultySection");
   const modeDiatonic = document.getElementById("modeDiatonic");
   const modeChromatic = document.getElementById("modeChromatic");
 
@@ -87,6 +92,7 @@
     secondsPerQuestion: 8,
     degreeMode: "diatonic", // "diatonic" | "chromatic"
     gameMode: "practice", // "practice" | "progression"
+    progressionDifficulty: "moderate", // "easy" | "moderate" | "hard"
     audioOn: true,
     tickOn: false,
     modalDuration: 2000 // milliseconds
@@ -115,6 +121,9 @@
       }
       if (parsed.gameMode === "practice" || parsed.gameMode === "progression") {
         s.gameMode = parsed.gameMode;
+      }
+      if (parsed.progressionDifficulty === "easy" || parsed.progressionDifficulty === "moderate" || parsed.progressionDifficulty === "hard") {
+        s.progressionDifficulty = parsed.progressionDifficulty;
       }
       if (typeof parsed.audioOn === "boolean") s.audioOn = parsed.audioOn;
       if (typeof parsed.tickOn === "boolean") s.tickOn = parsed.tickOn;
@@ -403,6 +412,14 @@
   // =========================
   
   // Progression mode helpers
+  function getProgressionStreakRequired() {
+    switch (settings.progressionDifficulty) {
+      case "easy": return 15;
+      case "hard": return 45;
+      default: return 30; // moderate
+    }
+  }
+
   function initProgressionMode() {
     const enabledKeys = settings.keysEnabled.length ? settings.keysEnabled : [...ALL_KEYS];
     const shuffledKeys = shuffle([...enabledKeys]);
@@ -492,6 +509,14 @@
     renderLevelInfo();
     setStatusNeutral("Ready.");
     updateRiskVisual();
+    
+    // Fade out header after a short delay
+    if (elHeader) {
+      setTimeout(() => {
+        if (state.active) elHeader.classList.add("faded");
+      }, 2000);
+    }
+    
     nextQuestion();
   }
 
@@ -502,6 +527,12 @@
     lockAnswers(true);
     elTimer.textContent = "--";
     updateRiskVisual();
+    
+    // Restore header visibility
+    if (elHeader) {
+      elHeader.classList.remove("faded");
+    }
+    
     flashStatus(false, message);
     elQuestionText.textContent = "Game Over. Press New to try again.";
   }
@@ -545,8 +576,9 @@
 
     updateRiskVisual();
 
-    // Check for progression level advancement (needs 30 streak)
-    if (settings.gameMode === "progression" && state.progression.levelStreak >= 30) {
+    // Check for progression level advancement
+    const streakRequired = getProgressionStreakRequired();
+    if (settings.gameMode === "progression" && state.progression.levelStreak >= streakRequired) {
       lockAnswers(true);
       stopTimer();
       const canContinue = advanceProgressionLevel();
@@ -562,7 +594,7 @@
       flashStatus(true, `Correct: ${chosen} — +1 life! (Lives: ${state.lives})`);
     } else {
       const streakText = settings.gameMode === "progression" 
-        ? `Level ${state.progression.level} Progress: ${state.progression.levelStreak}/30`
+        ? `Level ${state.progression.level} Progress: ${state.progression.levelStreak}/${getProgressionStreakRequired()}`
         : `Streak: ${state.streak}`;
       flashStatus(true, `Correct: ${chosen} (${streakText})`);
     }
@@ -673,6 +705,15 @@
     modePractice.setAttribute("aria-checked", settings.gameMode === "practice" ? "true" : "false");
     modeProgression.setAttribute("aria-checked", settings.gameMode === "progression" ? "true" : "false");
 
+    difficultyEasy.setAttribute("aria-checked", settings.progressionDifficulty === "easy" ? "true" : "false");
+    difficultyModerate.setAttribute("aria-checked", settings.progressionDifficulty === "moderate" ? "true" : "false");
+    difficultyHard.setAttribute("aria-checked", settings.progressionDifficulty === "hard" ? "true" : "false");
+    
+    // Show/hide difficulty section based on game mode
+    if (progressionDifficultySection) {
+      progressionDifficultySection.style.display = settings.gameMode === "progression" ? "block" : "none";
+    }
+
     modeDiatonic.setAttribute("aria-checked", settings.degreeMode === "diatonic" ? "true" : "false");
     modeChromatic.setAttribute("aria-checked", settings.degreeMode === "chromatic" ? "true" : "false");
 
@@ -709,6 +750,18 @@
     settings.gameMode = mode;
     modePractice.setAttribute("aria-checked", mode === "practice" ? "true" : "false");
     modeProgression.setAttribute("aria-checked", mode === "progression" ? "true" : "false");
+    
+    // Show/hide difficulty section
+    if (progressionDifficultySection) {
+      progressionDifficultySection.style.display = mode === "progression" ? "block" : "none";
+    }
+  }
+
+  function setProgressionDifficulty(difficulty) {
+    settings.progressionDifficulty = difficulty;
+    difficultyEasy.setAttribute("aria-checked", difficulty === "easy" ? "true" : "false");
+    difficultyModerate.setAttribute("aria-checked", difficulty === "moderate" ? "true" : "false");
+    difficultyHard.setAttribute("aria-checked", difficulty === "hard" ? "true" : "false");
   }
 
   // =========================
@@ -753,6 +806,10 @@
 
   modePractice.addEventListener("click", () => setGameMode("practice"));
   modeProgression.addEventListener("click", () => setGameMode("progression"));
+
+  difficultyEasy.addEventListener("click", () => setProgressionDifficulty("easy"));
+  difficultyModerate.addEventListener("click", () => setProgressionDifficulty("moderate"));
+  difficultyHard.addEventListener("click", () => setProgressionDifficulty("hard"));
 
   modeDiatonic.addEventListener("click", () => setMode("diatonic"));
   modeChromatic.addEventListener("click", () => setMode("chromatic"));

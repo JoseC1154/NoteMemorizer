@@ -42,6 +42,22 @@ body{
   background: rgba(255, 255, 255, 0.02);
   border-radius: var(--radius);
   border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: opacity 1.5s ease, transform 1.5s ease;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.header.faded {
+  opacity: 0.15;
+  transform: translateY(-4px);
+  pointer-events: auto;
+}
+
+.header.faded:hover,
+.header.faded:focus-within {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
 .headerRow {
