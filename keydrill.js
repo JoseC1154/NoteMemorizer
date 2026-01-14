@@ -566,7 +566,9 @@
   // =========================
   answerButtons.forEach(b => b.addEventListener("click", () => onAnswerClick(b)));
 
-  elQuestionBox.addEventListener("click", () => startGame());
+  if (elQuestionBox) {
+    elQuestionBox.addEventListener("click", () => startGame());
+  }
 
   btnSettings.addEventListener("click", () => openSettings());
   overlay.addEventListener("click", () => closeSettings());
