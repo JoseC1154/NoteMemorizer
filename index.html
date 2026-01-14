@@ -27,17 +27,14 @@
         <div class="headerStat">
           <span class="statValue" id="lives">♥♥♥</span>
         </div>
+        <button class="btn primary" id="btnNew" type="button">New</button>
+        <button class="iconBtn" id="btnSettings" type="button" aria-haspopup="dialog" aria-controls="settingsModal">⚙️</button>
       </div>
     </header>
 
     <main class="main" role="main">
       <section class="questionBox" aria-live="polite" aria-atomic="true">
         <div class="questionText" id="questionText">Press New to begin.</div>
-      </section>
-
-      <section class="controls" aria-label="Game controls">
-        <button class="btn primary" id="btnNew" type="button">New</button>
-        <button class="iconBtn" id="btnSettings" type="button" aria-haspopup="dialog" aria-controls="settingsModal">⚙️</button>
       </section>
 
       <section class="statusPanel" id="statusPanel" aria-live="polite" aria-atomic="true">
@@ -51,6 +48,9 @@
 
       <section class="answers">
         <div class="answerGrid" id="answerGrid">
+          <button class="answerBtn" type="button">—</button>
+          <button class="answerBtn" type="button">—</button>
+          <button class="answerBtn" type="button">—</button>
           <button class="answerBtn" type="button">—</button>
           <button class="answerBtn" type="button">—</button>
           <button class="answerBtn" type="button">—</button>
