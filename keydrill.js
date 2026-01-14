@@ -233,6 +233,20 @@
     return shuffle([correct, ...pool.slice(0, 6)]);
   }
 
+  function buildOptionsForMode(correct, degreeMode) {
+    if (degreeMode === "diatonic") {
+      // For diatonic: use all 7 notes from the major scale
+      const rootPc = NOTE_TO_PC.get(state.current.keyRoot);
+      const scaleNotes = MAJOR_SCALE_OFFSETS.map(offset => pcToNote(rootPc + offset));
+      return shuffle(scaleNotes);
+    } else {
+      // For chromatic: pick 7 random notes from all 12
+      const pool = NOTE_LIST.filter(n => n !== correct);
+      shuffle(pool);
+      return shuffle([correct, ...pool.slice(0, 6)]);
+    }
+  }
+
   function renderQuestion() {
     const q = state.current;
     if (!q) {
@@ -353,7 +367,7 @@
 
     const degreeLabel = pickRandom(degreePool);
     const correctNote = degreeToNote(keyRoot, degreeLabel, settings.degreeMode);
-    const options = buildOptions(correctNote);
+    const options = buildOptionsForMode(correctNote, settings.degreeMode);
 
     state.current = { keyRoot, degreeLabel, correctNote, options };
     renderQuestion();
