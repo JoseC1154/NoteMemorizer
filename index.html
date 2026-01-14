@@ -18,6 +18,7 @@
       
       <div class="headerBottom">
         <p class="subtitle">Keys &amp; Scale Degrees</p>
+        <p class="levelInfo" id="levelInfo" hidden></p>
       </div>
     </header>
 
@@ -79,6 +80,14 @@
         <div class="sliderRow">
           <input id="modalDurationSlider" class="slider" type="range" min="500" max="5000" step="100" value="2000" />
           <div class="sliderValue" id="modalDurationValue">2.0s</div>
+        </div>
+      </section>
+
+      <section class="settingGroup">
+        <h3 class="settingLabel">Game Mode</h3>
+        <div class="segmented" role="radiogroup" aria-label="Game mode">
+          <button class="segBtn" id="modePractice" type="button" role="radio" aria-checked="true" data-mode="practice">Practice</button>
+          <button class="segBtn" id="modeProgression" type="button" role="radio" aria-checked="false" data-mode="progression">Progression</button>
         </div>
       </section>
 

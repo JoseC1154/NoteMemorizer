@@ -98,6 +98,22 @@ body{
   font-weight: 400;
 }
 
+.levelInfo {
+  font-size: 0.875rem;
+  color: var(--text);
+  margin: 0.25rem 0 0;
+  font-weight: 600;
+  background: linear-gradient(180deg, rgba(64,230,160,0.15), rgba(64,230,160,0.08));
+  border: 1px solid rgba(64,230,160,0.25);
+  border-radius: 8px;
+  padding: 0.35rem 0.75rem;
+  display: inline-block;
+}
+
+.levelInfo[hidden] {
+  display: none;
+}
+
 .version {
   font-size: 0.7rem;
   color: var(--text-tertiary);

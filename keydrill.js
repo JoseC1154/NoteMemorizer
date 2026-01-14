@@ -50,6 +50,7 @@
   const elQuestionBox = document.getElementById("questionBox");
   const elTimer = document.getElementById("timer");
   const elLives = document.getElementById("lives");
+  const elLevelInfo = document.getElementById("levelInfo");
   const elStatusPanel = document.getElementById("statusPanel");
   const elStatusText = document.getElementById("statusText");
   const elAnswerGrid = document.getElementById("answerGrid");
@@ -68,6 +69,8 @@
   const modalDurationSlider = document.getElementById("modalDurationSlider");
   const modalDurationValue = document.getElementById("modalDurationValue");
 
+  const modePractice = document.getElementById("modePractice");
+  const modeProgression = document.getElementById("modeProgression");
   const modeDiatonic = document.getElementById("modeDiatonic");
   const modeChromatic = document.getElementById("modeChromatic");
 
@@ -83,6 +86,7 @@
     keysEnabled: ["C"],
     secondsPerQuestion: 8,
     degreeMode: "diatonic", // "diatonic" | "chromatic"
+    gameMode: "practice", // "practice" | "progression"
     audioOn: true,
     tickOn: false,
     modalDuration: 2000 // milliseconds
@@ -108,6 +112,9 @@
       }
       if (parsed.degreeMode === "diatonic" || parsed.degreeMode === "chromatic") {
         s.degreeMode = parsed.degreeMode;
+      }
+      if (parsed.gameMode === "practice" || parsed.gameMode === "progression") {
+        s.gameMode = parsed.gameMode;
       }
       if (typeof parsed.audioOn === "boolean") s.audioOn = parsed.audioOn;
       if (typeof parsed.tickOn === "boolean") s.tickOn = parsed.tickOn;
@@ -201,7 +208,16 @@
     questionSeconds: 0,
     locked: false,
     paused: false,
-    current: null // { keyRoot, degreeLabel, correctNote, options[] }
+    current: null, // { keyRoot, degreeLabel, correctNote, options[] }
+
+    // Progression mode state
+    progression: {
+      level: 1,
+      currentKey: null,
+      currentMode: "diatonic", // "diatonic" | "chromatic"
+      remainingKeys: [],
+      levelStreak: 0 // streak for current level (needs 30 to advance)
+    }
   };
 
   // =========================
@@ -242,12 +258,16 @@
 
   function buildOptionsForMode(correct, degreeMode, keyRoot) {
     if (degreeMode === "diatonic") {
-      // For diatonic: use all 7 notes from the major scale
+      // For diatonic: use 6 notes from the scale, ensuring correct note is included
       const rootPc = NOTE_TO_PC.get(keyRoot);
       const scaleNotes = MAJOR_SCALE_OFFSETS.map(offset => pcToNote(rootPc + offset));
-      return shuffle(scaleNotes).slice(0, 6);
+      
+      // Remove correct from scale notes, shuffle remaining, take 5, then add correct back
+      const otherNotes = scaleNotes.filter(n => n !== correct);
+      shuffle(otherNotes);
+      return shuffle([correct, ...otherNotes.slice(0, 5)]);
     } else {
-      // For chromatic: pick 6 random notes from all 12
+      // For chromatic: pick 6 random notes from all 12, ensuring correct is included
       const pool = NOTE_LIST.filter(n => n !== correct);
       shuffle(pool);
       return shuffle([correct, ...pool.slice(0, 5)]);
@@ -291,6 +311,17 @@
     const full = "♥".repeat(state.lives);
     const empty = "♡".repeat(Math.max(0, state.maxLives - state.lives));
     elLives.textContent = full + empty;
+  }
+
+  function renderLevelInfo() {
+    if (!elLevelInfo) return;
+    if (settings.gameMode === "progression" && state.active) {
+      const modeText = state.progression.currentMode === "diatonic" ? "Diatonic" : "Chromatic";
+      elLevelInfo.textContent = `Level ${state.progression.level}: ${state.progression.currentKey} ${modeText}`;
+      elLevelInfo.hidden = false;
+    } else {
+      elLevelInfo.hidden = true;
+    }
   }
   function flashStatus(isGood, text) {
     const elStatusOverlay = document.getElementById("statusOverlay");
@@ -370,23 +401,70 @@
   // =========================
   // Game rules
   // =========================
-  function nextQuestion() {
-    // Endless questions
-    state.questionIndex += 1;
+  
+  // Progression mode helpers
+  function initProgressionMode() {
     const enabledKeys = settings.keysEnabled.length ? settings.keysEnabled : [...ALL_KEYS];
-    const keyRoot = pickRandom(enabledKeys);
+    const shuffledKeys = shuffle([...enabledKeys]);
+    
+    state.progression.level = 1;
+    state.progression.currentKey = shuffledKeys[0];
+    state.progression.currentMode = "diatonic";
+    state.progression.remainingKeys = shuffledKeys.slice(1);
+    state.progression.levelStreak = 0;
+  }
 
-    const degreePool = settings.degreeMode === "diatonic"
-      ? DIATONIC_DEGREES
-      : CHROMATIC_DEGREES;
+  function advanceProgressionLevel() {
+    // Show victory message
+    const currentLevelDesc = `${state.progression.currentKey} ${state.progression.currentMode === "diatonic" ? "Diatonic" : "Chromatic"}`;
+    flashStatus(true, `🎉 Level ${state.progression.level} Complete! ${currentLevelDesc} Mastered!`);
 
+    state.progression.level += 1;
+    state.progression.levelStreak = 0;
+
+    // Advance: diatonic -> chromatic -> next key (diatonic)
+    if (state.progression.currentMode === "diatonic") {
+      // Move to chromatic for same key
+      state.progression.currentMode = "chromatic";
+    } else {
+      // Move to next key, back to diatonic
+      if (state.progression.remainingKeys.length > 0) {
+        state.progression.currentKey = state.progression.remainingKeys.shift();
+        state.progression.currentMode = "diatonic";
+      } else {
+        // All keys exhausted! Game complete
+        endGame("🏆 Congratulations! All keys mastered!");
+        return false;
+      }
+    }
+    return true;
+  }
+
+  function nextQuestion() {
+    state.questionIndex += 1;
+    
+    let keyRoot, degreePool, degreeMode;
+
+    if (settings.gameMode === "progression") {
+      // Use fixed key and mode from progression state
+      keyRoot = state.progression.currentKey;
+      degreeMode = state.progression.currentMode;
+    } else {
+      // Practice mode: random
+      const enabledKeys = settings.keysEnabled.length ? settings.keysEnabled : [...ALL_KEYS];
+      keyRoot = pickRandom(enabledKeys);
+      degreeMode = settings.degreeMode;
+    }
+
+    degreePool = degreeMode === "diatonic" ? DIATONIC_DEGREES : CHROMATIC_DEGREES;
     const degreeLabel = pickRandom(degreePool);
-    const correctNote = degreeToNote(keyRoot, degreeLabel, settings.degreeMode);
-    const options = buildOptionsForMode(correctNote, settings.degreeMode, keyRoot);
+    const correctNote = degreeToNote(keyRoot, degreeLabel, degreeMode);
+    const options = buildOptionsForMode(correctNote, degreeMode, keyRoot);
 
     state.current = { keyRoot, degreeLabel, correctNote, options };
     renderQuestion();
     renderAnswers();
+    renderLevelInfo();
     startTimer();
   }
 
@@ -404,8 +482,14 @@
     state.lives = 3;
     state.maxLives = 3;
 
+    // Initialize progression mode if needed
+    if (settings.gameMode === "progression") {
+      initProgressionMode();
+    }
+
     state.current = null;
     renderLives();
+    renderLevelInfo();
     setStatusNeutral("Ready.");
     updateRiskVisual();
     nextQuestion();
@@ -435,6 +519,11 @@
 
     state.streak += 1;
 
+    // Progression mode: increment level streak
+    if (settings.gameMode === "progression") {
+      state.progression.levelStreak += 1;
+    }
+
     // After 10 correct streak the user gets an extra life (every 10)
     let awardedLife = false;
     if (state.streak > 0 && state.streak % 10 === 0) {
@@ -456,12 +545,26 @@
 
     updateRiskVisual();
 
+    // Check for progression level advancement (needs 30 streak)
+    if (settings.gameMode === "progression" && state.progression.levelStreak >= 30) {
+      lockAnswers(true);
+      stopTimer();
+      const canContinue = advanceProgressionLevel();
+      if (canContinue) {
+        nextAfterFeedback();
+      }
+      return;
+    }
+
     if (rewardAt20) {
       flashStatus(true, `Correct: ${chosen} — 🎉 20 correct! +1 life & Speed up! (Lives: ${state.lives})`);
     } else if (awardedLife) {
       flashStatus(true, `Correct: ${chosen} — +1 life! (Lives: ${state.lives})`);
     } else {
-      flashStatus(true, `Correct: ${chosen} (Streak: ${state.streak})`);
+      const streakText = settings.gameMode === "progression" 
+        ? `Level ${state.progression.level} Progress: ${state.progression.levelStreak}/30`
+        : `Streak: ${state.streak}`;
+      flashStatus(true, `Correct: ${chosen} (${streakText})`);
     }
 
     lockAnswers(true);
@@ -473,6 +576,9 @@
     soundWrong();
 
     state.streak = 0;
+    if (settings.gameMode === "progression") {
+      state.progression.levelStreak = 0;
+    }
     state.lives -= 1;
     renderLives();
     updateRiskVisual();
@@ -493,6 +599,9 @@
     soundWrong();
 
     state.streak = 0;
+    if (settings.gameMode === "progression") {
+      state.progression.levelStreak = 0;
+    }
     state.lives -= 1;
     renderLives();
     updateRiskVisual();
@@ -561,6 +670,9 @@
     modalDurationSlider.value = String(settings.modalDuration);
     modalDurationValue.textContent = `${(settings.modalDuration / 1000).toFixed(1)}s`;
 
+    modePractice.setAttribute("aria-checked", settings.gameMode === "practice" ? "true" : "false");
+    modeProgression.setAttribute("aria-checked", settings.gameMode === "progression" ? "true" : "false");
+
     modeDiatonic.setAttribute("aria-checked", settings.degreeMode === "diatonic" ? "true" : "false");
     modeChromatic.setAttribute("aria-checked", settings.degreeMode === "chromatic" ? "true" : "false");
 
@@ -591,6 +703,12 @@
     settings.degreeMode = mode;
     modeDiatonic.setAttribute("aria-checked", mode === "diatonic" ? "true" : "false");
     modeChromatic.setAttribute("aria-checked", mode === "chromatic" ? "true" : "false");
+  }
+
+  function setGameMode(mode) {
+    settings.gameMode = mode;
+    modePractice.setAttribute("aria-checked", mode === "practice" ? "true" : "false");
+    modeProgression.setAttribute("aria-checked", mode === "progression" ? "true" : "false");
   }
 
   // =========================
@@ -632,6 +750,9 @@
     settings.modalDuration = clamp(Number(modalDurationSlider.value), 500, 5000);
     modalDurationValue.textContent = `${(settings.modalDuration / 1000).toFixed(1)}s`;
   });
+
+  modePractice.addEventListener("click", () => setGameMode("practice"));
+  modeProgression.addEventListener("click", () => setGameMode("progression"));
 
   modeDiatonic.addEventListener("click", () => setMode("diatonic"));
   modeChromatic.addEventListener("click", () => setMode("chromatic"));
