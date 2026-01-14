@@ -270,7 +270,6 @@
     const full = "♥".repeat(state.lives);
     const empty = "♡".repeat(Math.max(0, state.maxLives - state.lives));
     elLives.textContent = full + empty;
-    console.log(`Lives updated: ${state.lives}/${state.maxLives} - Display: ${full + empty}`);
   }
   function flashStatus(isGood, text) {
     elStatusPanel.classList.remove("good", "bad");
