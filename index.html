@@ -36,8 +36,21 @@
       </section>
 
       <section class="controls" aria-label="Game controls">
-        <button class="btn" id="btnNew" type="button">New</button>
-        <button class="btn" id="btnSettings" type="button" aria-haspopup="dialog" aria-controls="settingsModal">Settings</button>
+        <button class="btn primary" id="btnNew" type="button">New</button>
+        <button class="iconBtn" id="btnSettings" type="button" aria-haspopup="dialog" aria-controls="settingsModal">⚙️</button>
+      </section>
+
+      <section class="statusPanel" id="statusPanel" aria-live="polite" aria-atomic="true">
+        <div class="statusGradient"></div>
+        <div class="statusContent">
+          <div class="face faceGood" aria-hidden="true"></div>
+          <div class="face faceBad" aria-hidden="true"></div>
+          <div class="statusText" id="statusText">Welcome.</div>
+        </div>
+      </section>
+
+      <section class="answers">
+        <div class="answerGrid" id="answerGrid"></div>
       </section>
     </main>
   </div>
