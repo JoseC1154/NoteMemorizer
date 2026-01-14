@@ -42,6 +42,7 @@
   // =========================
   const elQuestionText = document.getElementById("questionText");
   const elTimer = document.getElementById("timer");
+  const elLives = document.getElementById("lives");
   const elStatusPanel = document.getElementById("statusPanel");
   const elStatusText = document.getElementById("statusText");
   const elAnswerGrid = document.getElementById("answerGrid");
@@ -258,7 +259,11 @@
     elStatusPanel.classList.remove("good", "bad");
     elStatusText.textContent = text;
   }
-
+  function renderLives() {
+    const full = "♥".repeat(state.lives);
+    const empty = "♡".repeat(Math.max(0, state.maxLives - state.lives));
+    elLives.textContent = full + empty;
+  }
   function flashStatus(isGood, text) {
     elStatusPanel.classList.remove("good", "bad");
     void elStatusPanel.offsetWidth;
@@ -364,6 +369,7 @@
     state.maxLives = 3;
 
     state.current = null;
+    renderLives();
     setStatusNeutral("Ready.");
     updateRiskVisual();
     nextQuestion();
@@ -399,23 +405,25 @@
       state.lives += 1;
       state.maxLives = Math.max(state.maxLives, state.lives);
       awardedLife = true;
+      renderLives();
     }
 
-    // After 20 correct streak, drop seconds per question by 1 (persists for this run)
-    let spedUp = false;
-    if (state.streak > 0 && state.streak % 20 === 0) {
+    // After 20 correct answers total, give extra life AND speed up
+    let rewardAt20 = false;
+    if (state.questionIndex > 0 && state.questionIndex % 20 === 0) {
       state.speedLevel += 1;
-      spedUp = true;
+      state.lives += 1;
+      state.maxLives = Math.max(state.maxLives, state.lives);
+      rewardAt20 = true;
+      renderLives();
     }
 
     updateRiskVisual();
 
-    if (awardedLife && spedUp) {
-      flashStatus(true, `Correct: ${chosen} — +1 life! Speed up! (Lives: ${state.lives})`);
+    if (rewardAt20) {
+      flashStatus(true, `Correct: ${chosen} — 🎉 20 correct! +1 life & Speed up! (Lives: ${state.lives})`);
     } else if (awardedLife) {
       flashStatus(true, `Correct: ${chosen} — +1 life! (Lives: ${state.lives})`);
-    } else if (spedUp) {
-      flashStatus(true, `Correct: ${chosen} — Speed up!`);
     } else {
       flashStatus(true, `Correct: ${chosen} (Streak: ${state.streak})`);
     }
@@ -430,6 +438,7 @@
 
     state.streak = 0;
     state.lives -= 1;
+    renderLives();
     updateRiskVisual();
 
     if (state.lives <= 0) {
@@ -449,6 +458,7 @@
 
     state.streak = 0;
     state.lives -= 1;
+    renderLives();
     updateRiskVisual();
 
     if (state.lives <= 0) {

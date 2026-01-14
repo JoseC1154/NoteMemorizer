@@ -125,6 +125,27 @@ body{
   font-weight: 900;
 }
 
+.livesRow{
+  display:flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255,255,255,0.10);
+}
+.livesLabel{
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+.lives{
+  font-size: 20px;
+  letter-spacing: 0.15em;
+  line-height: 1;
+}
+
 /* Status panel with animated moving gradient */
 .statusPanel{
   border: 1px solid var(--border);
