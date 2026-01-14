@@ -230,7 +230,7 @@
   function buildOptions(correct) {
     const pool = NOTE_LIST.filter(n => n !== correct);
     shuffle(pool);
-    return shuffle([correct, ...pool.slice(0, 6)]);
+    return shuffle([correct, ...pool.slice(0, 5)]);
   }
 
   function buildOptionsForMode(correct, degreeMode, keyRoot) {
@@ -238,12 +238,12 @@
       // For diatonic: use all 7 notes from the major scale
       const rootPc = NOTE_TO_PC.get(keyRoot);
       const scaleNotes = MAJOR_SCALE_OFFSETS.map(offset => pcToNote(rootPc + offset));
-      return shuffle(scaleNotes);
+      return shuffle(scaleNotes).slice(0, 6);
     } else {
-      // For chromatic: pick 7 random notes from all 12
+      // For chromatic: pick 6 random notes from all 12
       const pool = NOTE_LIST.filter(n => n !== correct);
       shuffle(pool);
-      return shuffle([correct, ...pool.slice(0, 6)]);
+      return shuffle([correct, ...pool.slice(0, 5)]);
     }
   }
 
