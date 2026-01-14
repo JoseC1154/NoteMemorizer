@@ -463,12 +463,12 @@
     updateRiskVisual();
 
     if (state.lives <= 0) {
-      flashStatus(false, `Wrong: ${chosen} — 0 lives left.`);
+      flashStatus(false, `Wrong: ${chosen} — Correct: ${state.current.correctNote} — Game Over`);
       endGame("No lives left.");
       return;
     }
 
-    flashStatus(false, `Wrong: ${chosen} — lives left: ${state.lives}`);
+    flashStatus(false, `Wrong: ${chosen} — Correct: ${state.current.correctNote} — Lives: ${state.lives}`);
     lockAnswers(true);
     stopTimer();
     nextAfterFeedback();
@@ -483,12 +483,12 @@
     updateRiskVisual();
 
     if (state.lives <= 0) {
-      flashStatus(false, "Time out — 0 lives left.");
+      flashStatus(false, `Time out — Correct: ${state.current.correctNote} — Game Over`);
       endGame("Time out.");
       return;
     }
 
-    flashStatus(false, `Time out — lives left: ${state.lives}`);
+    flashStatus(false, `Time out — Correct: ${state.current.correctNote} — Lives: ${state.lives}`);
     lockAnswers(true);
     nextAfterFeedback();
   }
