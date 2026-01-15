@@ -50,7 +50,9 @@
   const elQuestionBox = document.getElementById("questionBox");
   const elRestartHint = document.getElementById("restartHint");
   const elTimer = document.getElementById("timer");
+  const elTimerBackground = document.getElementById("timerBackground");
   const elLives = document.getElementById("lives");
+  const elScore = document.getElementById("score");
   const elLevelInfo = document.getElementById("levelInfo");
   const elHeader = document.querySelector(".header");
   const elStatusPanel = document.getElementById("statusPanel");
@@ -59,11 +61,17 @@
   const answerButtons = Array.from(elAnswerGrid.querySelectorAll(".answerBtn"));
 
   const btnSettings = document.getElementById("btnSettings");
+  const btnStats = document.getElementById("btnStats");
 
   const overlay = document.getElementById("settingsOverlay");
   const modal = document.getElementById("settingsModal");
   const btnCloseSettings = document.getElementById("btnCloseSettings");
   const btnSaveSettings = document.getElementById("btnSaveSettings");
+
+  const statsOverlay = document.getElementById("statsOverlay");
+  const statsModal = document.getElementById("statsModal");
+  const btnCloseStats = document.getElementById("btnCloseStats");
+  const btnClearStats = document.getElementById("btnClearStats");
 
   const confirmOverlay = document.getElementById("confirmOverlay");
   const confirmModal = document.getElementById("confirmModal");
@@ -158,6 +166,44 @@
   let settings = loadSettings();
 
   // =========================
+  // Statistics tracking
+  // =========================
+  
+  function getStats() {
+    const stored = localStorage.getItem("keydrillStats");
+    if (!stored) return { questions: [] };
+    try {
+      return JSON.parse(stored);
+    } catch {
+      return { questions: [] };
+    }
+  }
+  
+  function saveStats(stats) {
+    localStorage.setItem("keydrillStats", JSON.stringify(stats));
+  }
+  
+  function recordQuestion(keyRoot, degreeLabel, degreeMode, correct, responseTime) {
+    const stats = getStats();
+    stats.questions.push({
+      keyRoot,
+      degreeLabel,
+      degreeMode,
+      correct,
+      responseTime,
+      timestamp: Date.now()
+    });
+    saveStats(stats);
+  }
+  
+  function clearStats() {
+    localStorage.removeItem("keydrillStats");
+    if (typeof renderStats === 'function') {
+      renderStats();
+    }
+  }
+
+  // =========================
   // Audio (Web Audio API)
   // =========================
   let audioCtx = null;
@@ -220,6 +266,8 @@
     maxLives: 0,
     streak: 0,
     speedLevel: 0, // every 20 streak lowers time by 1s (persists for the run)
+    score: 0,
+    questionStartTime: null, // timestamp when question starts
 
     timerId: null,
     secondsLeft: 0,
@@ -296,7 +344,7 @@
     const q = state.current;
     if (!q) {
       elQuestionText.textContent = "Click to start!";
-      elTimer.textContent = "--";
+      if (elTimerBackground) elTimerBackground.textContent = "--";
       return;
     }
     elQuestionText.textContent = `What is the ${q.degreeLabel} in the key of ${q.keyRoot} major?`;
@@ -329,6 +377,11 @@
     const full = "♥".repeat(state.lives);
     const empty = "♡".repeat(Math.max(0, state.maxLives - state.lives));
     elLives.textContent = full + empty;
+  }
+
+  function renderScore() {
+    if (!elScore) return;
+    elScore.textContent = state.score.toLocaleString();
   }
 
   function renderLevelInfo() {
@@ -397,14 +450,20 @@
 
     state.questionSeconds = getEffectiveSecondsPerQuestion();
     state.secondsLeft = state.questionSeconds;
-    elTimer.textContent = String(state.secondsLeft);
+    state.questionStartTime = Date.now(); // Start timing response
+    if (elTimerBackground) elTimerBackground.textContent = String(state.secondsLeft);
     updateRiskVisual();
+    
+    // Fade out header when timer starts
+    if (elHeader && state.active) {
+      elHeader.classList.add("faded");
+    }
 
     state.timerId = setInterval(() => {
       if (!state.active || state.locked) return;
 
       state.secondsLeft -= 1;
-      elTimer.textContent = String(state.secondsLeft);
+      if (elTimerBackground) elTimerBackground.textContent = String(state.secondsLeft);
       updateRiskVisual();
 
       if (state.secondsLeft > 0) soundTick();
@@ -503,6 +562,7 @@
     state.questionIndex = 0;
     state.streak = 0;
     state.speedLevel = 0;
+    state.score = 0;
 
     // Start with 3 lives (matches the original "3 tries" feeling, now used for endless mode)
     state.lives = 3;
@@ -515,6 +575,7 @@
 
     state.current = null;
     renderLives();
+    renderScore();
     renderLevelInfo();
     
     // Update restart hint
@@ -527,13 +588,6 @@
     setStatusNeutral("Ready.");
     updateRiskVisual();
     
-    // Fade out header after a short delay
-    if (elHeader) {
-      setTimeout(() => {
-        if (state.active) elHeader.classList.add("faded");
-      }, 2000);
-    }
-    
     nextQuestion();
   }
 
@@ -542,7 +596,7 @@
     state.current = null;
     stopTimer();
     lockAnswers(true);
-    elTimer.textContent = "--";
+    if (elTimerBackground) elTimerBackground.textContent = "--";
     updateRiskVisual();
     
     // Restore header visibility
@@ -550,7 +604,7 @@
       elHeader.classList.remove("faded");
     }
     
-    flashStatus(false, message);
+    flashStatus(false, `${message} — Final Score: ${state.score}`);
     elQuestionText.textContent = "Game Over. Press New to try again.";
   }
 
@@ -564,8 +618,31 @@
 
   function handleCorrect(chosen) {
     soundCorrect();
+    
+    // Calculate response time
+    const responseTime = state.questionStartTime ? (Date.now() - state.questionStartTime) / 1000 : 0;
+    
+    // Record statistics
+    if (state.current) {
+      recordQuestion(
+        state.current.keyRoot,
+        state.current.degreeLabel,
+        settings.degreeMode,
+        true,
+        responseTime
+      );
+    }
 
     state.streak += 1;
+    
+    // Calculate score: base points + streak bonus + speed bonus
+    const basePoints = 100;
+    const streakBonus = state.streak * 10;
+    const speedBonus = Math.max(0, (state.questionSeconds - state.secondsLeft) * 5);
+    const pointsEarned = basePoints + streakBonus + speedBonus;
+    
+    state.score += pointsEarned;
+    renderScore();
 
     // Progression mode: increment level streak
     if (settings.gameMode === "progression") {
@@ -606,14 +683,14 @@
     }
 
     if (rewardAt20) {
-      flashStatus(true, `Correct: ${chosen} — 🎉 20 correct! +1 life & Speed up! (Lives: ${state.lives})`);
+      flashStatus(true, `Correct: ${chosen} — 🎉 20 correct! +1 life & Speed up! (Score: ${state.score})`);
     } else if (awardedLife) {
-      flashStatus(true, `Correct: ${chosen} — +1 life! (Lives: ${state.lives})`);
+      flashStatus(true, `Correct: ${chosen} — +1 life! (Score: ${state.score})`);
     } else {
       const streakText = settings.gameMode === "progression" 
         ? `Level ${state.progression.level} Progress: ${state.progression.levelStreak}/${getProgressionStreakRequired()}`
         : `Streak: ${state.streak}`;
-      flashStatus(true, `Correct: ${chosen} (${streakText})`);
+      flashStatus(true, `Correct: ${chosen} (${streakText}) — Score: ${state.score}`);
     }
 
     lockAnswers(true);
@@ -623,6 +700,20 @@
 
   function handleWrong(chosen) {
     soundWrong();
+    
+    // Calculate response time
+    const responseTime = state.questionStartTime ? (Date.now() - state.questionStartTime) / 1000 : 0;
+    
+    // Record statistics
+    if (state.current) {
+      recordQuestion(
+        state.current.keyRoot,
+        state.current.degreeLabel,
+        settings.degreeMode,
+        false,
+        responseTime
+      );
+    }
 
     state.streak = 0;
     if (settings.gameMode === "progression") {
@@ -646,6 +737,17 @@
 
   function handleTimeout() {
     soundWrong();
+    
+    // Record statistics (timeout counts as wrong with max time)
+    if (state.current) {
+      recordQuestion(
+        state.current.keyRoot,
+        state.current.degreeLabel,
+        settings.degreeMode,
+        false,
+        state.questionSeconds // Full time elapsed
+      );
+    }
 
     state.streak = 0;
     if (settings.gameMode === "progression") {
@@ -929,6 +1031,165 @@
 
     setStatusNeutral("Settings saved.");
   });
+
+  // Stats modal handlers
+  if (btnStats && statsOverlay && statsModal) {
+    btnStats.addEventListener("click", () => {
+      statsOverlay.hidden = false;
+      statsModal.hidden = false;
+      renderStats();
+    });
+
+    btnCloseStats.addEventListener("click", () => {
+      statsOverlay.hidden = true;
+      statsModal.hidden = true;
+    });
+
+    statsOverlay.addEventListener("click", () => {
+      statsOverlay.hidden = true;
+      statsModal.hidden = true;
+    });
+
+    btnClearStats.addEventListener("click", () => {
+      if (confirm("Are you sure you want to clear all statistics? This cannot be undone.")) {
+        clearStats();
+      }
+    });
+  }
+
+  function renderStats() {
+    const stats = getStats();
+    const questions = stats.questions || [];
+    
+    if (questions.length === 0) {
+      document.getElementById("statTotalQuestions").textContent = "0";
+      document.getElementById("statAccuracy").textContent = "0%";
+      document.getElementById("statAvgTime").textContent = "0s";
+      document.getElementById("statsByKey").innerHTML = "<p>No data yet. Start practicing!</p>";
+      document.getElementById("statsByDegree").innerHTML = "";
+      document.getElementById("statsNeedsPractice").innerHTML = "";
+      return;
+    }
+    
+    // Calculate summary stats
+    const totalQuestions = questions.length;
+    const correctQuestions = questions.filter(q => q.correct).length;
+    const accuracy = ((correctQuestions / totalQuestions) * 100).toFixed(1);
+    const avgTime = (questions.reduce((sum, q) => sum + q.responseTime, 0) / totalQuestions).toFixed(2);
+    
+    document.getElementById("statTotalQuestions").textContent = totalQuestions;
+    document.getElementById("statAccuracy").textContent = `${accuracy}%`;
+    document.getElementById("statAvgTime").textContent = `${avgTime}s`;
+    
+    // Stats by key
+    const byKey = {};
+    questions.forEach(q => {
+      if (!byKey[q.keyRoot]) byKey[q.keyRoot] = { correct: 0, total: 0, totalTime: 0 };
+      byKey[q.keyRoot].total++;
+      if (q.correct) byKey[q.keyRoot].correct++;
+      byKey[q.keyRoot].totalTime += q.responseTime;
+    });
+    
+    let keyHtml = "<table><tr><th>Key</th><th>Accuracy</th><th>Avg Time</th></tr>";
+    Object.keys(byKey).sort().forEach(key => {
+      const data = byKey[key];
+      const acc = ((data.correct / data.total) * 100).toFixed(1);
+      const avg = (data.totalTime / data.total).toFixed(2);
+      keyHtml += `<tr><td>${key}</td><td>${acc}%</td><td>${avg}s</td></tr>`;
+    });
+    keyHtml += "</table>";
+    document.getElementById("statsByKey").innerHTML = keyHtml;
+    
+    // Stats by degree
+    const byDegree = {};
+    questions.forEach(q => {
+      if (!byDegree[q.degreeLabel]) byDegree[q.degreeLabel] = { correct: 0, total: 0, totalTime: 0 };
+      byDegree[q.degreeLabel].total++;
+      if (q.correct) byDegree[q.degreeLabel].correct++;
+      byDegree[q.degreeLabel].totalTime += q.responseTime;
+    });
+    
+    let degreeHtml = "<table><tr><th>Degree</th><th>Accuracy</th><th>Avg Time</th></tr>";
+    Object.keys(byDegree).sort().forEach(degree => {
+      const data = byDegree[degree];
+      const acc = ((data.correct / data.total) * 100).toFixed(1);
+      const avg = (data.totalTime / data.total).toFixed(2);
+      degreeHtml += `<tr><td>${degree}</td><td>${acc}%</td><td>${avg}s</td></tr>`;
+    });
+    degreeHtml += "</table>";
+    document.getElementById("statsByDegree").innerHTML = degreeHtml;
+    
+    // Stats by key+degree combination
+    const byKeyDegree = {};
+    questions.forEach(q => {
+      const combo = `${q.degreeLabel} of ${q.keyRoot}`;
+      if (!byKeyDegree[combo]) byKeyDegree[combo] = { correct: 0, total: 0, totalTime: 0, key: q.keyRoot, degree: q.degreeLabel };
+      byKeyDegree[combo].total++;
+      if (q.correct) byKeyDegree[combo].correct++;
+      byKeyDegree[combo].totalTime += q.responseTime;
+    });
+    
+    // Sort combinations by accuracy (worst first) for easier identification
+    const sortedCombos = Object.entries(byKeyDegree)
+      .sort((a, b) => {
+        const accA = (a[1].correct / a[1].total) * 100;
+        const accB = (b[1].correct / b[1].total) * 100;
+        return accA - accB; // ascending (worst first)
+      });
+    
+    let comboHtml = "<table><tr><th>Degree + Key</th><th>Questions</th><th>Accuracy</th><th>Avg Time</th></tr>";
+    sortedCombos.forEach(([combo, data]) => {
+      const acc = ((data.correct / data.total) * 100).toFixed(1);
+      const avg = (data.totalTime / data.total).toFixed(2);
+      comboHtml += `<tr><td>${combo}</td><td>${data.total}</td><td>${acc}%</td><td>${avg}s</td></tr>`;
+    });
+    comboHtml += "</table>";
+    document.getElementById("statsByKeyDegree").innerHTML = comboHtml;
+    
+    // Areas needing practice (low accuracy or slow response)
+    const needsPractice = [];
+    
+    // Check specific key+degree combinations first (most specific)
+    Object.entries(byKeyDegree).forEach(([combo, data]) => {
+      const acc = (data.correct / data.total) * 100;
+      const avg = data.totalTime / data.total;
+      if (acc < 70 && data.total >= 3) {
+        needsPractice.push({ type: "Specific", name: combo, reason: `Low accuracy (${acc.toFixed(1)}%)` });
+      } else if (avg > 4 && data.total >= 3) {
+        needsPractice.push({ type: "Specific", name: combo, reason: `Slow response (${avg.toFixed(2)}s avg)` });
+      }
+    });
+    
+    Object.keys(byKey).forEach(key => {
+      const data = byKey[key];
+      const acc = (data.correct / data.total) * 100;
+      if (acc < 70 && data.total >= 5) {
+        needsPractice.push({ type: "Key", name: key, reason: `Low accuracy (${acc.toFixed(1)}%)` });
+      }
+    });
+    
+    Object.keys(byDegree).forEach(degree => {
+      const data = byDegree[degree];
+      const acc = (data.correct / data.total) * 100;
+      const avg = data.totalTime / data.total;
+      if (acc < 70 && data.total >= 5) {
+        needsPractice.push({ type: "Degree", name: degree, reason: `Low accuracy (${acc.toFixed(1)}%)` });
+      } else if (avg > 4 && data.total >= 5) {
+        needsPractice.push({ type: "Degree", name: degree, reason: `Slow response (${avg.toFixed(2)}s avg)` });
+      }
+    });
+    
+    if (needsPractice.length === 0) {
+      document.getElementById("statsNeedsPractice").innerHTML = "<p>Great job! No areas need extra practice.</p>";
+    } else {
+      let helpHtml = "<ul>";
+      needsPractice.forEach(item => {
+        helpHtml += `<li><strong>${item.type}: ${item.name}</strong> - ${item.reason}</li>`;
+      });
+      helpHtml += "</ul>";
+      document.getElementById("statsNeedsPractice").innerHTML = helpHtml;
+    }
+  }
 
   // Initial render
   const lastUpdatedDate = new Date(LAST_UPDATED);

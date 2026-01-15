@@ -13,7 +13,10 @@
       <div class="headerRow headerTop">
         <div class="headerSpacer"></div>
         <h1 class="title">KeyDrill</h1>
-        <button class="iconBtn" id="btnSettings" type="button" aria-haspopup="dialog" aria-controls="settingsModal">⚙️</button>
+        <div class="headerButtons">
+          <button class="iconBtn" id="btnStats" type="button" aria-haspopup="dialog" aria-controls="statsModal">📊</button>
+          <button class="iconBtn" id="btnSettings" type="button" aria-haspopup="dialog" aria-controls="settingsModal">⚙️</button>
+        </div>
       </div>
       
       <div class="headerBottom">
@@ -26,8 +29,9 @@
       <button class="questionBox" id="questionBox" type="button" aria-live="polite" aria-atomic="true">
         <div class="questionStats">
           <span class="questionStat" id="lives">♥♥♥</span>
-          <span class="questionStat" id="timer">--</span>
+          <span class="questionStat score" id="score">0</span>
         </div>
+        <div class="timerBackground" id="timerBackground">--</div>
         <div class="questionText" id="questionText">Click to start!</div>
         <div class="restartHint" id="restartHint">Press to restart</div>
       </button>
@@ -137,6 +141,53 @@
     <div class="modalFooter">
       <p class="version" id="version">v1.1.0 • Updated 01/14/25</p>
       <button class="btn primary" id="btnSaveSettings" type="button">Save</button>
+    </div>
+  </div>
+
+  <!-- Stats Modal -->
+  <div class="modalOverlay" id="statsOverlay" hidden></div>
+  <div class="modal statsModal" id="statsModal" role="dialog" aria-labelledby="statsTitle" hidden>
+    <div class="modalHeader">
+      <h2 class="modalTitle" id="statsTitle">Statistics</h2>
+      <button class="iconBtn" id="btnCloseStats" type="button" aria-label="Close Statistics">✕</button>
+    </div>
+    <div class="modalBody statsContent">
+      <div class="statsSummary">
+        <div class="statCard">
+          <div class="statValue" id="statTotalQuestions">0</div>
+          <div class="statLabel">Total Questions</div>
+        </div>
+        <div class="statCard">
+          <div class="statValue" id="statAccuracy">0%</div>
+          <div class="statLabel">Accuracy</div>
+        </div>
+        <div class="statCard">
+          <div class="statValue" id="statAvgTime">0s</div>
+          <div class="statLabel">Avg Response Time</div>
+        </div>
+      </div>
+      
+      <div class="statsSection">
+        <h3 class="statsSubtitle">Performance by Key</h3>
+        <div id="statsByKey" class="statsTable"></div>
+      </div>
+      
+      <div class="statsSection">
+        <h3 class="statsSubtitle">Performance by Degree</h3>
+        <div id="statsByDegree" class="statsTable"></div>
+      </div>
+      
+      <div class="statsSection">
+        <h3 class="statsSubtitle">Detailed Performance (Degree + Key)</h3>
+        <div id="statsByKeyDegree" class="statsTable"></div>
+      </div>
+      
+      <div class="statsSection">
+        <h3 class="statsSubtitle">Areas Needing Practice</h3>
+        <div id="statsNeedsPractice" class="statsHelp"></div>
+      </div>
+      
+      <button class="btn btnDanger" id="btnClearStats" type="button">Clear All Statistics</button>
     </div>
   </div>
 
