@@ -29,6 +29,7 @@
           <span class="questionStat" id="timer">--</span>
         </div>
         <div class="questionText" id="questionText">Click to start!</div>
+        <div class="restartHint" id="restartHint">Press to restart</div>
       </button>
 
       <div class="statusOverlay" id="statusOverlay" hidden></div>
@@ -52,6 +53,21 @@
     </main>
   </div>
 
+  <!-- Restart Confirmation Modal -->
+  <div class="modalOverlay" id="confirmOverlay" hidden></div>
+  <div class="modal confirmModal" id="confirmModal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle" hidden>
+    <div class="modalHeader">
+      <h2 id="confirmTitle">Restart Game?</h2>
+    </div>
+    <div class="modalBody">
+      <p id="confirmMessage" class="confirmMessage">Are you sure you want to restart?</p>
+    </div>
+    <div class="modalFooter">
+      <button class="btn" id="btnCancelRestart" type="button">Cancel</button>
+      <button class="btn primary" id="btnConfirmRestart" type="button">Yes, Restart</button>
+    </div>
+  </div>
+
   <!-- Settings Modal -->
   <div class="modalOverlay" id="settingsOverlay" hidden></div>
   <div class="modal" id="settingsModal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle" hidden>
@@ -61,7 +77,7 @@
     </div>
 
     <div class="modalBody">
-      <section class="settingGroup">
+      <section class="settingGroup" id="keysToMasterSection">
         <h3 class="settingLabel">Keys to Master</h3>
         <p class="settingHint">Toggle one or more keys. (Can’t be zero — will fall back to all.)</p>
         <div class="keyToggles" id="keyToggles" aria-label="Keys to master"></div>
@@ -101,7 +117,7 @@
         </div>
       </section>
 
-      <section class="settingGroup">
+      <section class="settingGroup" id="degreeModeSection">
         <h3 class="settingLabel">Degree Mode</h3>
         <div class="segmented" role="radiogroup" aria-label="Degree mode">
           <button class="segBtn" id="modeDiatonic" type="button" role="radio" aria-checked="true" data-mode="diatonic">Diatonic</button>

@@ -270,6 +270,24 @@ body{
   text-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
+.restartHint {
+  position: absolute;
+  bottom: 0.75rem;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.7rem;
+  color: var(--text-tertiary);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+}
+
+.questionBox:hover .restartHint {
+  opacity: 0.6;
+}
+
 .timerRow{
   display:flex;
   align-items: baseline;
@@ -609,7 +627,17 @@ body{
 .modal[hidden]{
   display: none;
 }
+.confirmModal {
+  max-width: 400px;
+}
 
+.confirmMessage {
+  font-size: 1rem;
+  color: var(--text);
+  margin: 0;
+  line-height: 1.5;
+  text-align: center;
+}
 .modalHeader{
   display: flex;
   justify-content: space-between;

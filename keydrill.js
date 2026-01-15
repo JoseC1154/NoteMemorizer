@@ -48,6 +48,7 @@
   // =========================
   const elQuestionText = document.getElementById("questionText");
   const elQuestionBox = document.getElementById("questionBox");
+  const elRestartHint = document.getElementById("restartHint");
   const elTimer = document.getElementById("timer");
   const elLives = document.getElementById("lives");
   const elLevelInfo = document.getElementById("levelInfo");
@@ -64,6 +65,12 @@
   const btnCloseSettings = document.getElementById("btnCloseSettings");
   const btnSaveSettings = document.getElementById("btnSaveSettings");
 
+  const confirmOverlay = document.getElementById("confirmOverlay");
+  const confirmModal = document.getElementById("confirmModal");
+  const confirmMessage = document.getElementById("confirmMessage");
+  const btnConfirmRestart = document.getElementById("btnConfirmRestart");
+  const btnCancelRestart = document.getElementById("btnCancelRestart");
+
   const keyToggles = document.getElementById("keyToggles");
   const secondsSlider = document.getElementById("secondsSlider");
   const secondsValue = document.getElementById("secondsValue");
@@ -76,6 +83,8 @@
   const difficultyModerate = document.getElementById("difficultyModerate");
   const difficultyHard = document.getElementById("difficultyHard");
   const progressionDifficultySection = document.getElementById("progressionDifficultySection");
+  const keysToMasterSection = document.getElementById("keysToMasterSection");
+  const degreeModeSection = document.getElementById("degreeModeSection");
   const modeDiatonic = document.getElementById("modeDiatonic");
   const modeChromatic = document.getElementById("modeChromatic");
 
@@ -507,6 +516,14 @@
     state.current = null;
     renderLives();
     renderLevelInfo();
+    
+    // Update restart hint
+    if (elRestartHint) {
+      elRestartHint.textContent = settings.gameMode === "progression" 
+        ? "Press to restart from level 1"
+        : "Press to restart";
+    }
+    
     setStatusNeutral("Ready.");
     updateRiskVisual();
     
@@ -709,9 +726,16 @@
     difficultyModerate.setAttribute("aria-checked", settings.progressionDifficulty === "moderate" ? "true" : "false");
     difficultyHard.setAttribute("aria-checked", settings.progressionDifficulty === "hard" ? "true" : "false");
     
-    // Show/hide difficulty section based on game mode
+    // Show/hide sections based on game mode
+    const isPractice = settings.gameMode === "practice";
     if (progressionDifficultySection) {
-      progressionDifficultySection.style.display = settings.gameMode === "progression" ? "block" : "none";
+      progressionDifficultySection.style.display = isPractice ? "none" : "block";
+    }
+    if (keysToMasterSection) {
+      keysToMasterSection.style.display = isPractice ? "block" : "none";
+    }
+    if (degreeModeSection) {
+      degreeModeSection.style.display = isPractice ? "block" : "none";
     }
 
     modeDiatonic.setAttribute("aria-checked", settings.degreeMode === "diatonic" ? "true" : "false");
@@ -740,6 +764,35 @@
     }
   }
 
+  function showConfirmRestart() {
+    const message = settings.gameMode === "progression"
+      ? "Are you sure you want to restart from level 1?"
+      : "Are you sure you want to restart?";
+    
+    confirmMessage.textContent = message;
+    
+    // Pause the game (stop timer and lock answers)
+    if (state.active) {
+      stopTimer();
+      lockAnswers(true);
+    }
+    
+    confirmOverlay.hidden = false;
+    confirmModal.hidden = false;
+    btnCancelRestart.focus();
+  }
+
+  function hideConfirmRestart() {
+    confirmOverlay.hidden = true;
+    confirmModal.hidden = true;
+    
+    // Resume the game if user cancels and game is still active
+    if (state.active) {
+      lockAnswers(false);
+      startTimer();
+    }
+  }
+
   function setMode(mode) {
     settings.degreeMode = mode;
     modeDiatonic.setAttribute("aria-checked", mode === "diatonic" ? "true" : "false");
@@ -751,9 +804,16 @@
     modePractice.setAttribute("aria-checked", mode === "practice" ? "true" : "false");
     modeProgression.setAttribute("aria-checked", mode === "progression" ? "true" : "false");
     
-    // Show/hide difficulty section
+    // Show/hide sections based on game mode
+    const isPractice = mode === "practice";
     if (progressionDifficultySection) {
-      progressionDifficultySection.style.display = mode === "progression" ? "block" : "none";
+      progressionDifficultySection.style.display = isPractice ? "none" : "block";
+    }
+    if (keysToMasterSection) {
+      keysToMasterSection.style.display = isPractice ? "block" : "none";
+    }
+    if (degreeModeSection) {
+      degreeModeSection.style.display = isPractice ? "block" : "none";
     }
   }
 
@@ -770,12 +830,34 @@
   answerButtons.forEach(b => b.addEventListener("click", () => onAnswerClick(b)));
 
   if (elQuestionBox) {
-    elQuestionBox.addEventListener("click", () => startGame());
+    elQuestionBox.addEventListener("click", () => {
+      // If game is active, show confirmation modal
+      if (state.active) {
+        showConfirmRestart();
+      } else {
+        // Game not active, just start
+        startGame();
+      }
+    });
   }
 
   btnSettings.addEventListener("click", () => openSettings());
   overlay.addEventListener("click", () => closeSettings());
   btnCloseSettings.addEventListener("click", () => closeSettings());
+
+  // Confirmation modal handlers
+  btnConfirmRestart.addEventListener("click", () => {
+    hideConfirmRestart();
+    startGame();
+  });
+  
+  btnCancelRestart.addEventListener("click", () => {
+    hideConfirmRestart();
+  });
+  
+  confirmOverlay.addEventListener("click", () => {
+    hideConfirmRestart();
+  });
 
   // Allow clicking status overlay to dismiss it
   const statusOverlay = document.getElementById("statusOverlay");
