@@ -42,14 +42,16 @@ body{
   background: rgba(255, 255, 255, 0.02);
   border-radius: var(--radius);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  transition: opacity 1.5s ease, transform 1.5s ease;
+  transition: opacity 1.5s ease, transform 1.5s ease, filter 1.5s ease;
   opacity: 1;
   transform: translateY(0);
+  filter: blur(0px);
 }
 
 .header.faded {
   opacity: 0.15;
   transform: translateY(-4px);
+  filter: blur(3px);
   pointer-events: auto;
 }
 
@@ -57,7 +59,8 @@ body{
 .header.faded:focus-within {
   opacity: 1;
   transform: translateY(0);
-  transition: opacity 0.3s ease, transform 0.3s ease;
+  filter: blur(0px);
+  transition: opacity 0.3s ease, transform 0.3s ease, filter 0.3s ease;
 }
 
 .headerRow {
