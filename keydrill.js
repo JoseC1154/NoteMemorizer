@@ -60,6 +60,8 @@
   const elAnswerGrid = document.getElementById("answerGrid");
   const answerButtons = Array.from(elAnswerGrid.querySelectorAll(".answerBtn"));
 
+  const menuToggle = document.getElementById("menuToggle");
+  const menuDropdown = document.getElementById("menuDropdown");
   const btnSettings = document.getElementById("btnSettings");
   const btnStats = document.getElementById("btnStats");
 
@@ -80,6 +82,7 @@
   const btnCancelRestart = document.getElementById("btnCancelRestart");
 
   const keyToggles = document.getElementById("keyToggles");
+  const degreeToggles = document.getElementById("degreeToggles");
   const secondsSlider = document.getElementById("secondsSlider");
   const secondsValue = document.getElementById("secondsValue");
   const modalDurationSlider = document.getElementById("modalDurationSlider");
@@ -106,6 +109,7 @@
 
   const defaultSettings = {
     keysEnabled: ["C"],
+    degreesEnabled: [...DIATONIC_DEGREES], // Default to all diatonic degrees
     secondsPerQuestion: 8,
     degreeMode: "diatonic", // "diatonic" | "chromatic"
     gameMode: "practice", // "practice" | "progression"
@@ -130,6 +134,11 @@
       if (Array.isArray(parsed.keysEnabled)) {
         s.keysEnabled = parsed.keysEnabled.filter(k => NOTE_TO_PC.has(k));
       }
+      if (Array.isArray(parsed.degreesEnabled)) {
+        s.degreesEnabled = parsed.degreesEnabled.filter(d => 
+          DIATONIC_DEGREES.includes(d) || CHROMATIC_DEGREES.includes(d)
+        );
+      }
       if (typeof parsed.secondsPerQuestion === "number") {
         s.secondsPerQuestion = clamp(Math.round(parsed.secondsPerQuestion), 3, 20);
       }
@@ -150,6 +159,7 @@
 
       // Cannot allow zero keys (fallback to all)
       if (!s.keysEnabled.length) s.keysEnabled = [...ALL_KEYS];
+      if (!s.degreesEnabled.length) s.degreesEnabled = [...DIATONIC_DEGREES, ...CHROMATIC_DEGREES];
 
       return s;
     } catch {
@@ -160,6 +170,7 @@
   function saveSettings() {
     // Cannot allow zero keys (fallback to all)
     if (!settings.keysEnabled.length) settings.keysEnabled = [...ALL_KEYS];
+    if (!settings.degreesEnabled.length) settings.degreesEnabled = [...DIATONIC_DEGREES, ...CHROMATIC_DEGREES];
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
   }
 
@@ -171,11 +182,15 @@
   
   function getStats() {
     const stored = localStorage.getItem("keydrillStats");
-    if (!stored) return { questions: [] };
+    if (!stored) return { questions: [], highScore: 0 };
     try {
-      return JSON.parse(stored);
+      const parsed = JSON.parse(stored);
+      return {
+        questions: parsed.questions || [],
+        highScore: parsed.highScore || 0
+      };
     } catch {
-      return { questions: [] };
+      return { questions: [], highScore: 0 };
     }
   }
   
@@ -374,9 +389,7 @@
   }
   function renderLives() {
     if (!elLives) return;
-    const full = "♥".repeat(state.lives);
-    const empty = "♡".repeat(Math.max(0, state.maxLives - state.lives));
-    elLives.textContent = full + empty;
+    elLives.textContent = `${state.lives} ♥`;
   }
 
   function renderScore() {
@@ -522,6 +535,10 @@
         return false;
       }
     }
+    
+    // Update level info display
+    renderLevelInfo();
+    
     return true;
   }
 
@@ -542,7 +559,11 @@
     }
 
     degreePool = degreeMode === "diatonic" ? DIATONIC_DEGREES : CHROMATIC_DEGREES;
-    const degreeLabel = pickRandom(degreePool);
+    
+    // Filter by enabled degrees
+    const enabledDegrees = settings.degreesEnabled.length ? settings.degreesEnabled : degreePool;
+    const availableDegrees = degreePool.filter(d => enabledDegrees.includes(d));
+    const degreeLabel = pickRandom(availableDegrees.length ? availableDegrees : degreePool);
     const correctNote = degreeToNote(keyRoot, degreeLabel, degreeMode);
     const options = buildOptionsForMode(correctNote, degreeMode, keyRoot);
 
@@ -598,6 +619,13 @@
     lockAnswers(true);
     if (elTimerBackground) elTimerBackground.textContent = "--";
     updateRiskVisual();
+    
+    // Update high score if needed
+    const stats = getStats();
+    if (state.score > stats.highScore) {
+      stats.highScore = state.score;
+      saveStats(stats);
+    }
     
     // Restore header visibility
     if (elHeader) {
@@ -804,9 +832,35 @@
     }
   }
 
+  // Render degree toggles
+  if (degreeToggles) {
+    const allDegrees = [...new Set([...DIATONIC_DEGREES, ...CHROMATIC_DEGREES])];
+    const enabled = new Set(settings.degreesEnabled);
+    
+    for (const degree of allDegrees) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "toggleBtn";
+      b.textContent = degree;
+      b.setAttribute("aria-pressed", enabled.has(degree) ? "true" : "false");
+
+      b.addEventListener("click", () => {
+        const isOn = b.getAttribute("aria-pressed") === "true";
+        b.setAttribute("aria-pressed", isOn ? "false" : "true");
+        if (isOn) enabled.delete(degree);
+        else enabled.add(degree);
+        settings.degreesEnabled = Array.from(enabled);
+      });
+
+      degreeToggles.appendChild(b);
+    }
+  }
+
   function openSettings() {
+    // Close stats modal if open
+    statsOverlay.hidden = true;
+    
     overlay.hidden = false;
-    modal.hidden = false;
 
     // Pause the game if it's active
     if (state.active && !state.locked) {
@@ -855,7 +909,6 @@
 
   function closeSettings() {
     overlay.hidden = true;
-    modal.hidden = true;
     btnSettings.focus();
 
     // Resume the game if it was paused
@@ -880,13 +933,11 @@
     }
     
     confirmOverlay.hidden = false;
-    confirmModal.hidden = false;
     btnCancelRestart.focus();
   }
 
   function hideConfirmRestart() {
     confirmOverlay.hidden = true;
-    confirmModal.hidden = true;
     
     // Resume the game if user cancels and game is still active
     if (state.active) {
@@ -908,11 +959,16 @@
     
     // Show/hide sections based on game mode
     const isPractice = mode === "practice";
+    const degreesToPracticeSection = document.getElementById("degreesToPracticeSection");
+    
     if (progressionDifficultySection) {
       progressionDifficultySection.style.display = isPractice ? "none" : "block";
     }
     if (keysToMasterSection) {
       keysToMasterSection.style.display = isPractice ? "block" : "none";
+    }
+    if (degreesToPracticeSection) {
+      degreesToPracticeSection.style.display = isPractice ? "block" : "none";
     }
     if (degreeModeSection) {
       degreeModeSection.style.display = isPractice ? "block" : "none";
@@ -943,7 +999,21 @@
     });
   }
 
-  btnSettings.addEventListener("click", () => openSettings());
+  btnSettings.addEventListener("click", () => {
+    menuDropdown.hidden = true;
+    menuToggle.setAttribute("aria-expanded", "false");
+    openSettings();
+  });
+
+  btnStats.addEventListener("click", () => {
+    menuDropdown.hidden = true;
+    menuToggle.setAttribute("aria-expanded", "false");
+    // Close settings modal if open
+    overlay.hidden = true;
+    renderStats();
+    statsOverlay.hidden = false;
+  });
+
   overlay.addEventListener("click", () => closeSettings());
   btnCloseSettings.addEventListener("click", () => closeSettings());
 
@@ -959,6 +1029,22 @@
   
   confirmOverlay.addEventListener("click", () => {
     hideConfirmRestart();
+  });
+
+  // Menu toggle
+  menuToggle.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const isHidden = menuDropdown.hidden;
+    menuDropdown.hidden = !isHidden;
+    menuToggle.setAttribute("aria-expanded", isHidden ? "true" : "false");
+  });
+
+  // Close menu when clicking outside
+  document.addEventListener("click", (e) => {
+    if (!menuToggle.contains(e.target) && !menuDropdown.contains(e.target)) {
+      menuDropdown.hidden = true;
+      menuToggle.setAttribute("aria-expanded", "false");
+    }
   });
 
   // Allow clicking status overlay to dismiss it
@@ -1032,6 +1118,29 @@
     setStatusNeutral("Settings saved.");
   });
 
+  // Practice settings confirmation modal handlers
+  const practiceSettingsOverlay = document.getElementById("practiceSettingsOverlay");
+  const practiceSettingsModal = document.getElementById("practiceSettingsModal");
+  const btnClosePracticeSettings = document.getElementById("btnClosePracticeSettings");
+  const btnStartPractice = document.getElementById("btnStartPractice");
+  
+  if (practiceSettingsOverlay && practiceSettingsModal) {
+    const closePracticeSettings = () => {
+      practiceSettingsOverlay.hidden = true;
+      practiceSettingsModal.hidden = true;
+    };
+    
+    if (btnClosePracticeSettings) {
+      btnClosePracticeSettings.addEventListener("click", closePracticeSettings);
+    }
+    
+    if (btnStartPractice) {
+      btnStartPractice.addEventListener("click", closePracticeSettings);
+    }
+    
+    practiceSettingsOverlay.addEventListener("click", closePracticeSettings);
+  }
+
   // Stats modal handlers
   if (btnStats && statsOverlay && statsModal) {
     btnStats.addEventListener("click", () => {
@@ -1065,6 +1174,7 @@
       document.getElementById("statTotalQuestions").textContent = "0";
       document.getElementById("statAccuracy").textContent = "0%";
       document.getElementById("statAvgTime").textContent = "0s";
+      document.getElementById("statHighScore").textContent = stats.highScore.toLocaleString();
       document.getElementById("statsByKey").innerHTML = "<p>No data yet. Start practicing!</p>";
       document.getElementById("statsByDegree").innerHTML = "";
       document.getElementById("statsNeedsPractice").innerHTML = "";
@@ -1080,6 +1190,7 @@
     document.getElementById("statTotalQuestions").textContent = totalQuestions;
     document.getElementById("statAccuracy").textContent = `${accuracy}%`;
     document.getElementById("statAvgTime").textContent = `${avgTime}s`;
+    document.getElementById("statHighScore").textContent = stats.highScore.toLocaleString();
     
     // Stats by key
     const byKey = {};
@@ -1189,7 +1300,131 @@
       helpHtml += "</ul>";
       document.getElementById("statsNeedsPractice").innerHTML = helpHtml;
     }
+    
+    // Generate practice plan
+    generatePracticePlan(byKey, byDegree, byKeyDegree, needsPractice);
   }
+  
+  function generatePracticePlan(byKey, byDegree, byKeyDegree, needsPractice) {
+    const planContainer = document.getElementById("statsPracticePlan");
+    
+    if (needsPractice.length === 0) {
+      planContainer.innerHTML = "<p>You're doing great! Continue practicing all areas to maintain your skills.</p>";
+      return;
+    }
+    
+    // Analyze weak areas
+    const weakKeys = [];
+    const weakDegrees = [];
+    const weakCombos = [];
+    
+    needsPractice.forEach(item => {
+      if (item.type === "Key") weakKeys.push(item.name);
+      if (item.type === "Degree") weakDegrees.push(item.name);
+      if (item.type === "Specific") {
+        // Extract key and degree from combo like "6th of C"
+        const match = item.name.match(/(.+) of (.+)/);
+        if (match) {
+          weakCombos.push({ degree: match[1], key: match[2] });
+        }
+      }
+    });
+    
+    let planHtml = "<div class='practiceSteps'>";
+    
+    // Step 1: Focus on specific combinations first (most targeted)
+    if (weakCombos.length > 0) {
+      const topCombos = weakCombos.slice(0, 5); // Top 5 worst combinations
+      planHtml += "<div class='practiceStep'>";
+      planHtml += "<div class='stepNumber'>1</div>";
+      planHtml += "<div class='stepContent'>";
+      planHtml += "<h4>Master Specific Combinations</h4>";
+      planHtml += "<p>Focus on these specific degree-key combinations:</p>";
+      planHtml += "<ul>";
+      topCombos.forEach(combo => {
+        planHtml += `<li><strong>${combo.degree} of ${combo.key}</strong></li>`;
+      });
+      planHtml += "</ul>";
+      
+      // Create suggested settings
+      const suggestedKeys = [...new Set(topCombos.map(c => c.key))];
+      const suggestedDegrees = [...new Set(topCombos.map(c => c.degree))];
+      
+      planHtml += `<button class='btn btnApply' onclick='applyPracticeSettings(${JSON.stringify(suggestedKeys)}, ${JSON.stringify(suggestedDegrees)})'>Apply These Settings</button>`;
+      planHtml += "</div></div>";
+    }
+    
+    // Step 2: Practice weak keys
+    if (weakKeys.length > 0) {
+      planHtml += "<div class='practiceStep'>";
+      planHtml += "<div class='stepNumber'>2</div>";
+      planHtml += "<div class='stepContent'>";
+      planHtml += "<h4>Strengthen Weak Keys</h4>";
+      planHtml += `<p>Practice all degrees in these keys: <strong>${weakKeys.join(", ")}</strong></p>`;
+      planHtml += `<button class='btn btnApply' onclick='applyPracticeSettings(${JSON.stringify(weakKeys)}, null)'>Practice These Keys</button>`;
+      planHtml += "</div></div>";
+    }
+    
+    // Step 3: Practice weak degrees
+    if (weakDegrees.length > 0) {
+      planHtml += "<div class='practiceStep'>";
+      planHtml += "<div class='stepNumber'>3</div>";
+      planHtml += "<div class='stepContent'>";
+      planHtml += "<h4>Master Difficult Degrees</h4>";
+      planHtml += `<p>Practice these degrees across all keys: <strong>${weakDegrees.join(", ")}</strong></p>`;
+      planHtml += `<button class='btn btnApply' onclick='applyPracticeSettings(null, ${JSON.stringify(weakDegrees)})'>Practice These Degrees</button>`;
+      planHtml += "</div></div>";
+    }
+    
+    // General advice
+    planHtml += "<div class='practiceStep'>";
+    planHtml += "<div class='stepNumber'>💡</div>";
+    planHtml += "<div class='stepContent'>";
+    planHtml += "<h4>Practice Tips</h4>";
+    planHtml += "<ul>";
+    planHtml += "<li>Focus on accuracy first, speed will come naturally</li>";
+    planHtml += "<li>Practice weak areas in short, focused sessions</li>";
+    planHtml += "<li>Take breaks to avoid mental fatigue</li>";
+    planHtml += "<li>Return to full practice once accuracy improves</li>";
+    planHtml += "</ul>";
+    planHtml += "</div></div>";
+    
+    planHtml += "</div>";
+    planContainer.innerHTML = planHtml;
+  }
+  
+  // Global function to apply practice settings (called from onclick)
+  window.applyPracticeSettings = function(keys, degrees) {
+    if (keys) {
+      settings.keysEnabled = keys;
+    }
+    if (degrees) {
+      settings.degreesEnabled = degrees;
+    }
+    
+    // Switch to practice mode
+    settings.gameMode = "practice";
+    
+    // Save and close stats modal
+    saveSettings();
+    
+    // Close stats modal
+    document.getElementById("statsOverlay").hidden = true;
+    document.getElementById("statsModal").hidden = true;
+    
+    // Show confirmation modal
+    const practiceOverlay = document.getElementById("practiceSettingsOverlay");
+    const practiceModal = document.getElementById("practiceSettingsModal");
+    const appliedKeys = document.getElementById("appliedKeys");
+    const appliedDegrees = document.getElementById("appliedDegrees");
+    
+    if (practiceOverlay && practiceModal && appliedKeys && appliedDegrees) {
+      appliedKeys.textContent = keys ? keys.join(", ") : "All";
+      appliedDegrees.textContent = degrees ? degrees.join(", ") : "All";
+      
+      practiceOverlay.hidden = false;
+    }
+  };
 
   // Initial render
   const lastUpdatedDate = new Date(LAST_UPDATED);

@@ -8,15 +8,26 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+  <div class="triangleMenu">
+    <button class="triangleToggle" id="menuToggle" type="button" aria-haspopup="true" aria-expanded="false">
+      <span class="plusIcon">+</span>
+    </button>
+    <div class="menuDropdown" id="menuDropdown" hidden>
+      <button class="menuItem" id="btnStats" type="button" aria-label="Statistics">
+        <span class="menuItemIcon">�</span>
+      </button>
+      <button class="menuItem" id="btnSettings" type="button" aria-label="Settings">
+        <span class="menuItemIcon">⚙️</span>
+      </button>
+    </div>
+  </div>
+
   <div class="app" id="app">
     <header class="header" role="banner">
       <div class="headerRow headerTop">
         <div class="headerSpacer"></div>
         <h1 class="title">KeyDrill</h1>
-        <div class="headerButtons">
-          <button class="iconBtn" id="btnStats" type="button" aria-haspopup="dialog" aria-controls="statsModal">📊</button>
-          <button class="iconBtn" id="btnSettings" type="button" aria-haspopup="dialog" aria-controls="settingsModal">⚙️</button>
-        </div>
+        <div class="headerSpacer"></div>
       </div>
       
       <div class="headerBottom">
@@ -28,7 +39,7 @@
     <main class="main" role="main">
       <button class="questionBox" id="questionBox" type="button" aria-live="polite" aria-atomic="true">
         <div class="questionStats">
-          <span class="questionStat" id="lives">♥♥♥</span>
+          <span class="questionStat" id="lives">3 ♥</span>
           <span class="questionStat score" id="score">0</span>
         </div>
         <div class="timerBackground" id="timerBackground">--</div>
@@ -58,23 +69,24 @@
   </div>
 
   <!-- Restart Confirmation Modal -->
-  <div class="modalOverlay" id="confirmOverlay" hidden></div>
-  <div class="modal confirmModal" id="confirmModal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle" hidden>
-    <div class="modalHeader">
-      <h2 id="confirmTitle">Restart Game?</h2>
-    </div>
-    <div class="modalBody">
-      <p id="confirmMessage" class="confirmMessage">Are you sure you want to restart?</p>
-    </div>
-    <div class="modalFooter">
-      <button class="btn" id="btnCancelRestart" type="button">Cancel</button>
-      <button class="btn primary" id="btnConfirmRestart" type="button">Yes, Restart</button>
+  <div class="modalOverlay" id="confirmOverlay" hidden>
+    <div class="modal confirmModal" id="confirmModal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+      <div class="modalHeader">
+        <h2 id="confirmTitle">Restart Game?</h2>
+      </div>
+      <div class="modalBody">
+        <p id="confirmMessage" class="confirmMessage">Are you sure you want to restart?</p>
+      </div>
+      <div class="modalFooter">
+        <button class="btn" id="btnCancelRestart" type="button">Cancel</button>
+        <button class="btn primary" id="btnConfirmRestart" type="button">Yes, Restart</button>
+      </div>
     </div>
   </div>
 
   <!-- Settings Modal -->
-  <div class="modalOverlay" id="settingsOverlay" hidden></div>
-  <div class="modal" id="settingsModal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle" hidden>
+  <div class="modalOverlay" id="settingsOverlay" hidden>
+    <div class="modal" id="settingsModal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
     <div class="modalHeader">
       <h2 id="settingsTitle">Settings</h2>
       <button class="iconBtn" id="btnCloseSettings" type="button" aria-label="Close settings">×</button>
@@ -86,7 +98,11 @@
         <p class="settingHint">Toggle one or more keys. (Can’t be zero — will fall back to all.)</p>
         <div class="keyToggles" id="keyToggles" aria-label="Keys to master"></div>
       </section>
-
+      <section class="settingGroup" id="degreesToPracticeSection">
+        <h3 class="settingLabel">Degrees to Practice</h3>
+        <p class="settingHint">Select which degrees to practice. (Can't be zero — will fall back to all.)</p>
+        <div class="degreeToggles" id="degreeToggles" aria-label="Degrees to practice"></div>
+      </section>
       <section class="settingGroup">
         <h3 class="settingLabel">Seconds per Question</h3>
         <div class="sliderRow">
@@ -142,11 +158,12 @@
       <p class="version" id="version">v1.1.0 • Updated 01/14/25</p>
       <button class="btn primary" id="btnSaveSettings" type="button">Save</button>
     </div>
+    </div>
   </div>
 
   <!-- Stats Modal -->
-  <div class="modalOverlay" id="statsOverlay" hidden></div>
-  <div class="modal statsModal" id="statsModal" role="dialog" aria-labelledby="statsTitle" hidden>
+  <div class="modalOverlay" id="statsOverlay" hidden>
+    <div class="modal statsModal" id="statsModal" role="dialog" aria-labelledby="statsTitle">
     <div class="modalHeader">
       <h2 class="modalTitle" id="statsTitle">Statistics</h2>
       <button class="iconBtn" id="btnCloseStats" type="button" aria-label="Close Statistics">✕</button>
@@ -164,6 +181,10 @@
         <div class="statCard">
           <div class="statValue" id="statAvgTime">0s</div>
           <div class="statLabel">Avg Response Time</div>
+        </div>
+        <div class="statCard">
+          <div class="statValue" id="statHighScore">0</div>
+          <div class="statLabel">High Score</div>
         </div>
       </div>
       
@@ -187,10 +208,44 @@
         <div id="statsNeedsPractice" class="statsHelp"></div>
       </div>
       
+      <div class="statsSection">
+        <h3 class="statsSubtitle">Suggested Practice Plan</h3>
+        <div id="statsPracticePlan" class="statsPlan"></div>
+      </div>
+      
       <button class="btn btnDanger" id="btnClearStats" type="button">Clear All Statistics</button>
+    </div>
+    </div>
+  </div>
+
+  <!-- Practice Settings Confirmation Modal -->
+  <div class="modalOverlay" id="practiceSettingsOverlay" hidden>
+    <div class="modal practiceSettingsModal" id="practiceSettingsModal" role="dialog" aria-labelledby="practiceSettingsTitle">
+    <div class="modalHeader">
+      <h2 class="modalTitle" id="practiceSettingsTitle">✅ Practice Settings Applied</h2>
+      <button class="iconBtn" id="btnClosePracticeSettings" type="button" aria-label="Close">✕</button>
+    </div>
+    <div class="modalBody">
+      <div class="practiceSettingsContent">
+        <p id="practiceSettingsMessage">Your focused practice settings have been configured.</p>
+        <div class="settingsApplied">
+          <div class="settingAppliedItem">
+            <strong>Keys:</strong> <span id="appliedKeys">All</span>
+          </div>
+          <div class="settingAppliedItem">
+            <strong>Degrees:</strong> <span id="appliedDegrees">All</span>
+          </div>
+        </div>
+        <p class="practiceHint">Click "New" to start practicing with these settings!</p>
+      </div>
+    </div>
+    <div class="modalFooter">
+      <button class="btn primary" id="btnStartPractice" type="button">Got It!</button>
+    </div>
     </div>
   </div>
 
   <script src="keydrill.js" defer></script>
+
 </body>
 </html>
