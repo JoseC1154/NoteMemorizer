@@ -8,8 +8,7 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <div class="triangleMenu">
-    <button class="triangleToggle" id="menuToggle" type="button" aria-haspopup="true" aria-expanded="false">
+  <div class="triangleMenu">    <div class="menuBackdrop"></div>    <button class="triangleToggle" id="menuToggle" type="button" aria-haspopup="true" aria-expanded="false">
       <span class="plusIcon">+</span>
     </button>
     <div class="menuDropdown" id="menuDropdown" hidden>
@@ -150,6 +149,7 @@
         <div class="toggleRow">
           <button class="toggleBtn" id="toggleSound" type="button" aria-pressed="true">Sounds: On</button>
           <button class="toggleBtn" id="toggleTick" type="button" aria-pressed="false">Tick: Off</button>
+          <button class="toggleBtn" id="toggleAmbient" type="button" aria-pressed="false">Music: Off</button>
         </div>
       </section>
     </div>
