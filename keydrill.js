@@ -830,11 +830,18 @@
   }
   function flashStatus(isGood, text) {
     const elStatusOverlay = document.getElementById("statusOverlay");
+    const elStatusSuggestions = document.getElementById("statusSuggestions");
     
     elStatusPanel.classList.remove("good", "bad");
     void elStatusPanel.offsetWidth;
     elStatusPanel.classList.add(isGood ? "good" : "bad");
     elStatusText.textContent = text;
+    
+    // Hide suggestions by default
+    if (elStatusSuggestions) {
+      elStatusSuggestions.hidden = true;
+      elStatusSuggestions.innerHTML = "";
+    }
     
     // Show modal
     elStatusPanel.hidden = false;
@@ -846,6 +853,26 @@
       elStatusPanel.hidden = true;
       elStatusOverlay.hidden = true;
     }, settings.modalDuration);
+  }
+
+  function flashStatusWithSuggestions(text, suggestionsHtml) {
+    const elStatusOverlay = document.getElementById("statusOverlay");
+    const elStatusSuggestions = document.getElementById("statusSuggestions");
+    
+    elStatusPanel.classList.remove("good", "bad");
+    void elStatusPanel.offsetWidth;
+    elStatusPanel.classList.add("bad");
+    elStatusText.textContent = text;
+    
+    // Show suggestions
+    if (elStatusSuggestions && suggestionsHtml) {
+      elStatusSuggestions.innerHTML = suggestionsHtml;
+      elStatusSuggestions.hidden = false;
+    }
+    
+    // Show modal - don't auto-hide for game over
+    elStatusPanel.hidden = false;
+    elStatusOverlay.hidden = false;
   }
 
   // =========================
@@ -999,6 +1026,21 @@
     ensureAudio();
     startAmbientMusic();
 
+    // Close game over modal if it's showing
+    const elStatusOverlay = document.getElementById("statusOverlay");
+    if (elStatusPanel && elStatusOverlay) {
+      elStatusPanel.hidden = true;
+      elStatusOverlay.hidden = true;
+      elStatusPanel.classList.remove("good", "bad");
+    }
+    
+    // Hide suggestions in question box
+    const questionSuggestions = document.getElementById("questionSuggestions");
+    if (questionSuggestions) {
+      questionSuggestions.hidden = true;
+      questionSuggestions.innerHTML = "";
+    }
+
     state.active = true;
     state.locked = false;
 
@@ -1034,6 +1076,145 @@
     nextQuestion();
   }
 
+  function generateCompactSuggestions() {
+    const stats = getStats();
+    const questions = stats.questions || [];
+    
+    if (questions.length === 0) {
+      return "<p style='margin-top: 1em; opacity: 0.8;'>Play more to get personalized suggestions!</p>";
+    }
+    
+    // Calculate stats by key, degree, and combination
+    const byKey = {};
+    const byDegree = {};
+    const byKeyDegree = {};
+    
+    questions.forEach(q => {
+      // By key
+      if (!byKey[q.keyRoot]) byKey[q.keyRoot] = { correct: 0, total: 0, totalTime: 0 };
+      byKey[q.keyRoot].total++;
+      if (q.correct) byKey[q.keyRoot].correct++;
+      byKey[q.keyRoot].totalTime += q.responseTime;
+      
+      // By degree
+      if (!byDegree[q.degreeLabel]) byDegree[q.degreeLabel] = { correct: 0, total: 0, totalTime: 0 };
+      byDegree[q.degreeLabel].total++;
+      if (q.correct) byDegree[q.degreeLabel].correct++;
+      byDegree[q.degreeLabel].totalTime += q.responseTime;
+      
+      // By key-degree combo
+      const combo = `${q.degreeLabel} of ${q.keyRoot}`;
+      if (!byKeyDegree[combo]) byKeyDegree[combo] = { correct: 0, total: 0, totalTime: 0 };
+      byKeyDegree[combo].total++;
+      if (q.correct) byKeyDegree[combo].correct++;
+      byKeyDegree[combo].totalTime += q.responseTime;
+    });
+    
+    // Find weak areas (less than 70% accuracy, at least 3 attempts)
+    const needsPractice = [];
+    
+    // Check specific key+degree combinations first (most specific)
+    Object.entries(byKeyDegree).forEach(([combo, data]) => {
+      const acc = (data.correct / data.total) * 100;
+      const avg = data.totalTime / data.total;
+      if (acc < 70 && data.total >= 3) {
+        needsPractice.push({ type: "Specific", name: combo, reason: `Low accuracy (${acc.toFixed(1)}%)` });
+      } else if (avg > 4 && data.total >= 3) {
+        needsPractice.push({ type: "Specific", name: combo, reason: `Slow response (${avg.toFixed(2)}s avg)` });
+      }
+    });
+    
+    Object.keys(byKey).forEach(key => {
+      const data = byKey[key];
+      const acc = (data.correct / data.total) * 100;
+      if (acc < 70 && data.total >= 5) {
+        needsPractice.push({ type: "Key", name: key, reason: `Low accuracy (${acc.toFixed(1)}%)` });
+      }
+    });
+    
+    Object.keys(byDegree).forEach(degree => {
+      const data = byDegree[degree];
+      const acc = (data.correct / data.total) * 100;
+      const avg = data.totalTime / data.total;
+      if (acc < 70 && data.total >= 5) {
+        needsPractice.push({ type: "Degree", name: degree, reason: `Low accuracy (${acc.toFixed(1)}%)` });
+      } else if (avg > 4 && data.total >= 5) {
+        needsPractice.push({ type: "Degree", name: degree, reason: `Slow response (${avg.toFixed(2)}s avg)` });
+      }
+    });
+    
+    if (needsPractice.length === 0) {
+      return "<p style='margin-top: 1em; opacity: 0.8;'>Great job! Keep practicing to maintain your skills.</p>";
+    }
+    
+    // Analyze weak areas
+    const weakKeys = [];
+    const weakDegrees = [];
+    const weakCombos = [];
+    
+    needsPractice.forEach(item => {
+      if (item.type === "Key") weakKeys.push(item.name);
+      if (item.type === "Degree") weakDegrees.push(item.name);
+      if (item.type === "Specific") {
+        // Extract key and degree from combo like "6th of C"
+        const match = item.name.match(/(.+) of (.+)/);
+        if (match) {
+          weakCombos.push({ degree: match[1], key: match[2] });
+        }
+      }
+    });
+    
+    // Generate compact practice plan with buttons using stats modal styling
+    let planHtml = "<div class='practiceSteps' style='margin-top: 1em; font-size: 0.9em;'>";
+    
+    // Step 1: Focus on specific combinations first (most targeted)
+    if (weakCombos.length > 0) {
+      const topCombos = weakCombos.slice(0, 3); // Top 3 worst combinations
+      planHtml += "<div class='practiceStep'>";
+      planHtml += "<div class='stepNumber'>1</div>";
+      planHtml += "<div class='stepContent'>";
+      planHtml += "<h4>Master Specific Combinations</h4>";
+      planHtml += "<p>Focus on: ";
+      topCombos.forEach((combo, i) => {
+        planHtml += `<strong>${combo.degree} of ${combo.key}</strong>${i < topCombos.length - 1 ? ', ' : ''}`;
+      });
+      planHtml += "</p>";
+      
+      // Create suggested settings
+      const suggestedKeys = [...new Set(topCombos.map(c => c.key))];
+      const suggestedDegrees = [...new Set(topCombos.map(c => c.degree))];
+      
+      planHtml += `<button class='btn btnApply' onclick='applyPracticeSettingsAndStart(${JSON.stringify(suggestedKeys)}, ${JSON.stringify(suggestedDegrees)})'>Practice These</button>`;
+      planHtml += "</div></div>";
+    }
+    
+    // Step 2: Practice weak keys
+    if (weakKeys.length > 0) {
+      planHtml += "<div class='practiceStep'>";
+      planHtml += "<div class='stepNumber'>2</div>";
+      planHtml += "<div class='stepContent'>";
+      planHtml += "<h4>Strengthen Weak Keys</h4>";
+      planHtml += `<p>Practice all degrees in these keys: <strong>${weakKeys.join(", ")}</strong></p>`;
+      planHtml += `<button class='btn btnApply' onclick='applyPracticeSettingsAndStart(${JSON.stringify(weakKeys)}, null)'>Practice These Keys</button>`;
+      planHtml += "</div></div>";
+    }
+    
+    // Step 3: Practice weak degrees
+    if (weakDegrees.length > 0) {
+      planHtml += "<div class='practiceStep'>";
+      planHtml += "<div class='stepNumber'>3</div>";
+      planHtml += "<div class='stepContent'>";
+      planHtml += "<h4>Master Difficult Degrees</h4>";
+      planHtml += `<p>Practice these degrees across all keys: <strong>${weakDegrees.join(", ")}</strong></p>`;
+      planHtml += `<button class='btn btnApply' onclick='applyPracticeSettingsAndStart(null, ${JSON.stringify(weakDegrees)})'>Practice These Degrees</button>`;
+      planHtml += "</div></div>";
+    }
+    
+    planHtml += "</div>";
+    
+    return planHtml;
+  }
+
   function endGame(message) {
     state.active = false;
     state.current = null;
@@ -1056,8 +1237,17 @@
       elHeader.classList.remove("faded");
     }
     
+    // Show game over in status panel
     flashStatus(false, `${message} — Final Score: ${state.score}`);
+    
+    // Show suggestions in question box
     elQuestionText.textContent = "Game Over. Press New to try again.";
+    const questionSuggestions = document.getElementById("questionSuggestions");
+    if (questionSuggestions) {
+      const suggestions = generateCompactSuggestions();
+      questionSuggestions.innerHTML = suggestions;
+      questionSuggestions.hidden = false;
+    }
   }
 
   function nextAfterFeedback() {
@@ -1245,7 +1435,7 @@
       b.setAttribute("aria-pressed", enabled.has(k) ? "true" : "false");
 
       b.addEventListener("click", () => {
-        soundKeyToggle();
+        soundDegreeToggle();
         const isOn = b.getAttribute("aria-pressed") === "true";
         b.setAttribute("aria-pressed", isOn ? "false" : "true");
         if (isOn) enabled.delete(k);
@@ -1420,7 +1610,7 @@
     elQuestionBox.addEventListener("click", () => {
       // If game is active, show confirmation modal
       if (state.active) {
-        soundButtonClick();
+        soundDegreeToggle();
         showConfirmRestart();
       } else {
         // Game not active, just start
@@ -1431,7 +1621,7 @@
   }
 
   btnSettings.addEventListener("click", () => {
-    soundButtonClick();
+    soundDegreeToggle();
     const triangleMenu = document.querySelector('.triangleMenu');
     menuDropdown.hidden = true;
     menuToggle.setAttribute("aria-expanded", "false");
@@ -1440,7 +1630,7 @@
   });
 
   btnStats.addEventListener("click", () => {
-    soundButtonClick();
+    soundDegreeToggle();
     const triangleMenu = document.querySelector('.triangleMenu');
     menuDropdown.hidden = true;
     menuToggle.setAttribute("aria-expanded", "false");
@@ -1455,19 +1645,19 @@
     if (e.target === overlay) closeSettings();
   });
   btnCloseSettings.addEventListener("click", () => {
-    soundButtonClick();
+    soundDegreeToggle();
     closeSettings();
   });
 
   // Confirmation modal handlers
   btnConfirmRestart.addEventListener("click", () => {
-    soundButtonClick();
+    soundDegreeToggle();
     hideConfirmRestart();
     startGame();
   });
   
   btnCancelRestart.addEventListener("click", () => {
-    soundButtonClick();
+    soundDegreeToggle();
     hideConfirmRestart();
   });
   
@@ -1477,7 +1667,7 @@
 
   // Menu toggle
   menuToggle.addEventListener("click", (e) => {
-    soundButtonClick();
+    soundDegreeToggle();
     e.stopPropagation();
     const isHidden = menuDropdown.hidden;
     const triangleMenu = document.querySelector('.triangleMenu');
@@ -1561,38 +1751,38 @@
   });
 
   modePractice.addEventListener("click", () => {
-    soundButtonClick();
+    soundDegreeToggle();
     setGameMode("practice");
   });
   modeProgression.addEventListener("click", () => {
-    soundButtonClick();
+    soundDegreeToggle();
     setGameMode("progression");
   });
 
   difficultyEasy.addEventListener("click", () => {
-    soundButtonClick();
+    soundDegreeToggle();
     setProgressionDifficulty("easy");
   });
   difficultyModerate.addEventListener("click", () => {
-    soundButtonClick();
+    soundDegreeToggle();
     setProgressionDifficulty("moderate");
   });
   difficultyHard.addEventListener("click", () => {
-    soundButtonClick();
+    soundDegreeToggle();
     setProgressionDifficulty("hard");
   });
 
   modeDiatonic.addEventListener("click", () => {
-    soundButtonClick();
+    soundDegreeToggle();
     setMode("diatonic");
   });
   modeChromatic.addEventListener("click", () => {
-    soundButtonClick();
+    soundDegreeToggle();
     setMode("chromatic");
   });
 
   toggleSound.addEventListener("click", () => {
-    soundButtonClick();
+    soundDegreeToggle();
     settings.audioOn = !settings.audioOn;
     toggleSound.setAttribute("aria-pressed", settings.audioOn ? "true" : "false");
     toggleSound.textContent = `Sounds: ${settings.audioOn ? "On" : "Off"}`;
@@ -1600,7 +1790,7 @@
   });
 
   toggleTick.addEventListener("click", () => {
-    soundButtonClick();
+    soundDegreeToggle();
     settings.tickOn = !settings.tickOn;
     toggleTick.setAttribute("aria-pressed", settings.tickOn ? "true" : "false");
     toggleTick.textContent = `Tick: ${settings.tickOn ? "On" : "Off"}`;
@@ -1608,7 +1798,7 @@
   });
 
   toggleAmbient.addEventListener("click", () => {
-    soundButtonClick();
+    soundDegreeToggle();
     settings.ambientOn = !settings.ambientOn;
     toggleAmbient.setAttribute("aria-pressed", settings.ambientOn ? "true" : "false");
     toggleAmbient.textContent = `Music: ${settings.ambientOn ? "On" : "Off"}`;
@@ -1620,7 +1810,7 @@
   });
 
   btnSaveSettings.addEventListener("click", () => {
-    soundButtonClick();
+    soundDegreeToggle();
     // Cannot allow zero keys (fallback to all)
     if (!settings.keysEnabled.length) settings.keysEnabled = [...ALL_KEYS];
 
@@ -1949,6 +2139,55 @@
       appliedDegrees.textContent = degrees ? degrees.join(", ") : "All";
       
       practiceOverlay.hidden = false;
+      practiceModal.hidden = false;
+    }
+  };
+
+  // Function to apply settings and show confirmation modal (from game over suggestions)
+  window.applyPracticeSettingsAndStart = function(keys, degrees) {
+    soundDegreeToggle();
+    
+    if (keys) {
+      settings.keysEnabled = keys;
+    }
+    if (degrees) {
+      settings.degreesEnabled = degrees;
+    }
+    
+    // Switch to practice mode
+    settings.gameMode = "practice";
+    
+    // Save settings
+    saveSettings();
+    
+    // Hide suggestions in question box
+    const questionSuggestions = document.getElementById("questionSuggestions");
+    if (questionSuggestions) {
+      questionSuggestions.hidden = true;
+      questionSuggestions.innerHTML = "";
+    }
+    
+    // Close game over status modal if showing
+    const elStatusOverlay = document.getElementById("statusOverlay");
+    const elStatusPanel = document.getElementById("statusPanel");
+    if (elStatusPanel && elStatusOverlay) {
+      elStatusPanel.hidden = true;
+      elStatusOverlay.hidden = true;
+      elStatusPanel.classList.remove("good", "bad");
+    }
+    
+    // Show confirmation modal
+    const practiceOverlay = document.getElementById("practiceSettingsOverlay");
+    const practiceModal = document.getElementById("practiceSettingsModal");
+    const appliedKeys = document.getElementById("appliedKeys");
+    const appliedDegrees = document.getElementById("appliedDegrees");
+    
+    if (practiceOverlay && practiceModal && appliedKeys && appliedDegrees) {
+      appliedKeys.textContent = keys ? keys.join(", ") : "All";
+      appliedDegrees.textContent = degrees ? degrees.join(", ") : "All";
+      
+      practiceOverlay.hidden = false;
+      practiceModal.hidden = false;
     }
   };
 
