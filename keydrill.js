@@ -91,6 +91,24 @@
   const modalDurationSlider = document.getElementById("modalDurationSlider");
   const modalDurationValue = document.getElementById("modalDurationValue");
 
+  // Audio mixer elements
+  const volPadSlider = document.getElementById("volPad");
+  const volPadValue = document.getElementById("volPadValue");
+  const volArpeggioSlider = document.getElementById("volArpeggio");
+  const volArpeggioValue = document.getElementById("volArpeggioValue");
+  const volTickSlider = document.getElementById("volTick");
+  const volTickValue = document.getElementById("volTickValue");
+  const volCorrectSlider = document.getElementById("volCorrect");
+  const volCorrectValue = document.getElementById("volCorrectValue");
+  const volWrongSlider = document.getElementById("volWrong");
+  const volWrongValue = document.getElementById("volWrongValue");
+  const volButtonSlider = document.getElementById("volButton");
+  const volButtonValue = document.getElementById("volButtonValue");
+  const volBonusSlider = document.getElementById("volBonus");
+  const volBonusValue = document.getElementById("volBonusValue");
+  const volGameOverSlider = document.getElementById("volGameOver");
+  const volGameOverValue = document.getElementById("volGameOverValue");
+
   const modePractice = document.getElementById("modePractice");
   const modeProgression = document.getElementById("modeProgression");
   const difficultyEasy = document.getElementById("difficultyEasy");
@@ -119,9 +137,20 @@
     gameMode: "practice", // "practice" | "progression"
     progressionDifficulty: "moderate", // "easy" | "moderate" | "hard"
     audioOn: true,
-    tickOn: false,
-    ambientOn: false,
-    modalDuration: 2000 // milliseconds
+    tickOn: true,
+    ambientOn: true,
+    modalDuration: 2000, // milliseconds
+    // Audio mixer volumes (0-100)
+    volumes: {
+      pad: 100,
+      arpeggio: 100,
+      tick: 100,
+      correct: 100,
+      wrong: 100,
+      button: 100,
+      bonus: 100,
+      gameOver: 100
+    }
   };
 
   function clamp(n, a, b) {
@@ -223,11 +252,18 @@
     }
   }
 
+  // Helper to apply volume from mixer
+  function getVolumeMultiplier(category) {
+    return (settings.volumes[category] || 100) / 100;
+  }
+
   // =========================
   // Audio (Web Audio API)
   // =========================
   let audioCtx = null;
   let ambientGain = null;
+  let padGain = null;
+  let arpeggioGain = null;
   let ambientOscillators = [];
   let ambientInterval = null;
 
@@ -264,17 +300,53 @@
   }
 
   function soundCorrect() {
-    beep({ freq: 660, duration: 0.10, type: "sine", gain: 0.07 });
-    setTimeout(() => beep({ freq: 990, duration: 0.08, type: "triangle", gain: 0.06 }), 70);
+    const vol = getVolumeMultiplier('correct');
+    beep({ freq: 660, duration: 0.10, type: "sine", gain: 0.07 * vol });
+    setTimeout(() => beep({ freq: 990, duration: 0.08, type: "triangle", gain: 0.06 * vol }), 70);
   }
 
   function soundWrong() {
-    beep({ freq: 170, duration: 0.16, type: "sawtooth", gain: 0.06 });
+    const vol = getVolumeMultiplier('wrong');
+    beep({ freq: 170, duration: 0.16, type: "sawtooth", gain: 0.06 * vol });
   }
 
   function soundTick() {
     if (!settings.tickOn) return;
-    beep({ freq: 1200, duration: 0.03, type: "square", gain: 0.03 });
+    
+    const vol = getVolumeMultiplier('tick');
+    
+    // Different tick sound during bonus time
+    if (state.bonusActive) {
+      // Higher, brighter tick with slight melody
+      beep({ freq: 1760, duration: 0.03, type: "triangle", gain: 0.04 * vol });
+      // Add subtle hi-hat
+      ensureAudio();
+      const t0 = audioCtx.currentTime;
+      const noise = audioCtx.createBufferSource();
+      const noiseBuffer = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.03, audioCtx.sampleRate);
+      const noiseData = noiseBuffer.getChannelData(0);
+      for (let i = 0; i < noiseData.length; i++) {
+        noiseData[i] = Math.random() * 2 - 1;
+      }
+      noise.buffer = noiseBuffer;
+
+      const noiseFilter = audioCtx.createBiquadFilter();
+      noiseFilter.type = "highpass";
+      noiseFilter.frequency.setValueAtTime(10000, t0);
+
+      const noiseGain = audioCtx.createGain();
+      noiseGain.gain.setValueAtTime(0.02 * vol, t0);
+      noiseGain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.03);
+
+      noise.connect(noiseFilter);
+      noiseFilter.connect(noiseGain);
+      noiseGain.connect(audioCtx.destination);
+
+      noise.start(t0);
+    } else {
+      // Normal tick
+      beep({ freq: 1200, duration: 0.03, type: "square", gain: 0.03 * vol });
+    }
   }
 
   // Create reverb using convolver with impulse response
@@ -371,6 +443,8 @@
     ensureAudio();
     const t0 = audioCtx.currentTime;
 
+    const vol = getVolumeMultiplier('button');
+
     // Softer, melodic click for degree toggles
     const osc = audioCtx.createOscillator();
     const g = audioCtx.createGain();
@@ -379,7 +453,7 @@
     osc.frequency.setValueAtTime(660, t0);
     osc.frequency.exponentialRampToValueAtTime(440, t0 + 0.06);
 
-    g.gain.setValueAtTime(0.09, t0);
+    g.gain.setValueAtTime(0.09 * vol, t0);
     g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.06);
 
     osc.connect(g);
@@ -444,6 +518,7 @@
     if (!settings.audioOn) return;
     ensureAudio();
     const t0 = audioCtx.currentTime;
+    const vol = getVolumeMultiplier('gameOver');
 
     // Atmospheric descending pad for game over (not harsh or frustrating)
     const chord = [523.25, 415.30, 349.23]; // C5, G#4, F4 - minor but not sad
@@ -463,8 +538,8 @@
       filter.Q.setValueAtTime(1, t0);
 
       g.gain.setValueAtTime(0, t0);
-      g.gain.linearRampToValueAtTime(0.06, t0 + 0.3); // Gentle fade in
-      g.gain.setValueAtTime(0.06, t0 + 1.0);
+      g.gain.linearRampToValueAtTime(0.06 * vol, t0 + 0.3); // Gentle fade in
+      g.gain.setValueAtTime(0.06 * vol, t0 + 1.0);
       g.gain.exponentialRampToValueAtTime(0.001, t0 + 1.5); // Fade out
 
       osc.connect(filter);
@@ -473,6 +548,88 @@
 
       osc.start(t0);
       osc.stop(t0 + 1.6);
+    });
+  }
+
+  function soundBonusActivate() {
+    if (!settings.audioOn) return;
+    ensureAudio();
+    const t0 = audioCtx.currentTime;
+    const vol = getVolumeMultiplier('bonus');
+
+    // Ascending arpeggio with sparkle effect
+    const frequencies = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6 - major chord arpeggio
+    
+    frequencies.forEach((freq, i) => {
+      const osc = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      const filter = audioCtx.createBiquadFilter();
+
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(freq, t0 + i * 0.06);
+
+      filter.type = "highpass";
+      filter.frequency.setValueAtTime(800, t0 + i * 0.06);
+
+      g.gain.setValueAtTime(0.08 * vol, t0 + i * 0.06);
+      g.gain.exponentialRampToValueAtTime(0.001, t0 + i * 0.06 + 0.15);
+
+      osc.connect(filter);
+      filter.connect(g);
+      g.connect(audioCtx.destination);
+
+      osc.start(t0 + i * 0.06);
+      osc.stop(t0 + i * 0.06 + 0.2);
+    });
+
+    // Add subtle hi-hat shimmer
+    const noise = audioCtx.createBufferSource();
+    const noiseBuffer = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.3, audioCtx.sampleRate);
+    const noiseData = noiseBuffer.getChannelData(0);
+    for (let i = 0; i < noiseData.length; i++) {
+      noiseData[i] = Math.random() * 2 - 1;
+    }
+    noise.buffer = noiseBuffer;
+
+    const noiseFilter = audioCtx.createBiquadFilter();
+    noiseFilter.type = "highpass";
+    noiseFilter.frequency.setValueAtTime(8000, t0);
+
+    const noiseGain = audioCtx.createGain();
+    noiseGain.gain.setValueAtTime(0.04 * vol, t0);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.3);
+
+    noise.connect(noiseFilter);
+    noiseFilter.connect(noiseGain);
+    noiseGain.connect(audioCtx.destination);
+
+    noise.start(t0);
+  }
+
+  function soundBonusExpire() {
+    if (!settings.audioOn) return;
+    ensureAudio();
+    const t0 = audioCtx.currentTime;
+    const vol = getVolumeMultiplier('bonus');
+
+    // Descending notes to signal end
+    const frequencies = [783.99, 659.25, 523.25]; // G5, E5, C5 - descending
+    
+    frequencies.forEach((freq, i) => {
+      const osc = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(freq, t0 + i * 0.08);
+
+      g.gain.setValueAtTime(0.06 * vol, t0 + i * 0.08);
+      g.gain.exponentialRampToValueAtTime(0.001, t0 + i * 0.08 + 0.12);
+
+      osc.connect(g);
+      g.connect(audioCtx.destination);
+
+      osc.start(t0 + i * 0.08);
+      osc.stop(t0 + i * 0.08 + 0.15);
     });
   }
 
@@ -486,10 +643,22 @@
     
     ensureAudio();
     
-    // Create gain node for ambient music
+    const padVol = getVolumeMultiplier('pad');
+    const arpeggioVol = getVolumeMultiplier('arpeggio');
+    
+    // Create gain nodes for ambient music (persistent for volume control)
     ambientGain = audioCtx.createGain();
     ambientGain.gain.setValueAtTime(0.06, audioCtx.currentTime);
     ambientGain.connect(audioCtx.destination);
+    
+    // Create separate gain nodes for pad and arpeggio
+    padGain = audioCtx.createGain();
+    padGain.gain.setValueAtTime(padVol, audioCtx.currentTime);
+    padGain.connect(ambientGain);
+    
+    arpeggioGain = audioCtx.createGain();
+    arpeggioGain.gain.setValueAtTime(arpeggioVol, audioCtx.currentTime);
+    arpeggioGain.connect(ambientGain);
     
     // Uplifting chord progression: Cmaj9, Fmaj9, Gmaj7, Cmaj9
     const chords = [
@@ -533,7 +702,7 @@
           oscGain.gain.linearRampToValueAtTime(0, now + chordDuration);
           
           osc.connect(oscGain);
-          oscGain.connect(ambientGain);
+          oscGain.connect(padGain);
           
           osc.start(now);
           osc.stop(now + chordDuration);
@@ -579,7 +748,7 @@
       reverb.connect(arpWetGain);
       arpWetGain.connect(arpMasterGain);
       arpDryGain.connect(arpMasterGain);
-      arpMasterGain.connect(ambientGain);
+      arpMasterGain.connect(arpeggioGain);
       
       // Add Stranger Things style arpeggio
       const arpNoteLength = 0.25; // 250ms per note
@@ -686,9 +855,30 @@
     });
     ambientOscillators = [];
     
+    if (padGain) {
+      padGain.disconnect();
+      padGain = null;
+    }
+    
+    if (arpeggioGain) {
+      arpeggioGain.disconnect();
+      arpeggioGain = null;
+    }
+    
     if (ambientGain) {
       ambientGain.disconnect();
       ambientGain = null;
+    }
+  }
+
+  function updateAmbientVolume() {
+    if (padGain && audioCtx) {
+      const padVol = getVolumeMultiplier('pad');
+      padGain.gain.setValueAtTime(padVol, audioCtx.currentTime);
+    }
+    if (arpeggioGain && audioCtx) {
+      const arpeggioVol = getVolumeMultiplier('arpeggio');
+      arpeggioGain.gain.setValueAtTime(arpeggioVol, audioCtx.currentTime);
     }
   }
 
@@ -709,8 +899,9 @@
 
     // Bonus system
     bonusPoints: 0,
-    slowdownActive: false,
-    slowdownMultiplier: 2, // Timer runs 2x slower
+    bonusActive: false,
+    bonusTimeRemaining: 0, // seconds of real time remaining
+    bonusTimerId: null,
 
     timerId: null,
     secondsLeft: 0,
@@ -787,7 +978,7 @@
     const q = state.current;
     if (!q) {
       elQuestionText.textContent = "Click to start!";
-      if (elTimerBackground) elTimerBackground.textContent = "--";
+      if (elTimerBackground) elTimerBackground.textContent = "";
       return;
     }
     elQuestionText.textContent = `What is the ${q.degreeLabel} in the key of ${q.keyRoot} major?`;
@@ -827,14 +1018,20 @@
 
   function renderBonus() {
     if (!elBonusCount || !elBonusButton) return;
-    elBonusCount.textContent = String(state.bonusPoints);
     
-    // Show bonus button when game is active and has bonus points
-    if (state.active && state.bonusPoints > 0) {
+    // Show time remaining if bonus is active, otherwise show bonus points
+    if (state.bonusActive) {
+      elBonusCount.textContent = String(state.bonusTimeRemaining) + 's';
+    } else {
+      elBonusCount.textContent = String(state.bonusPoints);
+    }
+    
+    // Show bonus button when game is active and has bonus points or bonus is active
+    if (state.active && (state.bonusPoints > 0 || state.bonusActive)) {
       elBonusButton.hidden = false;
-      elBonusButton.disabled = state.bonusPoints < 5 || state.slowdownActive;
+      elBonusButton.disabled = state.bonusPoints < 5 || state.bonusActive;
       
-      if (state.slowdownActive) {
+      if (state.bonusActive) {
         elBonusButton.classList.add('active');
       } else {
         elBonusButton.classList.remove('active');
@@ -911,7 +1108,9 @@
 
   function getEffectiveSecondsPerQuestion() {
     // After 20 correct streak, drop by 1 second (persists). Every additional 20 streak drops another second.
-    return clamp(settings.secondsPerQuestion - state.speedLevel, 3, 20);
+    const baseSeconds = clamp(settings.secondsPerQuestion - state.speedLevel, 3, 20);
+    // Double the time if bonus is active
+    return state.bonusActive ? baseSeconds * 2 : baseSeconds;
   }
 
   function updateRiskVisual() {
@@ -946,8 +1145,6 @@
       elHeader.classList.add("faded");
     }
 
-    const timerInterval = state.slowdownActive ? 1000 * state.slowdownMultiplier : 1000;
-
     state.timerId = setInterval(() => {
       if (!state.active || state.locked) return;
 
@@ -961,7 +1158,7 @@
         stopTimer();
         handleTimeout();
       }
-    }, timerInterval);
+    }, 1000);
   }
 
   // =========================
@@ -1021,10 +1218,6 @@
   function nextQuestion() {
     state.questionIndex += 1;
     
-    // Deactivate slowdown for next question
-    state.slowdownActive = false;
-    renderBonus();
-    
     let keyRoot, degreePool, degreeMode;
 
     if (settings.gameMode === "progression") {
@@ -1081,7 +1274,12 @@
     state.speedLevel = 0;
     state.score = 0;
     state.bonusPoints = 0;
-    state.slowdownActive = false;
+    state.bonusActive = false;
+    state.bonusTimeRemaining = 0;
+    if (state.bonusTimerId) {
+      clearInterval(state.bonusTimerId);
+      state.bonusTimerId = null;
+    }
 
     // Start with 3 lives (matches the original "3 tries" feeling, now used for endless mode)
     state.lives = 3;
@@ -1257,7 +1455,7 @@
     stopAmbientMusic();
     soundGameOver();
     lockAnswers(true);
-    if (elTimerBackground) elTimerBackground.textContent = "--";
+    if (elTimerBackground) elTimerBackground.textContent = "";
     updateRiskVisual();
     
     // Update high score if needed
@@ -1536,6 +1734,40 @@
     modalDurationSlider.value = String(settings.modalDuration);
     modalDurationValue.textContent = `${(settings.modalDuration / 1000).toFixed(1)}s`;
 
+    // Initialize mixer values
+    if (volPadSlider && volPadValue) {
+      volPadSlider.value = String(settings.volumes.pad);
+      volPadValue.textContent = `${settings.volumes.pad}%`;
+    }
+    if (volArpeggioSlider && volArpeggioValue) {
+      volArpeggioSlider.value = String(settings.volumes.arpeggio);
+      volArpeggioValue.textContent = `${settings.volumes.arpeggio}%`;
+    }
+    if (volTickSlider && volTickValue) {
+      volTickSlider.value = String(settings.volumes.tick);
+      volTickValue.textContent = `${settings.volumes.tick}%`;
+    }
+    if (volCorrectSlider && volCorrectValue) {
+      volCorrectSlider.value = String(settings.volumes.correct);
+      volCorrectValue.textContent = `${settings.volumes.correct}%`;
+    }
+    if (volWrongSlider && volWrongValue) {
+      volWrongSlider.value = String(settings.volumes.wrong);
+      volWrongValue.textContent = `${settings.volumes.wrong}%`;
+    }
+    if (volButtonSlider && volButtonValue) {
+      volButtonSlider.value = String(settings.volumes.button);
+      volButtonValue.textContent = `${settings.volumes.button}%`;
+    }
+    if (volBonusSlider && volBonusValue) {
+      volBonusSlider.value = String(settings.volumes.bonus);
+      volBonusValue.textContent = `${settings.volumes.bonus}%`;
+    }
+    if (volGameOverSlider && volGameOverValue) {
+      volGameOverSlider.value = String(settings.volumes.gameOver);
+      volGameOverValue.textContent = `${settings.volumes.gameOver}%`;
+    }
+
     modePractice.setAttribute("aria-checked", settings.gameMode === "practice" ? "true" : "false");
     modeProgression.setAttribute("aria-checked", settings.gameMode === "progression" ? "true" : "false");
 
@@ -1655,25 +1887,56 @@
   if (elBonusButton) {
     elBonusButton.addEventListener("click", (e) => {
       e.stopPropagation(); // Prevent triggering questionBox click
-      if (state.bonusPoints >= 5 && !state.slowdownActive && state.active && !state.locked) {
-        activateSlowdown();
+      if (state.bonusPoints >= 5 && !state.bonusActive && state.active && !state.locked) {
+        activateBonus();
       }
     });
   }
 
-  function activateSlowdown() {
-    if (state.bonusPoints < 5 || state.slowdownActive) return;
+  function activateBonus() {
+    if (state.bonusPoints < 5 || state.bonusActive) return;
     
-    soundDegreeToggle();
+    soundBonusActivate();
     state.bonusPoints -= 5;
-    state.slowdownActive = true;
+    state.bonusActive = true;
+    state.bonusTimeRemaining = 30;
     renderBonus();
     
-    // Restart timer with slowdown
+    // Restart timer with doubled time
     stopTimer();
     startTimer();
     
-    flashStatus(true, "⏳ Time Slowdown Activated! Timer running at 50% speed for this question.");
+    flashStatus(true, "⏳ Bonus Activated! Questions have 2x time for 30 seconds!");
+    
+    // Start countdown timer (real time)
+    state.bonusTimerId = setInterval(() => {
+      if (!state.active) {
+        clearInterval(state.bonusTimerId);
+        state.bonusTimerId = null;
+        state.bonusActive = false;
+        state.bonusTimeRemaining = 0;
+        renderBonus();
+        return;
+      }
+      
+      state.bonusTimeRemaining -= 1;
+      renderBonus();
+      
+      if (state.bonusTimeRemaining <= 0) {
+        clearInterval(state.bonusTimerId);
+        state.bonusTimerId = null;
+        state.bonusActive = false;
+        renderBonus();
+        soundBonusExpire();
+        flashStatus(true, "Bonus time expired!");
+        
+        // Restart timer with normal time if in middle of question
+        if (!state.locked) {
+          stopTimer();
+          startTimer();
+        }
+      }
+    }, 1000);
   }
 
   if (elQuestionBox) {
@@ -1819,6 +2082,58 @@
     settings.modalDuration = clamp(Number(modalDurationSlider.value), 500, 5000);
     modalDurationValue.textContent = `${(settings.modalDuration / 1000).toFixed(1)}s`;
   });
+
+  // Audio mixer sliders
+  if (volPadSlider) {
+    volPadSlider.addEventListener("input", () => {
+      settings.volumes.pad = clamp(Number(volPadSlider.value), 0, 100);
+      volPadValue.textContent = `${settings.volumes.pad}%`;
+      updateAmbientVolume();
+    });
+  }
+  if (volArpeggioSlider) {
+    volArpeggioSlider.addEventListener("input", () => {
+      settings.volumes.arpeggio = clamp(Number(volArpeggioSlider.value), 0, 100);
+      volArpeggioValue.textContent = `${settings.volumes.arpeggio}%`;
+      updateAmbientVolume();
+    });
+  }
+  if (volTickSlider) {
+    volTickSlider.addEventListener("input", () => {
+      settings.volumes.tick = clamp(Number(volTickSlider.value), 0, 100);
+      volTickValue.textContent = `${settings.volumes.tick}%`;
+    });
+  }
+  if (volCorrectSlider) {
+    volCorrectSlider.addEventListener("input", () => {
+      settings.volumes.correct = clamp(Number(volCorrectSlider.value), 0, 100);
+      volCorrectValue.textContent = `${settings.volumes.correct}%`;
+    });
+  }
+  if (volWrongSlider) {
+    volWrongSlider.addEventListener("input", () => {
+      settings.volumes.wrong = clamp(Number(volWrongSlider.value), 0, 100);
+      volWrongValue.textContent = `${settings.volumes.wrong}%`;
+    });
+  }
+  if (volButtonSlider) {
+    volButtonSlider.addEventListener("input", () => {
+      settings.volumes.button = clamp(Number(volButtonSlider.value), 0, 100);
+      volButtonValue.textContent = `${settings.volumes.button}%`;
+    });
+  }
+  if (volBonusSlider) {
+    volBonusSlider.addEventListener("input", () => {
+      settings.volumes.bonus = clamp(Number(volBonusSlider.value), 0, 100);
+      volBonusValue.textContent = `${settings.volumes.bonus}%`;
+    });
+  }
+  if (volGameOverSlider) {
+    volGameOverSlider.addEventListener("input", () => {
+      settings.volumes.gameOver = clamp(Number(volGameOverSlider.value), 0, 100);
+      volGameOverValue.textContent = `${settings.volumes.gameOver}%`;
+    });
+  }
 
   modePractice.addEventListener("click", () => {
     soundDegreeToggle();

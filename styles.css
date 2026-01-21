@@ -1164,6 +1164,35 @@ body{
   font-variant-numeric: tabular-nums;
 }
 
+/* Audio Mixer */
+.mixerControls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.mixerRow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.mixerLabel {
+  font-size: 0.9rem;
+  color: var(--text);
+  min-width: 120px;
+  font-weight: 500;
+}
+
+.mixerValue {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--text);
+  min-width: 3rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
 /* Segmented control */
 .segmented{
   display: flex;

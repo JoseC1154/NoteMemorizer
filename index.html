@@ -41,7 +41,7 @@
           <span class="questionStat" id="lives">3 ♥</span>
           <span class="questionStat score" id="score">0</span>
         </div>
-        <div class="timerBackground" id="timerBackground">--</div>
+        <div class="timerBackground" id="timerBackground"></div>
         <div class="questionText" id="questionText">Click to start!</div>
         <div class="restartHint" id="restartHint">Press to restart</div>
         <div class="questionSuggestions" id="questionSuggestions" hidden></div>
@@ -156,6 +156,52 @@
           <button class="toggleBtn" id="toggleSound" type="button" aria-pressed="true">Sounds: On</button>
           <button class="toggleBtn" id="toggleTick" type="button" aria-pressed="false">Tick: Off</button>
           <button class="toggleBtn" id="toggleAmbient" type="button" aria-pressed="false">Music: Off</button>
+        </div>
+      </section>
+
+      <section class="settingGroup" id="audioMixerSection">
+        <h3 class="settingLabel">Audio Mixer (Testing)</h3>
+        <div class="mixerControls">
+          <div class="mixerRow">
+            <label for="volPad" class="mixerLabel">Ambient Pad</label>
+            <input id="volPad" class="slider" type="range" min="0" max="100" step="1" value="100" />
+            <div class="mixerValue" id="volPadValue">100%</div>
+          </div>
+          <div class="mixerRow">
+            <label for="volArpeggio" class="mixerLabel">Arpeggio</label>
+            <input id="volArpeggio" class="slider" type="range" min="0" max="100" step="1" value="100" />
+            <div class="mixerValue" id="volArpeggioValue">100%</div>
+          </div>
+          <div class="mixerRow">
+            <label for="volTick" class="mixerLabel">Tick</label>
+            <input id="volTick" class="slider" type="range" min="0" max="100" step="1" value="100" />
+            <div class="mixerValue" id="volTickValue">100%</div>
+          </div>
+          <div class="mixerRow">
+            <label for="volCorrect" class="mixerLabel">Correct</label>
+            <input id="volCorrect" class="slider" type="range" min="0" max="100" step="1" value="100" />
+            <div class="mixerValue" id="volCorrectValue">100%</div>
+          </div>
+          <div class="mixerRow">
+            <label for="volWrong" class="mixerLabel">Wrong</label>
+            <input id="volWrong" class="slider" type="range" min="0" max="100" step="1" value="100" />
+            <div class="mixerValue" id="volWrongValue">100%</div>
+          </div>
+          <div class="mixerRow">
+            <label for="volButton" class="mixerLabel">Buttons</label>
+            <input id="volButton" class="slider" type="range" min="0" max="100" step="1" value="100" />
+            <div class="mixerValue" id="volButtonValue">100%</div>
+          </div>
+          <div class="mixerRow">
+            <label for="volBonus" class="mixerLabel">Bonus</label>
+            <input id="volBonus" class="slider" type="range" min="0" max="100" step="1" value="100" />
+            <div class="mixerValue" id="volBonusValue">100%</div>
+          </div>
+          <div class="mixerRow">
+            <label for="volGameOver" class="mixerLabel">Game Over</label>
+            <input id="volGameOver" class="slider" type="range" min="0" max="100" step="1" value="100" />
+            <div class="mixerValue" id="volGameOverValue">100%</div>
+          </div>
         </div>
       </section>
     </div>
