@@ -53,6 +53,8 @@
   const elTimerBackground = document.getElementById("timerBackground");
   const elLives = document.getElementById("lives");
   const elScore = document.getElementById("score");
+  const elBonusButton = document.getElementById("bonusButton");
+  const elBonusCount = document.getElementById("bonusCount");
   const elLevelInfo = document.getElementById("levelInfo");
   const elHeader = document.querySelector(".header");
   const elStatusPanel = document.getElementById("statusPanel");
@@ -705,6 +707,11 @@
     score: 0,
     questionStartTime: null, // timestamp when question starts
 
+    // Bonus system
+    bonusPoints: 0,
+    slowdownActive: false,
+    slowdownMultiplier: 2, // Timer runs 2x slower
+
     timerId: null,
     secondsLeft: 0,
     questionSeconds: 0,
@@ -818,6 +825,25 @@
     elScore.textContent = state.score.toLocaleString();
   }
 
+  function renderBonus() {
+    if (!elBonusCount || !elBonusButton) return;
+    elBonusCount.textContent = String(state.bonusPoints);
+    
+    // Show bonus button when game is active and has bonus points
+    if (state.active && state.bonusPoints > 0) {
+      elBonusButton.hidden = false;
+      elBonusButton.disabled = state.bonusPoints < 5 || state.slowdownActive;
+      
+      if (state.slowdownActive) {
+        elBonusButton.classList.add('active');
+      } else {
+        elBonusButton.classList.remove('active');
+      }
+    } else {
+      elBonusButton.hidden = true;
+    }
+  }
+
   function renderLevelInfo() {
     if (!elLevelInfo) return;
     if (settings.gameMode === "progression" && state.active) {
@@ -920,6 +946,8 @@
       elHeader.classList.add("faded");
     }
 
+    const timerInterval = state.slowdownActive ? 1000 * state.slowdownMultiplier : 1000;
+
     state.timerId = setInterval(() => {
       if (!state.active || state.locked) return;
 
@@ -933,7 +961,7 @@
         stopTimer();
         handleTimeout();
       }
-    }, 1000);
+    }, timerInterval);
   }
 
   // =========================
@@ -993,6 +1021,10 @@
   function nextQuestion() {
     state.questionIndex += 1;
     
+    // Deactivate slowdown for next question
+    state.slowdownActive = false;
+    renderBonus();
+    
     let keyRoot, degreePool, degreeMode;
 
     if (settings.gameMode === "progression") {
@@ -1048,6 +1080,8 @@
     state.streak = 0;
     state.speedLevel = 0;
     state.score = 0;
+    state.bonusPoints = 0;
+    state.slowdownActive = false;
 
     // Start with 3 lives (matches the original "3 tries" feeling, now used for endless mode)
     state.lives = 3;
@@ -1061,6 +1095,7 @@
     state.current = null;
     renderLives();
     renderScore();
+    renderBonus();
     renderLevelInfo();
     
     // Update restart hint
@@ -1277,6 +1312,14 @@
 
     state.streak += 1;
     
+    // Award bonus points every 5 streak
+    let bonusAwarded = false;
+    if (state.streak > 0 && state.streak % 5 === 0) {
+      state.bonusPoints += 5;
+      bonusAwarded = true;
+      renderBonus();
+    }
+    
     // Calculate score: base points + streak bonus + speed bonus
     const basePoints = 100;
     const streakBonus = state.streak * 10;
@@ -1328,6 +1371,8 @@
       flashStatus(true, `Correct: ${chosen} — 🎉 20 correct! +1 life & Speed up! (Score: ${state.score})`);
     } else if (awardedLife) {
       flashStatus(true, `Correct: ${chosen} — +1 life! (Score: ${state.score})`);
+    } else if (bonusAwarded) {
+      flashStatus(true, `Correct: ${chosen} — ⏳ +5 Bonus! (Streak: ${state.streak}) — Score: ${state.score}`);
     } else {
       const streakText = settings.gameMode === "progression" 
         ? `Level ${state.progression.level} Progress: ${state.progression.levelStreak}/${getProgressionStreakRequired()}`
@@ -1605,6 +1650,31 @@
   // Wire up events
   // =========================
   answerButtons.forEach(b => b.addEventListener("click", () => onAnswerClick(b)));
+
+  // Bonus button handler
+  if (elBonusButton) {
+    elBonusButton.addEventListener("click", (e) => {
+      e.stopPropagation(); // Prevent triggering questionBox click
+      if (state.bonusPoints >= 5 && !state.slowdownActive && state.active && !state.locked) {
+        activateSlowdown();
+      }
+    });
+  }
+
+  function activateSlowdown() {
+    if (state.bonusPoints < 5 || state.slowdownActive) return;
+    
+    soundDegreeToggle();
+    state.bonusPoints -= 5;
+    state.slowdownActive = true;
+    renderBonus();
+    
+    // Restart timer with slowdown
+    stopTimer();
+    startTimer();
+    
+    flashStatus(true, "⏳ Time Slowdown Activated! Timer running at 50% speed for this question.");
+  }
 
   if (elQuestionBox) {
     elQuestionBox.addEventListener("click", () => {
