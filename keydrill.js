@@ -17,6 +17,31 @@
   // Major scale semitone offsets for degrees 1..7
   const MAJOR_SCALE_OFFSETS = [0, 2, 4, 5, 7, 9, 11];
 
+  // Scale definitions (semitone intervals from root)
+  const SCALE_TYPES = {
+    major: [0, 2, 4, 5, 7, 9, 11],
+    minor: [0, 2, 3, 5, 7, 8, 10],
+    dorian: [0, 2, 3, 5, 7, 9, 10],
+    phrygian: [0, 1, 3, 5, 7, 8, 10],
+    lydian: [0, 2, 4, 6, 7, 9, 11],
+    mixolydian: [0, 2, 4, 5, 7, 9, 10],
+    locrian: [0, 1, 3, 5, 6, 8, 10],
+    harmonicMinor: [0, 2, 3, 5, 7, 8, 11],
+    melodicMinor: [0, 2, 3, 5, 7, 9, 11]
+  };
+
+  const SCALE_TYPE_NAMES = {
+    major: "Major",
+    minor: "Minor",
+    dorian: "Dorian",
+    phrygian: "Phrygian",
+    lydian: "Lydian",
+    mixolydian: "Mixolydian",
+    locrian: "Locrian",
+    harmonicMinor: "Harmonic Minor",
+    melodicMinor: "Melodic Minor"
+  };
+
   // Degree modes
   const DIATONIC_DEGREES = ["1","2","3","4","5","6","7"];
   const CHROMATIC_DEGREES = ["1","b2","2","#2","b3","3","4","#4","b5","5","#5","b6","6","b7","7"];
@@ -124,6 +149,14 @@
   const toggleTick = document.getElementById("toggleTick");
   const toggleAmbient = document.getElementById("toggleAmbient");
 
+  // Piano visualization elements
+  const pianoContainer = document.getElementById("pianoContainer");
+  const pianoKeyboard = document.getElementById("pianoKeyboard");
+  const togglePianoMode = document.getElementById("togglePianoMode");
+  const scaleToggles = document.getElementById("scaleToggles");
+  const pianoModeSection = document.getElementById("pianoModeSection");
+  const scaleTypeSection = document.getElementById("scaleTypeSection");
+
   // =========================
   // Settings (localStorage)
   // =========================
@@ -140,6 +173,8 @@
     tickOn: true,
     ambientOn: true,
     modalDuration: 2000, // milliseconds
+    pianoMode: false, // Piano visualization mode
+    scaleTypesEnabled: ["major", "minor", "dorian", "mixolydian"], // Enabled scale types for piano mode
     // Audio mixer volumes (0-100)
     volumes: {
       pad: 100,
@@ -981,7 +1016,14 @@
       if (elTimerBackground) elTimerBackground.textContent = "";
       return;
     }
-    elQuestionText.textContent = `What is the ${q.degreeLabel} in the key of ${q.keyRoot} major?`;
+    
+    // In piano mode, ask about the scale type
+    if (settings.pianoMode && q.scaleType) {
+      const scaleTypeName = SCALE_TYPE_NAMES[q.scaleType] || q.scaleType;
+      elQuestionText.textContent = `What ${scaleTypeName} scale is this?`;
+    } else {
+      elQuestionText.textContent = `What is the ${q.degreeLabel} in the key of ${q.keyRoot} major?`;
+    }
   }
 
   function renderAnswers() {
@@ -1240,11 +1282,22 @@
     const correctNote = degreeToNote(keyRoot, degreeLabel, degreeMode);
     const options = buildOptionsForMode(correctNote, degreeMode, keyRoot);
 
-    state.current = { keyRoot, degreeLabel, correctNote, options };
+    // For piano mode, select a scale type and store it
+    let scaleType = null;
+    if (settings.pianoMode && pianoContainer && !pianoContainer.hidden) {
+      scaleType = pickRandom(settings.scaleTypesEnabled.length ? settings.scaleTypesEnabled : ['major']);
+    }
+    
+    state.current = { keyRoot, degreeLabel, correctNote, options, scaleType };
     renderQuestion();
     renderAnswers();
     renderLevelInfo();
     startTimer();
+    
+    // Update piano visualization if in piano mode
+    if (settings.pianoMode && scaleType) {
+      updatePianoVisualization(keyRoot, scaleType);
+    }
   }
 
   function startGame() {
@@ -1799,7 +1852,15 @@
     toggleAmbient.setAttribute("aria-pressed", settings.ambientOn ? "true" : "false");
     toggleAmbient.textContent = `Music: ${settings.ambientOn ? "On" : "Off"}`;
 
+    togglePianoMode.setAttribute("aria-pressed", settings.pianoMode ? "true" : "false");
+    togglePianoMode.textContent = `Piano Mode: ${settings.pianoMode ? "On" : "Off"}`;
+    
+    if (pianoContainer) {
+      pianoContainer.hidden = !settings.pianoMode;
+    }
+
     renderKeyToggles();
+    initScaleToggles();
     btnCloseSettings.focus();
   }
 
@@ -2576,6 +2637,173 @@
     }
   };
 
+  // =========================
+  // Piano Visualization
+  // =========================
+  
+  // Generate piano keys (2 octaves = 24 white keys + black keys)
+  function generatePianoKeys() {
+    if (!pianoKeyboard) return;
+    
+    pianoKeyboard.innerHTML = '';
+    
+    // C, D, E, F, G, A, B for each octave
+    const whiteNotes = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
+    // Black keys after: C, D, _, F, G, A, _
+    const hasBlackAfter = [true, true, false, true, true, true, false];
+    const totalOctaves = 2;
+    const whiteKeyCount = whiteNotes.length * totalOctaves; // 14 white keys
+    const whiteKeyWidth = 100 / whiteKeyCount; // Percentage width per white key
+    
+    let whiteKeyIndex = 0;
+    
+    for (let octave = 0; octave < totalOctaves; octave++) {
+      for (let i = 0; i < whiteNotes.length; i++) {
+        const noteName = whiteNotes[i];
+        const leftPosition = whiteKeyIndex * whiteKeyWidth;
+        
+        // Create white key
+        const whiteKey = document.createElement('div');
+        whiteKey.className = 'pianoKey white';
+        whiteKey.dataset.note = noteName;
+        whiteKey.dataset.octave = octave;
+        whiteKey.style.position = 'absolute';
+        whiteKey.style.left = leftPosition + '%';
+        whiteKey.style.width = whiteKeyWidth + '%';
+        whiteKey.style.height = '100%';
+        whiteKey.style.top = '0';
+        whiteKey.title = noteName;
+        pianoKeyboard.appendChild(whiteKey);
+        
+        // Add black key to the right of this white key if applicable
+        if (hasBlackAfter[i]) {
+          const blackKey = document.createElement('div');
+          blackKey.className = 'pianoKey black';
+          // Get the note name for the black key (semitone above)
+          const whiteNotePC = NOTE_TO_PC.get(noteName);
+          const blackNotePC = (whiteNotePC + 1) % 12;
+          const blackNoteName = NOTE_LIST[blackNotePC];
+          blackKey.dataset.note = blackNoteName;
+          blackKey.dataset.octave = octave;
+          blackKey.style.position = 'absolute';
+          // Position black key between current and next white key
+          blackKey.style.left = (leftPosition + whiteKeyWidth * 0.75) + '%';
+          blackKey.style.width = (whiteKeyWidth * 0.5) + '%';
+          blackKey.style.height = '60%';
+          blackKey.style.top = '0';
+          blackKey.title = blackNoteName;
+          pianoKeyboard.appendChild(blackKey);
+        }
+        
+        whiteKeyIndex++;
+      }
+    }
+  }
+  
+  // Update piano visualization for a given key and scale
+  function updatePianoVisualization(rootKey, scaleType) {
+    if (!pianoKeyboard || !rootKey || !scaleType) return;
+    
+    const scale = SCALE_TYPES[scaleType];
+    if (!scale) return;
+    
+    const rootPC = NOTE_TO_PC.get(rootKey);
+    if (rootPC === undefined) {
+      console.error(`Invalid root key: ${rootKey}`);
+      return;
+    }
+    
+    // Calculate all notes in the scale using the existing pcToNote function
+    const scaleNotes = new Set();
+    scale.forEach(offset => {
+      const notePitchClass = (rootPC + offset) % 12;
+      const noteName = pcToNote(notePitchClass);
+      scaleNotes.add(noteName);
+    });
+    
+    // Update all keys - remove all classes first
+    const keys = pianoKeyboard.querySelectorAll('.pianoKey');
+    
+    keys.forEach(key => {
+      const note = key.dataset.note;
+      // Clear previous state
+      key.classList.remove('shaded', 'inScale');
+      
+      // Notes IN the scale: bright and clear
+      // Notes NOT in the scale: darkened with overlay
+      if (scaleNotes.has(note)) {
+        key.classList.add('inScale');
+      } else {
+        key.classList.add('shaded');
+      }
+    });
+  }
+  
+  // Initialize scale type toggles
+  function initScaleToggles() {
+    if (!scaleToggles) return;
+    
+    scaleToggles.innerHTML = '';
+    
+    Object.keys(SCALE_TYPES).forEach(scaleKey => {
+      const toggle = document.createElement('button');
+      toggle.className = 'scaleToggle';
+      toggle.textContent = SCALE_TYPE_NAMES[scaleKey];
+      toggle.dataset.scale = scaleKey;
+      
+      if (settings.scaleTypesEnabled.includes(scaleKey)) {
+        toggle.classList.add('active');
+      }
+      
+      toggle.addEventListener('click', () => {
+        soundDegreeToggle();
+        const isActive = toggle.classList.contains('active');
+        
+        if (isActive) {
+          toggle.classList.remove('active');
+          settings.scaleTypesEnabled = settings.scaleTypesEnabled.filter(s => s !== scaleKey);
+        } else {
+          toggle.classList.add('active');
+          settings.scaleTypesEnabled.push(scaleKey);
+        }
+        
+        // Ensure at least one scale type is selected
+        if (settings.scaleTypesEnabled.length === 0) {
+          toggle.classList.add('active');
+          settings.scaleTypesEnabled = [scaleKey];
+        }
+        
+        saveSettings();
+      });
+      
+      scaleToggles.appendChild(toggle);
+    });
+  }
+  
+  // Toggle piano mode
+  if (togglePianoMode) {
+    togglePianoMode.addEventListener('click', () => {
+      soundDegreeToggle();
+      settings.pianoMode = !settings.pianoMode;
+      togglePianoMode.textContent = settings.pianoMode ? 'Piano Mode: On' : 'Piano Mode: Off';
+      togglePianoMode.setAttribute('aria-pressed', settings.pianoMode);
+      
+      if (pianoContainer) {
+        pianoContainer.hidden = !settings.pianoMode;
+      }
+      
+      if (settings.pianoMode) {
+        generatePianoKeys();
+        // Show a default scale
+        const firstKey = settings.keysEnabled[0] || 'C';
+        const firstScale = settings.scaleTypesEnabled[0] || 'major';
+        updatePianoVisualization(firstKey, firstScale);
+      }
+      
+      saveSettings();
+    });
+  }
+
   // Initial render
   const lastUpdatedDate = new Date(LAST_UPDATED);
   const month = String(lastUpdatedDate.getMonth() + 1).padStart(2, '0');
@@ -2591,4 +2819,19 @@
   
   document.getElementById("version").textContent = 
     `v${APP_VERSION} • Updated ${dateStr} ${timeStr}`;
+  
+  // Initialize piano visualization
+  if (settings.pianoMode) {
+    generatePianoKeys();
+    if (pianoContainer) {
+      pianoContainer.hidden = false;
+    }
+    const firstKey = settings.keysEnabled[0] || 'C';
+    const firstScale = settings.scaleTypesEnabled[0] || 'major';
+    updatePianoVisualization(firstKey, firstScale);
+  } else if (pianoContainer) {
+    pianoContainer.hidden = true;
+  }
+  
+  initScaleToggles();
 })();
