@@ -14,4 +14,5 @@ TODO:
 -As the streaks build the seconds get shorter but if the user continue to answer incorretly additional seconds should be added. (or not)
 -quiz to test if user is ready for chord mode.
 -multi language.
+-add a set as default button
 
