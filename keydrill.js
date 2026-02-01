@@ -1332,6 +1332,11 @@
       questionSuggestions.hidden = true;
       questionSuggestions.innerHTML = "";
     }
+    
+    // Restore opacity to all elements
+    if (elAnswerGrid) elAnswerGrid.style.opacity = '1';
+    if (pianoContainer) pianoContainer.style.opacity = '1';
+    if (elBonusButton) elBonusButton.style.opacity = '1';
 
     state.active = true;
     state.locked = false;
@@ -1536,6 +1541,11 @@
     if (elHeader) {
       elHeader.classList.remove("faded");
     }
+    
+    // Hide everything except question box
+    if (elAnswerGrid) elAnswerGrid.style.opacity = '0.2';
+    if (pianoContainer) pianoContainer.style.opacity = '0.2';
+    if (elBonusButton) elBonusButton.style.opacity = '0.2';
     
     // Show game over in status panel
     flashStatus(false, `${message} — Final Score: ${state.score}`);
