@@ -1284,8 +1284,9 @@
 
     // For piano mode, select a scale type and store it
     let scaleType = null;
-    if (settings.pianoMode && pianoContainer && !pianoContainer.hidden) {
+    if (settings.pianoMode) {
       scaleType = pickRandom(settings.scaleTypesEnabled.length ? settings.scaleTypesEnabled : ['major']);
+      console.log(`NEW QUESTION: ${keyRoot} ${scaleType} scale`);
     }
     
     state.current = { keyRoot, degreeLabel, correctNote, options, scaleType };
@@ -1295,7 +1296,8 @@
     startTimer();
     
     // Update piano visualization if in piano mode
-    if (settings.pianoMode && scaleType) {
+    if (settings.pianoMode && scaleType && pianoContainer) {
+      console.log(`Updating piano for ${keyRoot} ${scaleType}`);
       updatePianoVisualization(keyRoot, scaleType);
     }
   }
@@ -2721,22 +2723,34 @@
       scaleNotes.add(noteName);
     });
     
+    console.log(`=== PIANO UPDATE: ${rootKey} ${scaleType} ===`);
+    console.log('Scale notes:', Array.from(scaleNotes));
+    
     // Update all keys - remove all classes first
     const keys = pianoKeyboard.querySelectorAll('.pianoKey');
+    
+    const inScaleKeys = [];
+    const shadedKeys = [];
     
     keys.forEach(key => {
       const note = key.dataset.note;
       // Clear previous state
       key.classList.remove('shaded', 'inScale');
       
-      // Notes IN the scale: bright and clear
-      // Notes NOT in the scale: darkened with overlay
+      // Notes IN the scale: bright and clear with blue dot
+      // Notes NOT in the scale: red overlay
       if (scaleNotes.has(note)) {
         key.classList.add('inScale');
+        inScaleKeys.push(note);
       } else {
         key.classList.add('shaded');
+        shadedKeys.push(note);
       }
     });
+    
+    console.log('Keys with blue dots (inScale):', inScaleKeys);
+    console.log('Keys with red overlay (shaded):', shadedKeys);
+    console.log('=============================');
   }
   
   // Initialize scale type toggles

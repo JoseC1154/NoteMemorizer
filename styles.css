@@ -1587,41 +1587,56 @@ body{
 }
 
 .pianoKey.shaded {
-  filter: brightness(0.25) !important;
+  position: relative;
 }
 
-.pianoKey.white.shaded {
-  background: linear-gradient(180deg, #666 0%, #555 50%, #444 100%) !important;
-}
-
-.pianoKey.black.shaded {
-  background: linear-gradient(180deg, #111 0%, #000 50%, #000 100%) !important;
+.pianoKey.white.shaded::after,
+.pianoKey.black.shaded::after {
+  content: 'X';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(200, 0, 0, 0.75);
+  border-radius: 0 0 4px 4px;
+  pointer-events: none;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 24px;
+  font-weight: bold;
 }
 
 .pianoKey.inScale {
   position: relative;
   opacity: 1 !important;
-  filter: brightness(1) !important;
+  filter: none !important;
 }
 
 .pianoKey.inScale::after {
-  content: '';
+  display: none !important;
+}
+
+/* Blue dots show which notes ARE in the scale */
+.pianoKey.white.inScale::before,
+.pianoKey.black.inScale::before {
+  content: '●';
   position: absolute;
   bottom: 8px;
   left: 50%;
   transform: translateX(-50%);
-  width: 6px;
-  height: 6px;
-  background: #4a9eff;
-  border-radius: 50%;
-  box-shadow: 0 0 4px rgba(74, 158, 255, 0.6);
-  z-index: 1;
+  color: #4a9eff;
+  font-size: 10px;
+  text-shadow: 0 0 4px rgba(74, 158, 255, 0.6);
+  z-index: 60;
 }
 
-.pianoKey.black.inScale::after {
+.pianoKey.black.inScale::before {
   bottom: 6px;
-  width: 5px;
-  height: 5px;
+  font-size: 8px;
 }
 
 .scaleToggles {
