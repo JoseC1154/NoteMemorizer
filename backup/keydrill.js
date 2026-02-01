@@ -86,7 +86,6 @@
   const elStatusText = document.getElementById("statusText");
   const elAnswerGrid = document.getElementById("answerGrid");
   const answerButtons = Array.from(elAnswerGrid.querySelectorAll(".answerBtn"));
-  const elMain = document.querySelector(".main");
 
   const menuToggle = document.getElementById("menuToggle");
   const menuDropdown = document.getElementById("menuDropdown");
@@ -1280,38 +1279,27 @@
     const enabledDegrees = settings.degreesEnabled.length ? settings.degreesEnabled : degreePool;
     const availableDegrees = degreePool.filter(d => enabledDegrees.includes(d));
     const degreeLabel = pickRandom(availableDegrees.length ? availableDegrees : degreePool);
-    
-    let correctNote, options, scaleType = null;
-    
-    // For piano mode, select a scale type and ask for the key
+    const correctNote = degreeToNote(keyRoot, degreeLabel, degreeMode);
+    const options = buildOptionsForMode(correctNote, degreeMode, keyRoot);
+
+    // For piano mode, select a scale type and store it
+    let scaleType = null;
     if (settings.pianoMode) {
-      const availableScales = settings.scaleTypesEnabled.length ? settings.scaleTypesEnabled : Object.keys(SCALE_TYPES);
-      scaleType = pickRandom(availableScales);
-      // In piano mode, the correct answer is the KEY, not a degree
-      correctNote = keyRoot;
-      // Options are all 12 keys
-      options = buildOptions(correctNote);
-      console.log(`NEW QUESTION: ${keyRoot} ${scaleType} scale - Correct answer: ${correctNote}`);
-      console.log('Available keys:', settings.keysEnabled);
-      console.log('Available scales:', availableScales);
-    } else {
-      // Normal degree mode
-      correctNote = degreeToNote(keyRoot, degreeLabel, degreeMode);
-      options = buildOptionsForMode(correctNote, degreeMode, keyRoot);
+      scaleType = pickRandom(settings.scaleTypesEnabled.length ? settings.scaleTypesEnabled : ['major']);
+      console.log(`NEW QUESTION: ${keyRoot} ${scaleType} scale`);
     }
     
     state.current = { keyRoot, degreeLabel, correctNote, options, scaleType };
-    
-    // Update piano visualization FIRST if in piano mode
-    if (settings.pianoMode && scaleType) {
-      console.log(`Updating piano for ${keyRoot} ${scaleType}`);
-      updatePianoVisualization(keyRoot, scaleType);
-    }
-    
     renderQuestion();
     renderAnswers();
     renderLevelInfo();
     startTimer();
+    
+    // Update piano visualization if in piano mode
+    if (settings.pianoMode && scaleType && pianoContainer) {
+      console.log(`Updating piano for ${keyRoot} ${scaleType}`);
+      updatePianoVisualization(keyRoot, scaleType);
+    }
   }
 
   function startGame() {
@@ -1725,8 +1713,6 @@
 
     const chosen = btn.dataset.note;
     const correct = state.current.correctNote;
-    
-    console.log(`Answer clicked: ${chosen}, Correct: ${correct}`);
 
     if (chosen === correct) handleCorrect(chosen);
     else handleWrong(chosen);
@@ -1873,15 +1859,6 @@
     
     if (pianoContainer) {
       pianoContainer.hidden = !settings.pianoMode;
-    }
-    
-    // Update main element class for layout
-    if (elMain) {
-      if (settings.pianoMode) {
-        elMain.classList.add('pianoMode');
-      } else {
-        elMain.classList.remove('pianoMode');
-      }
     }
 
     renderKeyToggles();
@@ -2727,16 +2704,10 @@
   
   // Update piano visualization for a given key and scale
   function updatePianoVisualization(rootKey, scaleType) {
-    if (!pianoKeyboard || !rootKey || !scaleType) {
-      console.error('Piano update failed - missing:', { pianoKeyboard: !!pianoKeyboard, rootKey, scaleType });
-      return;
-    }
+    if (!pianoKeyboard || !rootKey || !scaleType) return;
     
     const scale = SCALE_TYPES[scaleType];
-    if (!scale) {
-      console.error(`Unknown scale type: ${scaleType}`);
-      return;
-    }
+    if (!scale) return;
     
     const rootPC = NOTE_TO_PC.get(rootKey);
     if (rootPC === undefined) {
@@ -2757,18 +2728,14 @@
     
     // Update all keys - remove all classes first
     const keys = pianoKeyboard.querySelectorAll('.pianoKey');
-    console.log(`Found ${keys.length} piano keys to update`);
     
     const inScaleKeys = [];
     const shadedKeys = [];
     
     keys.forEach(key => {
       const note = key.dataset.note;
-      // Clear previous state - FORCE removal
+      // Clear previous state
       key.classList.remove('shaded', 'inScale');
-      
-      // Force a reflow to ensure CSS updates
-      void key.offsetHeight;
       
       // Notes IN the scale: bright and clear with blue dot
       // Notes NOT in the scale: red overlay
@@ -2837,15 +2804,6 @@
       
       if (pianoContainer) {
         pianoContainer.hidden = !settings.pianoMode;
-      }
-      
-      // Toggle piano mode class on main element for layout adjustments
-      if (elMain) {
-        if (settings.pianoMode) {
-          elMain.classList.add('pianoMode');
-        } else {
-          elMain.classList.remove('pianoMode');
-        }
       }
       
       if (settings.pianoMode) {

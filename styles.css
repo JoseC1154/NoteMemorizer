@@ -437,6 +437,32 @@ body{
   position: relative;
 }
 
+/* Piano mode layout adjustments */
+.main.pianoMode {
+  gap: 8px;
+}
+
+.main.pianoMode .answerGrid {
+  gap: 0.5rem;
+  flex: 1;
+  align-content: stretch;
+}
+
+.main.pianoMode .answerBtn {
+  min-height: 0;
+  padding: 0.5rem;
+  font-size: clamp(16px, 3.5vw, 22px);
+}
+
+.main.pianoMode .bonusButton {
+  position: relative;
+  bottom: auto;
+  right: auto;
+  align-self: flex-end;
+  margin-top: auto;
+  flex-shrink: 0;
+}
+
 .questionBox {
   appearance: none;
   width: 100%;
@@ -1592,22 +1618,17 @@ body{
 
 .pianoKey.white.shaded::after,
 .pianoKey.black.shaded::after {
-  content: 'X';
+  content: '';
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(200, 0, 0, 0.75);
+  background: transparent;
   border-radius: 0 0 4px 4px;
   pointer-events: none;
   z-index: 100;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: rgba(255, 255, 255, 0.3);
-  font-size: 24px;
-  font-weight: bold;
+  display: none;
 }
 
 .pianoKey.inScale {
@@ -1616,11 +1637,22 @@ body{
   filter: none !important;
 }
 
-.pianoKey.inScale::after {
-  display: none !important;
+/* Green overlay shows which notes ARE in the scale */
+.pianoKey.white.inScale::after,
+.pianoKey.black.inScale::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(74, 222, 128, 0.4);
+  border-radius: 0 0 4px 4px;
+  pointer-events: none;
+  z-index: 100;
 }
 
-/* Blue dots show which notes ARE in the scale */
+/* Green dots show which notes ARE in the scale */
 .pianoKey.white.inScale::before,
 .pianoKey.black.inScale::before {
   content: '●';
@@ -1628,10 +1660,11 @@ body{
   bottom: 8px;
   left: 50%;
   transform: translateX(-50%);
-  color: #4a9eff;
+  color: #4ade80;
   font-size: 10px;
-  text-shadow: 0 0 4px rgba(74, 158, 255, 0.6);
+  text-shadow: 0 0 4px rgba(74, 222, 128, 0.6);
   z-index: 60;
+  opacity: 0;
 }
 
 .pianoKey.black.inScale::before {
