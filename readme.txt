@@ -16,4 +16,4 @@ TODO:
 -multi language.
 -add a set as default button
 -on piano mode after ten correct of one scale that key is taken off the list tested.
-
+-as the changes are taken place the setting should reflect.
