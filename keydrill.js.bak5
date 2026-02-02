@@ -72,32 +72,7 @@ import {
   initScaleToggles
 } from './js/ui.js';
 
-import {
-  degreeToNote,
-  pickRandom,
-  shuffle,
-  buildOptions,
-  buildOptionsForMode,
-  stopTimer,
-  getEffectiveSecondsPerQuestion,
-  startTimer,
-  getProgressionStreakRequired,
-  initProgressionMode,
-  advanceProgressionLevel,
-  nextQuestion,
-  startGame,
-  generateCompactSuggestions,
-  endGame,
-  nextAfterFeedback,
-  handleCorrect,
-  handleWrong,
-  handleTimeout,
-  onAnswerClick
-} from './js/game-logic.js';
-
 "use strict";
-
-// Cache buster: v1.0.4
 
 // Destructure DOM elements for easier access
 const {
@@ -220,61 +195,670 @@ let settings = loadSettings();
   };
 
   // =========================
-  // Wrapper functions for game logic
+  // Music logic
+  // =========================
+  function degreeToNote(keyRoot, degreeLabel, degreeMode) {
+    const rootPc = NOTE_TO_PC.get(keyRoot);
+    if (rootPc == null) throw new Error("Unknown key root");
+
+    if (degreeMode === "diatonic") {
+      const idx = DIATONIC_DEGREES.indexOf(degreeLabel);
+      if (idx < 0) throw new Error("Unknown diatonic degree");
+      return pcToNote(rootPc + MAJOR_SCALE_OFFSETS[idx]);
+    }
+
+    const off = CHROMATIC_TO_OFFSET[degreeLabel];
+    if (typeof off !== "number") throw new Error("Unknown chromatic degree");
+    return pcToNote(rootPc + off);
+  }
+
+  function pickRandom(arr) {
+    return arr[Math.floor(Math.random() * arr.length)];
+  }
+
+  function shuffle(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  function buildOptions(correct) {
+    const pool = NOTE_LIST.filter(n => n !== correct);
+    shuffle(pool);
+    return shuffle([correct, ...pool.slice(0, 5)]);
+  }
+
+  function buildOptionsForMode(correct, degreeMode, keyRoot) {
+    if (degreeMode === "diatonic") {
+      // For diatonic: use 6 notes from the scale, ensuring correct note is included
+      const rootPc = NOTE_TO_PC.get(keyRoot);
+      const scaleNotes = MAJOR_SCALE_OFFSETS.map(offset => pcToNote(rootPc + offset));
+      
+      // Remove correct from scale notes, shuffle remaining, take 5, then add correct back
+      const otherNotes = scaleNotes.filter(n => n !== correct);
+      shuffle(otherNotes);
+      return shuffle([correct, ...otherNotes.slice(0, 5)]);
+    } else {
+      // For chromatic: pick 6 random notes from all 12, ensuring correct is included
+      const pool = NOTE_LIST.filter(n => n !== correct);
+      shuffle(pool);
+      return shuffle([correct, ...pool.slice(0, 5)]);
+    }
+  }
+
+  function stopTimer() {
+    if (state.timerId) clearInterval(state.timerId);
+    state.timerId = null;
+  }
+
+  function getEffectiveSecondsPerQuestion() {
+    // After 20 correct streak, drop by 1 second (persists). Every additional 20 streak drops another second.
+    const baseSeconds = clamp(settings.secondsPerQuestion - state.speedLevel, 3, 20);
+    // Double the time if bonus is active
+    return state.bonusActive ? baseSeconds * 2 : baseSeconds;
+  }
+
+  function updateRiskVisual() {
+    // Risk based on (a) low lives and (b) low remaining time.
+    const livesDen = Math.max(1, state.maxLives);
+    const timeDen = Math.max(1, state.questionSeconds);
+
+    const riskLives = clamp(1 - (state.lives / livesDen), 0, 1);
+    const riskTime = clamp(1 - (state.secondsLeft / timeDen), 0, 1);
+
+    const risk = clamp(Math.max(riskLives, riskTime), 0, 1);
+
+    // CSS variable (if you later wire it in styles.css)
+    document.documentElement.style.setProperty("--risk", String(risk));
+
+    // Immediate background shift: blue (safe) -> red (danger)
+    const hue = Math.round(210 - (210 * risk));
+    document.body.style.background = `radial-gradient(1200px 900px at 50% 0%, hsl(${hue} 70% 25%) 0%, #070A12 55%, #02030a 100%)`;
+  }
+
+  function startTimer() {
+    stopTimer();
+
+    state.questionSeconds = getEffectiveSecondsPerQuestion();
+    state.secondsLeft = state.questionSeconds;
+    state.questionStartTime = Date.now(); // Start timing response
+    if (elTimerBackground) elTimerBackground.textContent = String(state.secondsLeft);
+    updateRiskVisual();
+    
+    // Fade out header when timer starts
+    if (elHeader && state.active) {
+      elHeader.classList.add("faded");
+    }
+
+    state.timerId = setInterval(() => {
+      if (!state.active || state.locked) return;
+
+      state.secondsLeft -= 1;
+      if (elTimerBackground) elTimerBackground.textContent = String(state.secondsLeft);
+      updateRiskVisual();
+
+      if (state.secondsLeft > 0) soundTick(settings, getVolumeMultiplier, state);
+
+      if (state.secondsLeft <= 0) {
+        stopTimer();
+        handleTimeout();
+      }
+    }, 1000);
+  }
+
+  // =========================
+  // Game rules
   // =========================
   
-  const startGameWrapper = () => startGame(
-    state, settings, elStatusPanel, elLives, elScore, elBonusCount, elBonusButton, elLevelInfo, elStatusText, answerButtons,
-    ensureAudio, startAmbientMusic, getVolumeMultiplier, renderLives, renderScore, renderBonus, renderLevelInfo,
-    setStatusNeutral, updateRiskVisual, nextQuestionWrapper, initProgressionModeWrapper, ALL_KEYS
-  );
-  
-  const nextQuestionWrapper = () => nextQuestion(
-    state, settings, ALL_KEYS, DIATONIC_DEGREES, CHROMATIC_DEGREES, NOTE_TO_PC, MAJOR_SCALE_OFFSETS,
-    CHROMATIC_TO_OFFSET, NOTE_LIST, SCALE_TYPES, SCALE_TYPE_NAMES, pcToNote, elQuestionText, elTimerBackground,
-    answerButtons, elLevelInfo, pianoKeyboard, renderQuestion, renderAnswers, renderLevelInfo, startTimerWrapper,
-    updatePianoVisualization
-  );
-  
-  const startTimerWrapper = () => startTimer(
-    state, settings, elTimerBackground, updateRiskVisual, soundTick, getVolumeMultiplier, handleTimeoutWrapper, clamp
-  );
-  
-  const stopTimerWrapper = () => stopTimer(state);
-  
-  const initProgressionModeWrapper = () => initProgressionMode(state, settings, ALL_KEYS);
-  
-  const endGameWrapper = (message) => endGame(
-    state, settings, message, answerButtons, elTimerBackground, elQuestionText, lockAnswers, updateRiskVisual,
-    getStats, saveStats, flashStatus, elStatusPanel, elStatusText, soundGameOver, getVolumeMultiplier,
-    stopTimerWrapper, stopAmbientMusic, generateCompactSuggestionsWrapper
-  );
-  
-  const generateCompactSuggestionsWrapper = () => generateCompactSuggestions(getStats);
-  
-  const nextAfterFeedbackWrapper = () => nextAfterFeedback(
-    state, settings, answerButtons, lockAnswers, nextQuestionWrapper
-  );
-  
-  const handleCorrectWrapper = (chosen) => handleCorrect(
-    state, settings, chosen, answerButtons, elLives, elScore, elBonusCount, elBonusButton, elStatusPanel,
-    elStatusText, elLevelInfo, soundCorrect, getVolumeMultiplier, recordQuestion, renderBonus, renderScore,
-    renderLives, updateRiskVisual, flashStatus, lockAnswers, stopTimerWrapper, nextAfterFeedbackWrapper,
-    getProgressionStreakRequired, advanceProgressionLevel, renderLevelInfo
-  );
-  
-  const handleWrongWrapper = (chosen) => handleWrong(
-    state, settings, chosen, answerButtons, elLives, elStatusPanel, elStatusText, soundWrong, getVolumeMultiplier,
-    recordQuestion, renderLives, updateRiskVisual, flashStatus, lockAnswers, stopTimerWrapper, nextAfterFeedbackWrapper,
-    endGameWrapper
-  );
-  
-  const handleTimeoutWrapper = () => handleTimeout(
-    state, settings, answerButtons, elLives, elStatusPanel, elStatusText, soundWrong, getVolumeMultiplier,
-    recordQuestion, renderLives, updateRiskVisual, flashStatus, lockAnswers, nextAfterFeedbackWrapper, endGameWrapper
-  );
-  
-  const onAnswerClickWrapper = (btn) => onAnswerClick(state, btn, handleCorrectWrapper, handleWrongWrapper);
+  // Progression mode helpers
+  function getProgressionStreakRequired() {
+    switch (settings.progressionDifficulty) {
+      case "easy": return 15;
+      case "hard": return 45;
+      default: return 30; // moderate
+    }
+  }
+
+  function initProgressionMode() {
+    const enabledKeys = settings.keysEnabled.length ? settings.keysEnabled : [...ALL_KEYS];
+    const shuffledKeys = shuffle([...enabledKeys]);
+    
+    state.progression.level = 1;
+    state.progression.currentKey = shuffledKeys[0];
+    state.progression.currentMode = "diatonic";
+    state.progression.remainingKeys = shuffledKeys.slice(1);
+    state.progression.levelStreak = 0;
+  }
+
+  function advanceProgressionLevel() {
+    // Show victory message
+    const currentLevelDesc = `${state.progression.currentKey} ${state.progression.currentMode === "diatonic" ? "Diatonic" : "Chromatic"}`;
+    flashStatus(true, `🎉 Level ${state.progression.level} Complete! ${currentLevelDesc} Mastered!`);
+
+    state.progression.level += 1;
+    state.progression.levelStreak = 0;
+
+    // Advance: diatonic -> chromatic -> next key (diatonic)
+    if (state.progression.currentMode === "diatonic") {
+      // Move to chromatic for same key
+      state.progression.currentMode = "chromatic";
+    } else {
+      // Move to next key, back to diatonic
+      if (state.progression.remainingKeys.length > 0) {
+        state.progression.currentKey = state.progression.remainingKeys.shift();
+        state.progression.currentMode = "diatonic";
+      } else {
+        // All keys exhausted! Game complete
+        endGame("🏆 Congratulations! All keys mastered!");
+        return false;
+      }
+    }
+    
+    // Update level info display
+    renderLevelInfo();
+    
+    return true;
+  }
+
+  function nextQuestion() {
+    state.questionIndex += 1;
+    
+    let keyRoot, degreePool, degreeMode;
+
+    if (settings.gameMode === "progression") {
+      // Use fixed key and mode from progression state
+      keyRoot = state.progression.currentKey;
+      degreeMode = state.progression.currentMode;
+      
+      // Safety check: if progression key is null, reinitialize
+      if (!keyRoot) {
+        console.warn("Progression mode had null key, reinitializing...");
+        initProgressionMode();
+        keyRoot = state.progression.currentKey;
+        degreeMode = state.progression.currentMode;
+      }
+    } else {
+      // Practice mode: random
+      const enabledKeys = settings.keysEnabled.length ? settings.keysEnabled : [...ALL_KEYS];
+      keyRoot = pickRandom(enabledKeys);
+      degreeMode = settings.degreeMode;
+    }
+
+    degreePool = degreeMode === "diatonic" ? DIATONIC_DEGREES : CHROMATIC_DEGREES;
+    
+    // Safety check: ensure we have a valid key
+    if (!keyRoot) {
+      console.error("Failed to get valid keyRoot, falling back to C");
+      keyRoot = "C";
+    }
+    
+    // Filter by enabled degrees
+    const enabledDegrees = settings.degreesEnabled.length ? settings.degreesEnabled : degreePool;
+    const availableDegrees = degreePool.filter(d => enabledDegrees.includes(d));
+    const degreeLabel = pickRandom(availableDegrees.length ? availableDegrees : degreePool);
+    
+    let correctNote, options, scaleType = null;
+    
+    // For piano mode, select a scale type and ask for the key
+    if (settings.pianoMode) {
+      const availableScales = settings.scaleTypesEnabled.length ? settings.scaleTypesEnabled : Object.keys(SCALE_TYPES);
+      scaleType = pickRandom(availableScales);
+      // In piano mode, the correct answer is the KEY, not a degree
+      correctNote = keyRoot;
+      // Options are all 12 keys
+      options = buildOptions(correctNote);
+      console.log(`NEW QUESTION: ${keyRoot} ${scaleType} scale - Correct answer: ${correctNote}`);
+      console.log('Available keys:', settings.keysEnabled);
+      console.log('Available scales:', availableScales);
+    } else {
+      // Normal degree mode
+      correctNote = degreeToNote(keyRoot, degreeLabel, degreeMode);
+      options = buildOptionsForMode(correctNote, degreeMode, keyRoot);
+    }
+    
+    state.current = { keyRoot, degreeLabel, correctNote, options, scaleType };
+    
+    // Update piano visualization FIRST if in piano mode
+    if (settings.pianoMode && scaleType) {
+      console.log(`Updating piano for ${keyRoot} ${scaleType}`);
+      updatePianoVisualization(pianoKeyboard, keyRoot, scaleType, SCALE_TYPES, NOTE_TO_PC, pcToNote);
+    }
+    
+    renderQuestion();
+    renderAnswers();
+    renderLevelInfo();
+    startTimer();
+  }
+
+  function startGame() {
+    ensureAudio();
+    startAmbientMusic(settings, getVolumeMultiplier);
+
+    // Close game over modal if it's showing
+    const elStatusOverlay = document.getElementById("statusOverlay");
+    if (elStatusPanel && elStatusOverlay) {
+      elStatusPanel.hidden = true;
+      elStatusOverlay.hidden = true;
+      elStatusPanel.classList.remove("good", "bad");
+    }
+    
+    // Hide suggestions in question box
+    const questionSuggestions = document.getElementById("questionSuggestions");
+    if (questionSuggestions) {
+      questionSuggestions.hidden = true;
+      questionSuggestions.innerHTML = "";
+    }
+    
+    // Restore opacity to all elements
+    if (elAnswerGrid) elAnswerGrid.style.opacity = '1';
+    if (pianoContainer) pianoContainer.style.opacity = '1';
+    if (elBonusButton) elBonusButton.style.opacity = '1';
+
+    state.active = true;
+    state.locked = false;
+
+    state.questionIndex = 0;
+    state.streak = 0;
+    state.speedLevel = 0;
+    state.score = 0;
+    state.bonusPoints = 0;
+    state.bonusActive = false;
+    state.bonusTimeRemaining = 0;
+    if (state.bonusTimerId) {
+      clearInterval(state.bonusTimerId);
+      state.bonusTimerId = null;
+    }
+
+    // Start with 3 lives (matches the original "3 tries" feeling, now used for endless mode)
+    state.lives = 3;
+    state.maxLives = 3;
+
+    // Initialize progression mode if needed
+    if (settings.gameMode === "progression") {
+      initProgressionMode();
+    }
+
+    state.current = null;
+    renderLives();
+    renderScore();
+    renderBonus();
+    renderLevelInfo();
+    
+    // Update restart hint
+    if (elRestartHint) {
+      elRestartHint.textContent = settings.gameMode === "progression" 
+        ? "Press to restart from level 1"
+        : "Press to restart";
+    }
+    
+    setStatusNeutral("Ready.");
+    updateRiskVisual();
+    
+    nextQuestion();
+  }
+
+  function generateCompactSuggestions() {
+    const stats = getStats();
+    const questions = stats.questions || [];
+    
+    if (questions.length === 0) {
+      return "<p style='margin-top: 1em; opacity: 0.8;'>Play more to get personalized suggestions!</p>";
+    }
+    
+    // Calculate stats by key, degree, and combination
+    const byKey = {};
+    const byDegree = {};
+    const byKeyDegree = {};
+    
+    questions.forEach(q => {
+      // By key
+      if (!byKey[q.keyRoot]) byKey[q.keyRoot] = { correct: 0, total: 0, totalTime: 0 };
+      byKey[q.keyRoot].total++;
+      if (q.correct) byKey[q.keyRoot].correct++;
+      byKey[q.keyRoot].totalTime += q.responseTime;
+      
+      // By degree
+      if (!byDegree[q.degreeLabel]) byDegree[q.degreeLabel] = { correct: 0, total: 0, totalTime: 0 };
+      byDegree[q.degreeLabel].total++;
+      if (q.correct) byDegree[q.degreeLabel].correct++;
+      byDegree[q.degreeLabel].totalTime += q.responseTime;
+      
+      // By key-degree combo
+      const combo = `${q.degreeLabel} of ${q.keyRoot}`;
+      if (!byKeyDegree[combo]) byKeyDegree[combo] = { correct: 0, total: 0, totalTime: 0 };
+      byKeyDegree[combo].total++;
+      if (q.correct) byKeyDegree[combo].correct++;
+      byKeyDegree[combo].totalTime += q.responseTime;
+    });
+    
+    // Find weak areas (less than 70% accuracy, at least 3 attempts)
+    const needsPractice = [];
+    
+    // Check specific key+degree combinations first (most specific)
+    Object.entries(byKeyDegree).forEach(([combo, data]) => {
+      const acc = (data.correct / data.total) * 100;
+      const avg = data.totalTime / data.total;
+      if (acc < 70 && data.total >= 3) {
+        needsPractice.push({ type: "Specific", name: combo, reason: `Low accuracy (${acc.toFixed(1)}%)` });
+      } else if (avg > 4 && data.total >= 3) {
+        needsPractice.push({ type: "Specific", name: combo, reason: `Slow response (${avg.toFixed(2)}s avg)` });
+      }
+    });
+    
+    Object.keys(byKey).forEach(key => {
+      const data = byKey[key];
+      const acc = (data.correct / data.total) * 100;
+      if (acc < 70 && data.total >= 5) {
+        needsPractice.push({ type: "Key", name: key, reason: `Low accuracy (${acc.toFixed(1)}%)` });
+      }
+    });
+    
+    Object.keys(byDegree).forEach(degree => {
+      const data = byDegree[degree];
+      const acc = (data.correct / data.total) * 100;
+      const avg = data.totalTime / data.total;
+      if (acc < 70 && data.total >= 5) {
+        needsPractice.push({ type: "Degree", name: degree, reason: `Low accuracy (${acc.toFixed(1)}%)` });
+      } else if (avg > 4 && data.total >= 5) {
+        needsPractice.push({ type: "Degree", name: degree, reason: `Slow response (${avg.toFixed(2)}s avg)` });
+      }
+    });
+    
+    if (needsPractice.length === 0) {
+      return "<p style='margin-top: 1em; opacity: 0.8;'>Great job! Keep practicing to maintain your skills.</p>";
+    }
+    
+    // Analyze weak areas
+    const weakKeys = [];
+    const weakDegrees = [];
+    const weakCombos = [];
+    
+    needsPractice.forEach(item => {
+      if (item.type === "Key") weakKeys.push(item.name);
+      if (item.type === "Degree") weakDegrees.push(item.name);
+      if (item.type === "Specific") {
+        // Extract key and degree from combo like "6th of C"
+        const match = item.name.match(/(.+) of (.+)/);
+        if (match) {
+          weakCombos.push({ degree: match[1], key: match[2] });
+        }
+      }
+    });
+    
+    // Generate compact practice plan with buttons using stats modal styling
+    let planHtml = "<div class='practiceSteps' style='margin-top: 1em; font-size: 0.9em;'>";
+    
+    // Step 1: Focus on specific combinations first (most targeted)
+    if (weakCombos.length > 0) {
+      const topCombos = weakCombos.slice(0, 3); // Top 3 worst combinations
+      planHtml += "<div class='practiceStep'>";
+      planHtml += "<div class='stepNumber'>1</div>";
+      planHtml += "<div class='stepContent'>";
+      planHtml += "<h4>Master Specific Combinations</h4>";
+      planHtml += "<p>Focus on: ";
+      topCombos.forEach((combo, i) => {
+        planHtml += `<strong>${combo.degree} of ${combo.key}</strong>${i < topCombos.length - 1 ? ', ' : ''}`;
+      });
+      planHtml += "</p>";
+      
+      // Create suggested settings
+      const suggestedKeys = [...new Set(topCombos.map(c => c.key))];
+      const suggestedDegrees = [...new Set(topCombos.map(c => c.degree))];
+      
+      planHtml += `<button class='btn btnApply' onclick='applyPracticeSettingsAndStart(${JSON.stringify(suggestedKeys)}, ${JSON.stringify(suggestedDegrees)})'>Practice These</button>`;
+      planHtml += "</div></div>";
+    }
+    
+    // Step 2: Practice weak keys
+    if (weakKeys.length > 0) {
+      planHtml += "<div class='practiceStep'>";
+      planHtml += "<div class='stepNumber'>2</div>";
+      planHtml += "<div class='stepContent'>";
+      planHtml += "<h4>Strengthen Weak Keys</h4>";
+      planHtml += `<p>Practice all degrees in these keys: <strong>${weakKeys.join(", ")}</strong></p>`;
+      planHtml += `<button class='btn btnApply' onclick='applyPracticeSettingsAndStart(${JSON.stringify(weakKeys)}, null)'>Practice These Keys</button>`;
+      planHtml += "</div></div>";
+    }
+    
+    // Step 3: Practice weak degrees
+    if (weakDegrees.length > 0) {
+      planHtml += "<div class='practiceStep'>";
+      planHtml += "<div class='stepNumber'>3</div>";
+      planHtml += "<div class='stepContent'>";
+      planHtml += "<h4>Master Difficult Degrees</h4>";
+      planHtml += `<p>Practice these degrees across all keys: <strong>${weakDegrees.join(", ")}</strong></p>`;
+      planHtml += `<button class='btn btnApply' onclick='applyPracticeSettingsAndStart(null, ${JSON.stringify(weakDegrees)})'>Practice These Degrees</button>`;
+      planHtml += "</div></div>";
+    }
+    
+    planHtml += "</div>";
+    
+    return planHtml;
+  }
+
+  function endGame(message) {
+    state.active = false;
+    state.current = null;
+    stopTimer();
+    stopAmbientMusic();
+    soundGameOver(settings, getVolumeMultiplier);
+    lockAnswers(true);
+    if (elTimerBackground) elTimerBackground.textContent = "";
+    updateRiskVisual();
+    
+    // Update high score if needed
+    const stats = getStats();
+    if (state.score > stats.highScore) {
+      stats.highScore = state.score;
+      saveStats(stats);
+    }
+    
+    // Restore header visibility
+    if (elHeader) {
+      elHeader.classList.remove("faded");
+    }
+    
+    // Hide everything except question box
+    if (elAnswerGrid) elAnswerGrid.style.opacity = '0.2';
+    if (pianoContainer) pianoContainer.style.opacity = '0.2';
+    if (elBonusButton) elBonusButton.style.opacity = '0.2';
+    
+    // Show game over in status panel
+    flashStatus(false, `${message} — Final Score: ${state.score}`);
+    
+    // Show suggestions in question box
+    elQuestionText.textContent = "Game Over. Press New to try again.";
+    const questionSuggestions = document.getElementById("questionSuggestions");
+    if (questionSuggestions) {
+      const suggestions = generateCompactSuggestions();
+      questionSuggestions.innerHTML = suggestions;
+      questionSuggestions.hidden = false;
+    }
+  }
+
+  function nextAfterFeedback() {
+    setTimeout(() => {
+      if (!state.active) return;
+      lockAnswers(false);
+      nextQuestion();
+    }, settings.modalDuration + 100);
+  }
+
+  function handleCorrect(chosen) {
+    soundCorrect(settings, getVolumeMultiplier);
+    
+    // Calculate response time
+    const responseTime = state.questionStartTime ? (Date.now() - state.questionStartTime) / 1000 : 0;
+    
+    // Record statistics
+    if (state.current) {
+      recordQuestion(
+        state.current.keyRoot,
+        state.current.degreeLabel,
+        settings.degreeMode,
+        true,
+        responseTime
+      );
+    }
+
+    state.streak += 1;
+    
+    // Award bonus points every 5 streak
+    let bonusAwarded = false;
+    if (state.streak > 0 && state.streak % 5 === 0) {
+      state.bonusPoints += 5;
+      bonusAwarded = true;
+      renderBonus();
+    }
+    
+    // Calculate score: base points + streak bonus + speed bonus
+    const basePoints = 100;
+    const streakBonus = state.streak * 10;
+    const speedBonus = Math.max(0, (state.questionSeconds - state.secondsLeft) * 5);
+    const pointsEarned = basePoints + streakBonus + speedBonus;
+    
+    state.score += pointsEarned;
+    renderScore();
+
+    // Progression mode: increment level streak
+    if (settings.gameMode === "progression") {
+      state.progression.levelStreak += 1;
+    }
+
+    // After 10 correct streak the user gets an extra life (every 10)
+    let awardedLife = false;
+    if (state.streak > 0 && state.streak % 10 === 0) {
+      state.lives += 1;
+      state.maxLives = Math.max(state.maxLives, state.lives);
+      awardedLife = true;
+      renderLives();
+    }
+
+    // After 20 correct answers total, give extra life AND speed up
+    let rewardAt20 = false;
+    if (state.questionIndex > 0 && state.questionIndex % 20 === 0) {
+      state.speedLevel += 1;
+      state.lives += 1;
+      state.maxLives = Math.max(state.maxLives, state.lives);
+      rewardAt20 = true;
+      renderLives();
+    }
+
+    updateRiskVisual();
+
+    // Check for progression level advancement
+    const streakRequired = getProgressionStreakRequired();
+    if (settings.gameMode === "progression" && state.progression.levelStreak >= streakRequired) {
+      lockAnswers(true);
+      stopTimer();
+      const canContinue = advanceProgressionLevel();
+      if (canContinue) {
+        nextAfterFeedback();
+      }
+      return;
+    }
+
+    if (rewardAt20) {
+      flashStatus(true, `Correct: ${chosen} — 🎉 20 correct! +1 life & Speed up! (Score: ${state.score})`);
+    } else if (awardedLife) {
+      flashStatus(true, `Correct: ${chosen} — +1 life! (Score: ${state.score})`);
+    } else if (bonusAwarded) {
+      flashStatus(true, `Correct: ${chosen} — ⏳ +5 Bonus! (Streak: ${state.streak}) — Score: ${state.score}`);
+    } else {
+      const streakText = settings.gameMode === "progression" 
+        ? `Level ${state.progression.level} Progress: ${state.progression.levelStreak}/${getProgressionStreakRequired()}`
+        : `Streak: ${state.streak}`;
+      flashStatus(true, `Correct: ${chosen} (${streakText}) — Score: ${state.score}`);
+    }
+
+    lockAnswers(true);
+    stopTimer();
+    nextAfterFeedback();
+  }
+
+  function handleWrong(chosen) {
+    soundWrong(settings, getVolumeMultiplier);
+    
+    // Calculate response time
+    const responseTime = state.questionStartTime ? (Date.now() - state.questionStartTime) / 1000 : 0;
+    
+    // Record statistics
+    if (state.current) {
+      recordQuestion(
+        state.current.keyRoot,
+        state.current.degreeLabel,
+        settings.degreeMode,
+        false,
+        responseTime
+      );
+    }
+
+    state.streak = 0;
+    if (settings.gameMode === "progression") {
+      state.progression.levelStreak = 0;
+    }
+    state.lives -= 1;
+    renderLives();
+    updateRiskVisual();
+
+    if (state.lives <= 0) {
+      flashStatus(false, `Wrong: ${chosen} — Correct: ${state.current.correctNote} — Game Over`);
+      endGame("No lives left.");
+      return;
+    }
+
+    flashStatus(false, `Wrong: ${chosen} — Correct: ${state.current.correctNote} — Lives: ${state.lives}`);
+    lockAnswers(true);
+    stopTimer();
+    nextAfterFeedback();
+  }
+
+  function handleTimeout() {
+    soundWrong(settings, getVolumeMultiplier);
+    
+    // Record statistics (timeout counts as wrong with max time)
+    if (state.current) {
+      recordQuestion(
+        state.current.keyRoot,
+        state.current.degreeLabel,
+        settings.degreeMode,
+        false,
+        state.questionSeconds // Full time elapsed
+      );
+    }
+
+    state.streak = 0;
+    if (settings.gameMode === "progression") {
+      state.progression.levelStreak = 0;
+    }
+    state.lives -= 1;
+    renderLives();
+    updateRiskVisual();
+
+    if (state.lives <= 0) {
+      flashStatus(false, `Time out — Correct: ${state.current.correctNote} — Game Over`);
+      endGame("Time out.");
+      return;
+    }
+
+    flashStatus(false, `Time out — Correct: ${state.current.correctNote} — Lives: ${state.lives}`);
+    lockAnswers(true);
+    nextAfterFeedback();
+  }
+
+  function onAnswerClick(btn) {
+    if (!state.active || state.locked || !state.current) return;
+
+    const chosen = btn.dataset.note;
+    const correct = state.current.correctNote;
+    
+    console.log(`Answer clicked: ${chosen}, Correct: ${correct}`);
+
+    if (chosen === correct) handleCorrect(chosen);
+    else handleWrong(chosen);
+  }
 
   // =========================
   // Settings Modal
@@ -288,8 +872,8 @@ let settings = loadSettings();
     // Pause the game if it's active
     if (state.active && !state.locked) {
       state.paused = true;
-      stopTimerWrapper();
-      lockAnswers(state, answerButtons, true);
+      stopTimer();
+      lockAnswers(true);
     }
 
     secondsSlider.value = String(settings.secondsPerQuestion);
@@ -379,8 +963,8 @@ let settings = loadSettings();
       }
     }
 
-    renderKeyToggles(keyToggles, ALL_KEYS, settings, getVolumeMultiplier, soundDegreeToggle);
-    initScaleToggles(scaleToggles, SCALE_TYPES, SCALE_TYPE_NAMES, settings, saveSettingsToStorage, soundDegreeToggle, getVolumeMultiplier);
+    renderKeyToggles();
+    initScaleToggles();
     btnCloseSettings.focus();
   }
 
@@ -391,8 +975,8 @@ let settings = loadSettings();
     // Resume the game if it was paused
     if (state.paused && state.active) {
       state.paused = false;
-      lockAnswers(state, answerButtons, false);
-      startTimerWrapper();
+      lockAnswers(false);
+      startTimer();
     }
   }
 
@@ -405,8 +989,8 @@ let settings = loadSettings();
     
     // Pause the game (stop timer and lock answers)
     if (state.active) {
-      stopTimerWrapper();
-      lockAnswers(state, answerButtons, true);
+      stopTimer();
+      lockAnswers(true);
     }
     
     confirmOverlay.hidden = false;
@@ -418,8 +1002,8 @@ let settings = loadSettings();
     
     // Resume the game if user cancels and game is still active
     if (state.active) {
-      lockAnswers(state, answerButtons, false);
-      startTimerWrapper();
+      lockAnswers(false);
+      startTimer();
     }
   }
 
@@ -462,7 +1046,7 @@ let settings = loadSettings();
   // =========================
   // Wire up events
   // =========================
-  answerButtons.forEach(b => b.addEventListener("click", () => onAnswerClickWrapper(b)));
+  answerButtons.forEach(b => b.addEventListener("click", () => onAnswerClick(b)));
 
   // Bonus button handler
   if (elBonusButton) {
@@ -481,13 +1065,13 @@ let settings = loadSettings();
     state.bonusPoints -= 5;
     state.bonusActive = true;
     state.bonusTimeRemaining = 30;
-    renderBonus(state, elBonusCount, elBonusButton);
+    renderBonus();
     
     // Restart timer with doubled time
-    stopTimerWrapper();
-    startTimerWrapper();
+    stopTimer();
+    startTimer();
     
-    flashStatus(settings, elStatusPanel, elStatusText, true, "⏳ Bonus Activated! Questions have 2x time for 30 seconds!");
+    flashStatus(true, "⏳ Bonus Activated! Questions have 2x time for 30 seconds!");
     
     // Start countdown timer (real time)
     state.bonusTimerId = setInterval(() => {
@@ -496,25 +1080,25 @@ let settings = loadSettings();
         state.bonusTimerId = null;
         state.bonusActive = false;
         state.bonusTimeRemaining = 0;
-        renderBonus(state, elBonusCount, elBonusButton);
+        renderBonus();
         return;
       }
       
       state.bonusTimeRemaining -= 1;
-      renderBonus(state, elBonusCount, elBonusButton);
+      renderBonus();
       
       if (state.bonusTimeRemaining <= 0) {
         clearInterval(state.bonusTimerId);
         state.bonusTimerId = null;
         state.bonusActive = false;
-        renderBonus(state, elBonusCount, elBonusButton);
+        renderBonus();
         soundBonusExpire(settings, getVolumeMultiplier);
-        flashStatus(settings, elStatusPanel, elStatusText, true, "Bonus time expired!");
+        flashStatus(true, "Bonus time expired!");
         
         // Restart timer with normal time if in middle of question
         if (!state.locked) {
-          stopTimerWrapper();
-          startTimerWrapper();
+          stopTimer();
+          startTimer();
         }
       }
     }, 1000);
@@ -529,7 +1113,7 @@ let settings = loadSettings();
       } else {
         // Game not active, just start
         soundGameStart(settings);
-        startGameWrapper();
+        startGame();
       }
     });
   }
@@ -551,7 +1135,7 @@ let settings = loadSettings();
     triangleMenu.classList.remove('active');
     // Close settings modal if open
     overlay.hidden = true;
-    renderStats(getStats);
+    renderStats();
     statsOverlay.hidden = false;
   });
 
@@ -567,7 +1151,7 @@ let settings = loadSettings();
   btnConfirmRestart.addEventListener("click", () => {
     soundDegreeToggle(settings, getVolumeMultiplier);
     hideConfirmRestart();
-    startGameWrapper();
+    startGame();
   });
   
   btnCancelRestart.addEventListener("click", () => {
@@ -588,8 +1172,8 @@ let settings = loadSettings();
     
     // Stop timer when opening menu
     if (isHidden && state.active) {
-      stopTimerWrapper();
-      lockAnswers(state, answerButtons, true);
+      stopTimer();
+      lockAnswers(true);
       state.paused = true;
     }
     
@@ -603,8 +1187,8 @@ let settings = loadSettings();
       // Closing menu - resume if game was paused
       triangleMenu.classList.remove('active');
       if (state.paused && state.active) {
-        lockAnswers(state, answerButtons, false);
-        startTimerWrapper();
+        lockAnswers(false);
+        startTimer();
         state.paused = false;
       }
     }
@@ -630,8 +1214,8 @@ let settings = loadSettings();
       
       // Resume game if it was paused
       if (state.paused && state.active) {
-        lockAnswers(state, answerButtons, false);
-        startTimerWrapper();
+        lockAnswers(false);
+        startTimer();
         state.paused = false;
       }
     });
@@ -785,15 +1369,15 @@ let settings = loadSettings();
 
     // Apply settings immediately (including chromatic mode)
     if (state.active) {
-      stopTimerWrapper();
+      stopTimer();
       state.locked = false;
-      lockAnswers(state, answerButtons, false);
-      nextQuestionWrapper();
+      lockAnswers(false);
+      nextQuestion();
     } else {
-      renderAnswers(state, answerButtons);
+      renderAnswers();
     }
 
-    setStatusNeutral(elStatusPanel, elStatusText, "Settings saved.");
+    setStatusNeutral("Settings saved.");
   });
 
   if (btnSetDefault) {
@@ -849,7 +1433,7 @@ let settings = loadSettings();
     btnStats.addEventListener("click", () => {
       statsOverlay.hidden = false;
       statsModal.hidden = false;
-      renderStats(getStats);
+      renderStats();
     });
 
     btnCloseStats.addEventListener("click", () => {
@@ -938,4 +1522,4 @@ let settings = loadSettings();
     pianoContainer.hidden = true;
   }
   
-  initScaleToggles(scaleToggles, SCALE_TYPES, SCALE_TYPE_NAMES, settings, saveSettingsToStorage, soundDegreeToggle, getVolumeMultiplier);
+  initScaleToggles();

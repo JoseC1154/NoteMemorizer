@@ -97,7 +97,7 @@ import {
 
 "use strict";
 
-// Cache buster: v1.0.4
+// Cache buster: v1.0.2
 
 // Destructure DOM elements for easier access
 const {
@@ -288,7 +288,7 @@ let settings = loadSettings();
     // Pause the game if it's active
     if (state.active && !state.locked) {
       state.paused = true;
-      stopTimerWrapper();
+      stopTimer();
       lockAnswers(state, answerButtons, true);
     }
 
@@ -392,7 +392,7 @@ let settings = loadSettings();
     if (state.paused && state.active) {
       state.paused = false;
       lockAnswers(state, answerButtons, false);
-      startTimerWrapper();
+      startTimer();
     }
   }
 
@@ -405,7 +405,7 @@ let settings = loadSettings();
     
     // Pause the game (stop timer and lock answers)
     if (state.active) {
-      stopTimerWrapper();
+      stopTimer();
       lockAnswers(state, answerButtons, true);
     }
     
@@ -419,7 +419,7 @@ let settings = loadSettings();
     // Resume the game if user cancels and game is still active
     if (state.active) {
       lockAnswers(state, answerButtons, false);
-      startTimerWrapper();
+      startTimer();
     }
   }
 
@@ -484,8 +484,8 @@ let settings = loadSettings();
     renderBonus(state, elBonusCount, elBonusButton);
     
     // Restart timer with doubled time
-    stopTimerWrapper();
-    startTimerWrapper();
+    stopTimer();
+    startTimer();
     
     flashStatus(settings, elStatusPanel, elStatusText, true, "⏳ Bonus Activated! Questions have 2x time for 30 seconds!");
     
@@ -513,8 +513,8 @@ let settings = loadSettings();
         
         // Restart timer with normal time if in middle of question
         if (!state.locked) {
-          stopTimerWrapper();
-          startTimerWrapper();
+          stopTimer();
+          startTimer();
         }
       }
     }, 1000);
@@ -588,7 +588,7 @@ let settings = loadSettings();
     
     // Stop timer when opening menu
     if (isHidden && state.active) {
-      stopTimerWrapper();
+      stopTimer();
       lockAnswers(state, answerButtons, true);
       state.paused = true;
     }
@@ -604,7 +604,7 @@ let settings = loadSettings();
       triangleMenu.classList.remove('active');
       if (state.paused && state.active) {
         lockAnswers(state, answerButtons, false);
-        startTimerWrapper();
+        startTimer();
         state.paused = false;
       }
     }
@@ -631,7 +631,7 @@ let settings = loadSettings();
       // Resume game if it was paused
       if (state.paused && state.active) {
         lockAnswers(state, answerButtons, false);
-        startTimerWrapper();
+        startTimer();
         state.paused = false;
       }
     });
@@ -785,10 +785,10 @@ let settings = loadSettings();
 
     // Apply settings immediately (including chromatic mode)
     if (state.active) {
-      stopTimerWrapper();
+      stopTimer();
       state.locked = false;
       lockAnswers(state, answerButtons, false);
-      nextQuestionWrapper();
+      nextQuestion();
     } else {
       renderAnswers(state, answerButtons);
     }
