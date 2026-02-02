@@ -17,3 +17,4 @@ TODO:
 -add a set as default button
 -on piano mode after ten correct of one scale that key is taken off the list tested.
 -as the changes are taken place the setting should reflect.
+-I would like the music to wind down in tempo or speed then stop when not in the game, a synthy wavy freeze of a chord when adjusting settings the to wind back up when the game starts.
