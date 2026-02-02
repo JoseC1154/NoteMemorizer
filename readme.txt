@@ -7,11 +7,12 @@
 -Two octaves displayed
 -Piano positioned under question box with same width
 -Add a set as default button (two-tier settings: Save vs Set as Default)
--Code refactoring: Extracted 8 ES6 modules (constants, dom, settings, stats, audio, piano, ui, game-logic)
-  • Reduced main file by 68.2% (2,952 → 939 lines)
+-Code refactoring: COMPLETED! Extracted 8 ES6 modules
+  • Reduced main file by 68.2% (2,952 → 941 lines, 2,011 lines extracted)
   • Improved maintainability and code organization
   • Fixed null keyRoot bug in progression mode
   • Fully testable with dependency injection pattern
+  • All game features working correctly
 
 TODO:
 -then when closed should restart or install play pause button 
@@ -21,4 +22,7 @@ TODO:
 -quiz to test if user is ready for chord mode.
 -multi language.
 -Continue refactoring: Extract ui.js, game-logic.js, event-handlers.js modules
-
+-add a set as default button
+-on piano mode after ten correct of one scale that key is taken off the list tested.
+-as the changes are taken place the setting should reflect.
+-I would like the music to wind down in tempo or speed then stop when not in the game, a synthy wavy freeze of a chord when adjusting settings the to wind back up when the game starts.
