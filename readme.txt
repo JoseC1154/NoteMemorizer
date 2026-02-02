@@ -15,4 +15,5 @@ TODO:
 -quiz to test if user is ready for chord mode.
 -multi language.
 -add a set as default button
+-on piano mode after ten correct of one scale that key is taken off the list tested.
 
