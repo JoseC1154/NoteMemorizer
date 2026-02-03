@@ -149,24 +149,37 @@
         </div>
       </section>
 
+      <section class="settingGroup" id="gameModeSection">
+        <h3 class="settingLabel">Game Mode</h3>
+        <p class="settingHint">Choose what type of question you want to practice.</p>
+        <div class="segmented gameModeSelector" role="radiogroup" aria-label="Game mode">
+          <button class="segBtn" id="modeDegreeToNote" type="button" role="radio" aria-checked="true" data-gamemode="degreeToNote">
+            <div class="segBtnLabel">Degree → Note</div>
+            <div class="segBtnHint">What is the 3 in C major?</div>
+          </button>
+          <button class="segBtn" id="modeNoteToDegree" type="button" role="radio" aria-checked="false" data-gamemode="noteToDegree">
+            <div class="segBtnLabel">Note → Degree</div>
+            <div class="segBtnHint">Eb is what degree in Db major?</div>
+          </button>
+          <button class="segBtn" id="modeScaleRecognition" type="button" role="radio" aria-checked="false" data-gamemode="scaleRecognition">
+            <div class="segBtnLabel">Scale Recognition</div>
+            <div class="segBtnHint">What major scale is this?</div>
+          </button>
+        </div>
+      </section>
+
       <section class="settingGroup" id="degreeModeSection">
-        <h3 class="settingLabel">Degree Mode</h3>
+        <h3 class="settingLabel">Degree Type</h3>
+        <p class="settingHint">Diatonic (1-7) or Chromatic (b2, #2, b3, etc.)</p>
         <div class="segmented" role="radiogroup" aria-label="Degree mode">
           <button class="segBtn" id="modeDiatonic" type="button" role="radio" aria-checked="true" data-mode="diatonic">Diatonic</button>
           <button class="segBtn" id="modeChromatic" type="button" role="radio" aria-checked="false" data-mode="chromatic">Chromatic</button>
         </div>
       </section>
 
-      <section class="settingGroup" id="pianoModeSection">
-        <h3 class="settingLabel">Piano Visualization</h3>
-        <div class="toggleRow">
-          <button class="toggleBtn" id="togglePianoMode" type="button" aria-pressed="false">Piano Mode: Off</button>
-        </div>
-      </section>
-
       <section class="settingGroup" id="scaleTypeSection">
-        <h3 class="settingLabel">Scale Types for Piano</h3>
-        <p class="settingHint">Select which scale types to practice in piano mode.</p>
+        <h3 class="settingLabel">Scale Types</h3>
+        <p class="settingHint">Select which scale types to practice (for Note → Degree and Scale Recognition modes).</p>
         <div class="scaleToggles" id="scaleToggles" aria-label="Scale types to practice"></div>
       </section>
 
@@ -320,7 +333,7 @@
     </div>
   </div>
 
-  <script type="module" src="js/keydrill.js?v=1.0.4"></script>
+  <script type="module" src="js/keydrill.js?v=1.0.7"></script>
 
 </body>
 </html>

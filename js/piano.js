@@ -120,3 +120,33 @@ export function updatePianoVisualization(pianoKeyboard, rootKey, scaleType, SCAL
   console.log('Keys with red overlay (shaded):', shadedKeys);
   console.log('=============================');
 }
+
+// Highlight a specific note on the piano (for note-to-degree questions)
+export function highlightQuestionNote(pianoKeyboard, questionNote) {
+  if (!pianoKeyboard || !questionNote) return;
+  
+  const keys = pianoKeyboard.querySelectorAll('.pianoKey');
+  
+  // First remove any existing question highlights
+  keys.forEach(key => {
+    key.classList.remove('questionNote');
+  });
+  
+  // Add highlight to the question note
+  keys.forEach(key => {
+    if (key.dataset.note === questionNote) {
+      key.classList.add('questionNote');
+    }
+  });
+  
+  console.log(`Highlighted question note: ${questionNote}`);
+}
+
+// Clear question note highlight
+export function clearQuestionHighlight(pianoKeyboard) {
+  if (!pianoKeyboard) return;
+  const keys = pianoKeyboard.querySelectorAll('.pianoKey');
+  keys.forEach(key => {
+    key.classList.remove('questionNote');
+  });
+}

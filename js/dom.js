@@ -91,8 +91,6 @@ export const dom = {
   // Piano visualization
   pianoContainer: document.getElementById("pianoContainer"),
   pianoKeyboard: document.getElementById("pianoKeyboard"),
-  togglePianoMode: document.getElementById("togglePianoMode"),
   scaleToggles: document.getElementById("scaleToggles"),
-  pianoModeSection: document.getElementById("pianoModeSection"),
   scaleTypeSection: document.getElementById("scaleTypeSection")
 };

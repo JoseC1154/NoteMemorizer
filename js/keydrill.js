@@ -52,7 +52,9 @@ import {
 
 import {
   generatePianoKeys,
-  updatePianoVisualization
+  updatePianoVisualization,
+  highlightQuestionNote,
+  clearQuestionHighlight
 } from './piano.js';
 
 import {
@@ -74,6 +76,7 @@ import {
 
 import {
   degreeToNote,
+  noteToDegree,
   pickRandom,
   shuffle,
   buildOptions,
@@ -97,7 +100,7 @@ import {
 
 "use strict";
 
-// Cache buster: v1.0.4
+// Cache buster: v1.0.7
 
 // Destructure DOM elements for easier access
 const {
@@ -173,9 +176,7 @@ const {
   toggleAmbient,
   pianoContainer,
   pianoKeyboard,
-  togglePianoMode,
   scaleToggles,
-  pianoModeSection,
   scaleTypeSection
 } = dom;
 
@@ -233,7 +234,7 @@ let settings = loadSettings();
     state, settings, ALL_KEYS, DIATONIC_DEGREES, CHROMATIC_DEGREES, NOTE_TO_PC, MAJOR_SCALE_OFFSETS,
     CHROMATIC_TO_OFFSET, NOTE_LIST, SCALE_TYPES, SCALE_TYPE_NAMES, pcToNote, elQuestionText, elTimerBackground,
     answerButtons, elLevelInfo, pianoKeyboard, renderQuestion, renderAnswers, renderLevelInfo, startTimerWrapper,
-    updatePianoVisualization
+    updatePianoVisualization, highlightQuestionNote
   );
   
   const startTimerWrapper = () => startTimer(
@@ -274,7 +275,7 @@ let settings = loadSettings();
     recordQuestion, renderLives, updateRiskVisual, flashStatus, lockAnswers, nextAfterFeedbackWrapper, endGameWrapper
   );
   
-  const onAnswerClickWrapper = (btn) => onAnswerClick(state, btn, handleCorrectWrapper, handleWrongWrapper);
+  const onAnswerClickWrapper = (btn) => onAnswerClick(state, btn, handleCorrectWrapper, handleWrongWrapper, settings);
 
   // =========================
   // Settings Modal
@@ -354,6 +355,13 @@ let settings = loadSettings();
     modeDiatonic.setAttribute("aria-checked", settings.degreeMode === "diatonic" ? "true" : "false");
     modeChromatic.setAttribute("aria-checked", settings.degreeMode === "chromatic" ? "true" : "false");
 
+    // Initialize unified game mode UI
+    if (modeDegreeToNote && modeNoteToDegree && modeScaleRecognition) {
+      modeDegreeToNote.setAttribute("aria-checked", settings.questionMode === "degreeToNote" ? "true" : "false");
+      modeNoteToDegree.setAttribute("aria-checked", settings.questionMode === "noteToDegree" ? "true" : "false");
+      modeScaleRecognition.setAttribute("aria-checked", settings.questionMode === "scaleRecognition" ? "true" : "false");
+    }
+
     toggleSound.setAttribute("aria-pressed", settings.audioOn ? "true" : "false");
     toggleSound.textContent = `Sounds: ${settings.audioOn ? "On" : "Off"}`;
 
@@ -362,17 +370,16 @@ let settings = loadSettings();
 
     toggleAmbient.setAttribute("aria-pressed", settings.ambientOn ? "true" : "false");
     toggleAmbient.textContent = `Music: ${settings.ambientOn ? "On" : "Off"}`;
-
-    togglePianoMode.setAttribute("aria-pressed", settings.pianoMode ? "true" : "false");
-    togglePianoMode.textContent = `Piano Mode: ${settings.pianoMode ? "On" : "Off"}`;
     
+    // Show piano based on question mode
+    const shouldShowPiano = settings.questionMode === "noteToDegree" || settings.questionMode === "scaleRecognition";
     if (pianoContainer) {
-      pianoContainer.hidden = !settings.pianoMode;
+      pianoContainer.hidden = !shouldShowPiano;
     }
     
     // Update main element class for layout
     if (elMain) {
-      if (settings.pianoMode) {
+      if (shouldShowPiano) {
         elMain.classList.add('pianoMode');
       } else {
         elMain.classList.remove('pianoMode');
@@ -747,6 +754,46 @@ let settings = loadSettings();
     setMode("chromatic");
   });
 
+  // Unified game mode selector event listeners
+  const modeDegreeToNote = document.getElementById("modeDegreeToNote");
+  const modeNoteToDegree = document.getElementById("modeNoteToDegree");
+  const modeScaleRecognition = document.getElementById("modeScaleRecognition");
+  
+  function setQuestionMode(mode) {
+    settings.questionMode = mode;
+    modeDegreeToNote.setAttribute("aria-checked", mode === "degreeToNote" ? "true" : "false");
+    modeNoteToDegree.setAttribute("aria-checked", mode === "noteToDegree" ? "true" : "false");
+    modeScaleRecognition.setAttribute("aria-checked", mode === "scaleRecognition" ? "true" : "false");
+    
+    // Update piano visibility based on mode
+    const shouldShowPiano = mode === "noteToDegree" || mode === "scaleRecognition";
+    if (pianoContainer) {
+      pianoContainer.hidden = !shouldShowPiano;
+    }
+    if (elMain) {
+      if (shouldShowPiano) {
+        elMain.classList.add('pianoMode');
+      } else {
+        elMain.classList.remove('pianoMode');
+      }
+    }
+    
+    saveSettingsToStorage(settings);
+  }
+  
+  modeDegreeToNote.addEventListener("click", () => {
+    soundDegreeToggle(settings, getVolumeMultiplier);
+    setQuestionMode("degreeToNote");
+  });
+  modeNoteToDegree.addEventListener("click", () => {
+    soundDegreeToggle(settings, getVolumeMultiplier);
+    setQuestionMode("noteToDegree");
+  });
+  modeScaleRecognition.addEventListener("click", () => {
+    soundDegreeToggle(settings, getVolumeMultiplier);
+    setQuestionMode("scaleRecognition");
+  });
+
   toggleSound.addEventListener("click", () => {
     soundDegreeToggle(settings, getVolumeMultiplier);
     settings.audioOn = !settings.audioOn;
@@ -871,39 +918,8 @@ let settings = loadSettings();
     });
   }
 
-  
-  // Toggle piano mode
-  if (togglePianoMode) {
-    togglePianoMode.addEventListener('click', () => {
-      soundDegreeToggle(settings, getVolumeMultiplier);
-      settings.pianoMode = !settings.pianoMode;
-      togglePianoMode.textContent = settings.pianoMode ? 'Piano Mode: On' : 'Piano Mode: Off';
-      togglePianoMode.setAttribute('aria-pressed', settings.pianoMode);
-      
-      if (pianoContainer) {
-        pianoContainer.hidden = !settings.pianoMode;
-      }
-      
-      // Toggle piano mode class on main element for layout adjustments
-      if (elMain) {
-        if (settings.pianoMode) {
-          elMain.classList.add('pianoMode');
-        } else {
-          elMain.classList.remove('pianoMode');
-        }
-      }
-      
-      if (settings.pianoMode) {
-        generatePianoKeys(pianoKeyboard, NOTE_TO_PC, NOTE_LIST);
-        // Show a default scale
-        const firstKey = settings.keysEnabled[0] || 'C';
-        const firstScale = settings.scaleTypesEnabled[0] || 'major';
-        updatePianoVisualization(pianoKeyboard, firstKey, firstScale, SCALE_TYPES, NOTE_TO_PC, pcToNote);
-      }
-      
-      saveSettingsToStorage(settings);
-    });
-  }
+  // Piano mode toggle removed - now controlled by unified game mode selector
+  // (Piano shows automatically for "Note → Degree" and "Scale Recognition" modes)
 
   // Initial render
   const lastUpdatedDate = new Date(LAST_UPDATED);

@@ -1,5 +1,5 @@
 // Game logic and question generation
-// Cache buster: v1.0.4
+// Cache buster: v1.0.7
 
 export function degreeToNote(keyRoot, degreeLabel, degreeMode, NOTE_TO_PC, MAJOR_SCALE_OFFSETS, DIATONIC_DEGREES, CHROMATIC_TO_OFFSET, pcToNote) {
   const rootPc = NOTE_TO_PC.get(keyRoot);
@@ -14,6 +14,32 @@ export function degreeToNote(keyRoot, degreeLabel, degreeMode, NOTE_TO_PC, MAJOR
   const off = CHROMATIC_TO_OFFSET[degreeLabel];
   if (typeof off !== "number") throw new Error("Unknown chromatic degree");
   return pcToNote(rootPc + off);
+}
+
+// New function: Find what degree a note is in a given key
+export function noteToDegree(note, keyRoot, degreeMode, scaleType, NOTE_TO_PC, SCALE_TYPES, DIATONIC_DEGREES, CHROMATIC_DEGREES, CHROMATIC_TO_OFFSET, pcToNote) {
+  const rootPc = NOTE_TO_PC.get(keyRoot);
+  const notePc = NOTE_TO_PC.get(note);
+  if (rootPc == null || notePc == null) throw new Error("Unknown key or note");
+  
+  // Calculate semitone distance from root
+  const semitones = ((notePc - rootPc) + 12) % 12;
+  
+  if (degreeMode === "diatonic") {
+    // For diatonic mode with scale types
+    const scaleOffsets = SCALE_TYPES[scaleType];
+    const degreeIndex = scaleOffsets.indexOf(semitones);
+    if (degreeIndex < 0) return null; // Note not in this scale
+    return DIATONIC_DEGREES[degreeIndex];
+  } else {
+    // For chromatic mode, find the degree label
+    for (const [degree, offset] of Object.entries(CHROMATIC_TO_OFFSET)) {
+      if (offset === semitones) {
+        return degree;
+      }
+    }
+    return null;
+  }
 }
 
 export function pickRandom(arr) {
@@ -166,7 +192,8 @@ export function nextQuestion(
   renderAnswers,
   renderLevelInfo,
   startTimerFn,
-  updatePianoVisualization
+  updatePianoVisualization,
+  highlightQuestionNote
 ) {
   state.questionIndex += 1;
   
@@ -204,31 +231,59 @@ export function nextQuestion(
   const availableDegrees = degreePool.filter(d => enabledDegrees.includes(d));
   const degreeLabel = pickRandom(availableDegrees.length ? availableDegrees : degreePool);
   
-  let correctNote, options, scaleType = null;
+  let correctNote, correctDegree, options, scaleType = null, questionNote = null;
   
-  // For piano mode, select a scale type and ask for the key
-  if (settings.pianoMode) {
+  // Determine question type based on questionMode setting
+  const isScaleRecognition = settings.questionMode === "scaleRecognition";
+  const isNoteToDegree = settings.questionMode === "noteToDegree";
+  
+  if (isScaleRecognition) {
+    // Scale recognition mode: show piano, ask "What scale is this?"
     const availableScales = settings.scaleTypesEnabled.length ? settings.scaleTypesEnabled : Object.keys(SCALE_TYPES);
     scaleType = pickRandom(availableScales);
-    // In piano mode, the correct answer is the KEY, not a degree
+    // In scale recognition mode, the correct answer is the KEY
     correctNote = keyRoot;
+    correctDegree = null;
     // Options are all 12 keys
     options = buildOptions(correctNote, NOTE_LIST);
-    console.log(`NEW QUESTION: ${keyRoot} ${scaleType} scale - Correct answer: ${correctNote}`);
-    console.log('Available keys:', settings.keysEnabled);
-    console.log('Available scales:', availableScales);
+  } else if (isNoteToDegree) {
+    // Note to Degree mode: "Eb is what degree in the Db major scale?"
+    // First pick a scale type (for more interesting questions)
+    const availableScales = settings.scaleTypesEnabled.length ? settings.scaleTypesEnabled : ["major"];
+    scaleType = pickRandom(availableScales);
+    
+    // Pick a note from the scale
+    const rootPc = NOTE_TO_PC.get(keyRoot);
+    const scaleOffsets = SCALE_TYPES[scaleType];
+    const scaleNotes = scaleOffsets.map(offset => pcToNote(rootPc + offset));
+    questionNote = pickRandom(scaleNotes);
+    
+    // Find what degree this note is
+    correctDegree = noteToDegree(questionNote, keyRoot, degreeMode, scaleType, NOTE_TO_PC, SCALE_TYPES, DIATONIC_DEGREES, CHROMATIC_DEGREES, CHROMATIC_TO_OFFSET, pcToNote);
+    correctNote = questionNote; // For stats tracking
+    
+    // Generate degree options
+    options = shuffle([...degreePool]).slice(0, 6);
+    if (!options.includes(correctDegree)) {
+      options[0] = correctDegree;
+      shuffle(options);
+    }
   } else {
-    // Normal degree mode
+    // Normal degree to note mode: "What is the 3 in the key of C major?"
     correctNote = degreeToNote(keyRoot, degreeLabel, degreeMode, NOTE_TO_PC, MAJOR_SCALE_OFFSETS, DIATONIC_DEGREES, CHROMATIC_TO_OFFSET, pcToNote);
+    correctDegree = degreeLabel;
     options = buildOptionsForMode(correctNote, degreeMode, keyRoot, NOTE_TO_PC, MAJOR_SCALE_OFFSETS, NOTE_LIST, pcToNote);
   }
   
-  state.current = { keyRoot, degreeLabel, correctNote, options, scaleType };
+  state.current = { keyRoot, degreeLabel, correctNote, correctDegree, options, scaleType, questionNote };
   
-  // Update piano visualization FIRST if in piano mode
-  if (settings.pianoMode && scaleType) {
-    console.log(`Updating piano for ${keyRoot} ${scaleType}`);
+  // Update piano visualization if in scale recognition mode
+  if (isScaleRecognition && scaleType) {
     updatePianoVisualization(pianoKeyboard, keyRoot, scaleType, SCALE_TYPES, NOTE_TO_PC, pcToNote);
+  } else if (isNoteToDegree && scaleType && questionNote) {
+    // Show piano for note-to-degree mode and highlight the question note
+    updatePianoVisualization(pianoKeyboard, keyRoot, scaleType, SCALE_TYPES, NOTE_TO_PC, pcToNote);
+    highlightQuestionNote(pianoKeyboard, questionNote);
   }
   
   renderQuestion(state, settings, elQuestionText, elTimerBackground, SCALE_TYPE_NAMES);
@@ -743,11 +798,20 @@ export function handleTimeout(
   nextAfterFeedbackFn(state, settings, answerButtons, lockAnswers);
 }
 
-export function onAnswerClick(state, btn, handleCorrectFn, handleWrongFn) {
+export function onAnswerClick(state, btn, handleCorrectFn, handleWrongFn, settings) {
   if (!state.active || state.locked || !state.current) return;
 
   const chosen = btn.dataset.note;
-  const correct = state.current.correctNote;
+  
+  // Determine correct answer based on question mode
+  let correct;
+  if (settings.questionMode === "noteToDegree") {
+    // In note-to-degree mode, check against correctDegree
+    correct = state.current.correctDegree;
+  } else {
+    // In all other modes, check against correctNote
+    correct = state.current.correctNote;
+  }
   
   console.log(`Answer clicked: ${chosen}, Correct: ${correct}`);
 

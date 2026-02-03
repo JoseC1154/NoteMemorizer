@@ -13,6 +13,8 @@
   • Fixed null keyRoot bug in progression mode
   • Fully testable with dependency injection pattern
   • All game features working correctly
+-Audio volume increased 4x for better audibility
+-Note to Degree mode: Shows piano and asks "Eb is what degree in the Db major scale?"
 
 TODO:
 -then when closed should restart or install play pause button 
@@ -22,11 +24,8 @@ TODO:
 -quiz to test if user is ready for chord mode.
 -multi language.
 -Continue refactoring: Extract ui.js, game-logic.js, event-handlers.js modules
--add a set as default button
 -on piano mode after ten correct of one scale that key is taken off the list tested.
 -as the changes are taken place the setting should reflect.
 -I would like the music to wind down in tempo or speed then stop when not in the game, a synthy wavy freeze of a chord when adjusting settings the to wind back up when the game starts.
--bring the sound up 200%.
 -i button for examination of piano scales.
--a new mode that shows the piano and the question on the question box would show "Eb is what degree in the Db major scale?" then the user would selct from the answer buttons the degree number.
 -in stats i don't see the scale recognition suggestions. 

@@ -12,13 +12,13 @@ export const defaultSettings = {
   secondsPerQuestion: 8,
   degreeMode: "diatonic", // "diatonic" | "chromatic"
   gameMode: "practice", // "practice" | "progression"
+  questionMode: "degreeToNote", // "degreeToNote" | "noteToDegree" | "scaleRecognition"
   progressionDifficulty: "moderate", // "easy" | "moderate" | "hard"
   audioOn: true,
   tickOn: true,
   ambientOn: true,
   modalDuration: 2000, // milliseconds
-  pianoMode: false, // Piano visualization mode
-  scaleTypesEnabled: ["major", "minor", "dorian", "mixolydian"], // Enabled scale types for piano mode
+  scaleTypesEnabled: ["major", "minor", "dorian", "mixolydian"], // Enabled scale types
   // Audio mixer volumes (0-100)
   volumes: {
     pad: 100,
@@ -63,6 +63,9 @@ export function loadSettings() {
     if (parsed.degreeMode === "diatonic" || parsed.degreeMode === "chromatic") {
       s.degreeMode = parsed.degreeMode;
     }
+    if (parsed.questionMode === "degreeToNote" || parsed.questionMode === "noteToDegree" || parsed.questionMode === "scaleRecognition") {
+      s.questionMode = parsed.questionMode;
+    }
     if (parsed.gameMode === "practice" || parsed.gameMode === "progression") {
       s.gameMode = parsed.gameMode;
     }
@@ -72,7 +75,6 @@ export function loadSettings() {
     if (typeof parsed.audioOn === "boolean") s.audioOn = parsed.audioOn;
     if (typeof parsed.tickOn === "boolean") s.tickOn = parsed.tickOn;
     if (typeof parsed.ambientOn === "boolean") s.ambientOn = parsed.ambientOn;
-    if (typeof parsed.pianoMode === "boolean") s.pianoMode = parsed.pianoMode;
     if (Array.isArray(parsed.scaleTypesEnabled)) {
       s.scaleTypesEnabled = parsed.scaleTypesEnabled.filter(st => SCALE_TYPES[st]);
     }

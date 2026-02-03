@@ -8,11 +8,18 @@ export function renderQuestion(state, settings, elQuestionText, elTimerBackgroun
     return;
   }
   
-  // In piano mode, ask about the scale type
-  if (settings.pianoMode && q.scaleType) {
+  // Scale recognition mode
+  if (settings.questionMode === "scaleRecognition" && q.scaleType) {
     const scaleTypeName = SCALE_TYPE_NAMES[q.scaleType] || q.scaleType;
     elQuestionText.textContent = `What ${scaleTypeName} scale is this?`;
-  } else {
+  } 
+  // Note to Degree mode
+  else if (settings.questionMode === "noteToDegree" && q.questionNote && q.scaleType) {
+    const scaleTypeName = SCALE_TYPE_NAMES[q.scaleType] || q.scaleType;
+    elQuestionText.textContent = `${q.questionNote} is what degree in the ${q.keyRoot} ${scaleTypeName} scale?`;
+  }
+  // Normal degree to note mode
+  else {
     elQuestionText.textContent = `What is the ${q.degreeLabel} in the key of ${q.keyRoot} major?`;
   }
 }
