@@ -29,3 +29,4 @@ TODO:
 -bring the sound up 200%.
 -i button for examination of piano scales.
 -a new mode that shows the piano and the question on the question box would show "Eb is what degree in the Db major scale?" then the user would selct from the answer buttons the degree number.
+-in stats i don't see the scale recognition suggestions. 
