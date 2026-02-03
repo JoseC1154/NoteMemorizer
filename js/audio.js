@@ -19,7 +19,7 @@ export function ensureAudio() {
   }
 }
 
-export function beep({ freq = 440, duration = 0.12, type = "sine", gain = 0.08 }, settings) {
+export function beep({ freq = 440, duration = 0.12, type = "sine", gain = 0.32 }, settings) {
   if (!settings.audioOn) return;
   ensureAudio();
   const t0 = audioCtx.currentTime;
@@ -43,13 +43,13 @@ export function beep({ freq = 440, duration = 0.12, type = "sine", gain = 0.08 }
 
 export function soundCorrect(settings, getVolumeMultiplier) {
   const vol = getVolumeMultiplier(settings, 'correct');
-  beep({ freq: 660, duration: 0.10, type: "sine", gain: 0.07 * vol }, settings);
-  setTimeout(() => beep({ freq: 990, duration: 0.08, type: "triangle", gain: 0.06 * vol }, settings), 70);
+  beep({ freq: 660, duration: 0.10, type: "sine", gain: 0.28 * vol }, settings);
+  setTimeout(() => beep({ freq: 990, duration: 0.08, type: "triangle", gain: 0.24 * vol }, settings), 70);
 }
 
 export function soundWrong(settings, getVolumeMultiplier) {
   const vol = getVolumeMultiplier(settings, 'wrong');
-  beep({ freq: 170, duration: 0.16, type: "sawtooth", gain: 0.06 * vol }, settings);
+  beep({ freq: 170, duration: 0.16, type: "sawtooth", gain: 0.24 * vol }, settings);
 }
 
 export function soundTick(settings, getVolumeMultiplier, state) {
@@ -60,7 +60,7 @@ export function soundTick(settings, getVolumeMultiplier, state) {
   // Different tick sound during bonus time
   if (state.bonusActive) {
     // Higher, brighter tick with slight melody
-    beep({ freq: 1760, duration: 0.03, type: "triangle", gain: 0.04 * vol }, settings);
+    beep({ freq: 1760, duration: 0.03, type: "triangle", gain: 0.16 * vol }, settings);
     // Add subtle hi-hat
     ensureAudio();
     const t0 = audioCtx.currentTime;
@@ -77,8 +77,8 @@ export function soundTick(settings, getVolumeMultiplier, state) {
     noiseFilter.frequency.setValueAtTime(10000, t0);
 
     const noiseGain = audioCtx.createGain();
-    noiseGain.gain.setValueAtTime(0.02 * vol, t0);
-    noiseGain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.03);
+    noiseGain.gain.setValueAtTime(0.08 * vol, t0);
+    noiseGain.gain.exponentialRampToValueAtTime(0.004, t0 + 0.03);
 
     noise.connect(noiseFilter);
     noiseFilter.connect(noiseGain);
@@ -87,7 +87,7 @@ export function soundTick(settings, getVolumeMultiplier, state) {
     noise.start(t0);
   } else {
     // Normal tick
-    beep({ freq: 1200, duration: 0.03, type: "square", gain: 0.03 * vol }, settings);
+    beep({ freq: 1200, duration: 0.03, type: "square", gain: 0.12 * vol }, settings);
   }
 }
 
@@ -141,7 +141,7 @@ export function soundButtonClick(settings) {
   osc.frequency.setValueAtTime(660, t0);
   osc.frequency.exponentialRampToValueAtTime(440, t0 + 0.06);
 
-  g.gain.setValueAtTime(0.09, t0);
+  g.gain.setValueAtTime(0.36, t0);
   g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.15); // Longer tail for reverb
 
   osc.connect(g);
@@ -169,7 +169,7 @@ export function soundKeyToggle(settings) {
   filter.type = "highpass";
   filter.frequency.setValueAtTime(800, t0);
 
-  g.gain.setValueAtTime(0.08, t0);
+  g.gain.setValueAtTime(0.32, t0);
   g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.04);
 
   osc.connect(filter);
@@ -195,7 +195,7 @@ export function soundDegreeToggle(settings, getVolumeMultiplier) {
   osc.frequency.setValueAtTime(660, t0);
   osc.frequency.exponentialRampToValueAtTime(440, t0 + 0.06);
 
-  g.gain.setValueAtTime(0.09 * vol, t0);
+  g.gain.setValueAtTime(0.36 * vol, t0);
   g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.06);
 
   osc.connect(g);
@@ -242,8 +242,8 @@ export function soundGameStart(settings) {
     filter.Q.setValueAtTime(2, t0 + delay);
 
     g.gain.setValueAtTime(0, t0 + delay);
-    g.gain.linearRampToValueAtTime(0.12, t0 + delay + 0.01);
-    g.gain.exponentialRampToValueAtTime(0.001, t0 + delay + 0.5); // Longer tail for reverb
+    g.gain.linearRampToValueAtTime(0.48, t0 + delay + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.004, t0 + delay + 0.5); // Longer tail for reverb
 
     osc.connect(filter);
     filter.connect(g);
@@ -280,8 +280,8 @@ export function soundGameOver(settings, getVolumeMultiplier) {
     filter.Q.setValueAtTime(1, t0);
 
     g.gain.setValueAtTime(0, t0);
-    g.gain.linearRampToValueAtTime(0.06 * vol, t0 + 0.3); // Gentle fade in
-    g.gain.setValueAtTime(0.06 * vol, t0 + 1.0);
+    g.gain.linearRampToValueAtTime(0.24 * vol, t0 + 0.3); // Gentle fade in
+    g.gain.setValueAtTime(0.24 * vol, t0 + 1.0);
     g.gain.exponentialRampToValueAtTime(0.001, t0 + 1.5); // Fade out
 
     osc.connect(filter);
@@ -313,7 +313,7 @@ export function soundBonusActivate(settings, getVolumeMultiplier) {
     filter.type = "highpass";
     filter.frequency.setValueAtTime(800, t0 + i * 0.06);
 
-    g.gain.setValueAtTime(0.08 * vol, t0 + i * 0.06);
+    g.gain.setValueAtTime(0.32 * vol, t0 + i * 0.06);
     g.gain.exponentialRampToValueAtTime(0.001, t0 + i * 0.06 + 0.15);
 
     osc.connect(filter);
@@ -338,8 +338,8 @@ export function soundBonusActivate(settings, getVolumeMultiplier) {
   noiseFilter.frequency.setValueAtTime(8000, t0);
 
   const noiseGain = audioCtx.createGain();
-  noiseGain.gain.setValueAtTime(0.04 * vol, t0);
-  noiseGain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.3);
+  noiseGain.gain.setValueAtTime(0.16 * vol, t0);
+  noiseGain.gain.exponentialRampToValueAtTime(0.004, t0 + 0.3);
 
   noise.connect(noiseFilter);
   noiseFilter.connect(noiseGain);
@@ -364,7 +364,7 @@ export function soundBonusExpire(settings, getVolumeMultiplier) {
     osc.type = "sine";
     osc.frequency.setValueAtTime(freq, t0 + i * 0.08);
 
-    g.gain.setValueAtTime(0.06 * vol, t0 + i * 0.08);
+    g.gain.setValueAtTime(0.24 * vol, t0 + i * 0.08);
     g.gain.exponentialRampToValueAtTime(0.001, t0 + i * 0.08 + 0.12);
 
     osc.connect(g);
@@ -390,7 +390,7 @@ export function startAmbientMusic(settings, getVolumeMultiplier) {
   
   // Create gain nodes for ambient music (persistent for volume control)
   ambientGain = audioCtx.createGain();
-  ambientGain.gain.setValueAtTime(0.06, audioCtx.currentTime);
+  ambientGain.gain.setValueAtTime(0.24, audioCtx.currentTime);
   ambientGain.connect(audioCtx.destination);
   
   // Create separate gain nodes for pad and arpeggio
@@ -439,8 +439,8 @@ export function startAmbientMusic(settings, getVolumeMultiplier) {
         
         // Smooth fade in and out, quieter per oscillator since we have 2x
         oscGain.gain.setValueAtTime(0, now);
-        oscGain.gain.linearRampToValueAtTime(0.04, now + fadeDuration);
-        oscGain.gain.setValueAtTime(0.04, now + chordDuration - fadeDuration);
+        oscGain.gain.linearRampToValueAtTime(0.16, now + fadeDuration);
+        oscGain.gain.setValueAtTime(0.16, now + chordDuration - fadeDuration);
         oscGain.gain.linearRampToValueAtTime(0, now + chordDuration);
         
         osc.connect(oscGain);
@@ -467,8 +467,8 @@ export function startAmbientMusic(settings, getVolumeMultiplier) {
     noiseFilter.frequency.setValueAtTime(8000, now);
     
     const noiseGain = audioCtx.createGain();
-    noiseGain.gain.setValueAtTime(0.02, now); // Very soft
-    noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+    noiseGain.gain.setValueAtTime(0.08, now); // Very soft
+    noiseGain.gain.exponentialRampToValueAtTime(0.004, now + 0.1);
     
     noise.connect(noiseFilter);
     noiseFilter.connect(noiseGain);
@@ -515,8 +515,8 @@ export function startAmbientMusic(settings, getVolumeMultiplier) {
       
       // Quick attack, short decay for plucky sound
       arpGain.gain.setValueAtTime(0, arpTime);
-      arpGain.gain.linearRampToValueAtTime(0.15, arpTime + 0.01);
-      arpGain.gain.exponentialRampToValueAtTime(0.001, arpTime + arpNoteLength);
+      arpGain.gain.linearRampToValueAtTime(0.60, arpTime + 0.01);
+      arpGain.gain.exponentialRampToValueAtTime(0.004, arpTime + arpNoteLength);
       
       arpOsc.connect(arpFilter);
       arpFilter.connect(arpGain);
@@ -553,8 +553,8 @@ export function startAmbientMusic(settings, getVolumeMultiplier) {
         arpFilter.Q.setValueAtTime(3, arpTime);
         
         arpGain.gain.setValueAtTime(0, arpTime);
-        arpGain.gain.linearRampToValueAtTime(0.15, arpTime + 0.01);
-        arpGain.gain.exponentialRampToValueAtTime(0.001, arpTime + arpNoteLength);
+        arpGain.gain.linearRampToValueAtTime(0.60, arpTime + 0.01);
+        arpGain.gain.exponentialRampToValueAtTime(0.004, arpTime + arpNoteLength);
         
         arpOsc.connect(arpFilter);
         arpFilter.connect(arpGain);

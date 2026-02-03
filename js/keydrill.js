@@ -11,9 +11,9 @@ import {
   CHROMATIC_DEGREES,
   CHROMATIC_TO_OFFSET,
   ALL_KEYS
-} from './js/constants.js';
+} from './constants.js';
 
-import { dom } from './js/dom.js';
+import { dom } from './dom.js';
 
 import {
   STORAGE_KEY,
@@ -23,14 +23,14 @@ import {
   loadSettings,
   saveSettings as saveSettingsToStorage,
   getVolumeMultiplier
-} from './js/settings.js';
+} from './settings.js';
 
 import {
   getStats,
   saveStats,
   recordQuestion,
   clearStats as clearStatsData
-} from './js/stats.js';
+} from './stats.js';
 
 import {
   ensureAudio,
@@ -48,12 +48,12 @@ import {
   startAmbientMusic,
   stopAmbientMusic,
   updateAmbientVolume
-} from './js/audio.js';
+} from './audio.js';
 
 import {
   generatePianoKeys,
   updatePianoVisualization
-} from './js/piano.js';
+} from './piano.js';
 
 import {
   renderQuestion,
@@ -70,7 +70,7 @@ import {
   renderKeyToggles,
   renderStats,
   initScaleToggles
-} from './js/ui.js';
+} from './ui.js';
 
 import {
   degreeToNote,
@@ -93,7 +93,7 @@ import {
   handleWrong,
   handleTimeout,
   onAnswerClick
-} from './js/game-logic.js';
+} from './game-logic.js';
 
 "use strict";
 
