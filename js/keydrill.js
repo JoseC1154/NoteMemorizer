@@ -47,7 +47,9 @@ import {
   soundBonusExpire,
   startAmbientMusic,
   stopAmbientMusic,
-  updateAmbientVolume
+  updateAmbientVolume,
+  slowDownAmbientMusic,
+  speedUpAmbientMusic
 } from './audio.js';
 
 import {
@@ -100,7 +102,7 @@ import {
 
 "use strict";
 
-// Cache buster: v1.0.7
+// Cache buster: v1.1.4
 
 // Destructure DOM elements for easier access
 const {
@@ -224,11 +226,15 @@ let settings = loadSettings();
   // Wrapper functions for game logic
   // =========================
   
-  const startGameWrapper = () => startGame(
-    state, settings, elStatusPanel, elLives, elScore, elBonusCount, elBonusButton, elLevelInfo, elStatusText, answerButtons,
-    ensureAudio, startAmbientMusic, getVolumeMultiplier, renderLives, renderScore, renderBonus, renderLevelInfo,
-    setStatusNeutral, updateRiskVisual, nextQuestionWrapper, initProgressionModeWrapper, ALL_KEYS
-  );
+  const startGameWrapper = () => {
+    startGame(
+      state, settings, elStatusPanel, elLives, elScore, elBonusCount, elBonusButton, elLevelInfo, elStatusText, answerButtons,
+      ensureAudio, startAmbientMusic, getVolumeMultiplier, renderLives, renderScore, renderBonus, renderLevelInfo,
+      setStatusNeutral, updateRiskVisual, nextQuestionWrapper, initProgressionModeWrapper, ALL_KEYS
+    );
+    // Speed up ambient music when starting game
+    speedUpAmbientMusic();
+  };
   
   const nextQuestionWrapper = () => nextQuestion(
     state, settings, ALL_KEYS, DIATONIC_DEGREES, CHROMATIC_DEGREES, NOTE_TO_PC, MAJOR_SCALE_OFFSETS,
@@ -291,6 +297,8 @@ let settings = loadSettings();
       state.paused = true;
       stopTimerWrapper();
       lockAnswers(state, answerButtons, true);
+      // Slow down ambient music when entering settings
+      slowDownAmbientMusic();
     }
 
     secondsSlider.value = String(settings.secondsPerQuestion);
@@ -399,6 +407,8 @@ let settings = loadSettings();
     if (state.paused && state.active) {
       state.paused = false;
       lockAnswers(state, answerButtons, false);
+      // Speed up ambient music when resuming from settings
+      speedUpAmbientMusic();
       startTimerWrapper();
     }
   }
@@ -558,6 +568,8 @@ let settings = loadSettings();
     triangleMenu.classList.remove('active');
     // Close settings modal if open
     overlay.hidden = true;
+    // Slow down music when opening stats
+    if (state.active) slowDownAmbientMusic();
     renderStats(getStats);
     statsOverlay.hidden = false;
   });
@@ -598,6 +610,8 @@ let settings = loadSettings();
       stopTimerWrapper();
       lockAnswers(state, answerButtons, true);
       state.paused = true;
+      // Slow down ambient music when opening menu
+      slowDownAmbientMusic();
     }
     
     menuDropdown.hidden = !isHidden;
@@ -611,6 +625,8 @@ let settings = loadSettings();
       triangleMenu.classList.remove('active');
       if (state.paused && state.active) {
         lockAnswers(state, answerButtons, false);
+        // Speed up ambient music when closing menu
+        speedUpAmbientMusic();
         startTimerWrapper();
         state.paused = false;
       }
@@ -638,6 +654,8 @@ let settings = loadSettings();
       // Resume game if it was paused
       if (state.paused && state.active) {
         lockAnswers(state, answerButtons, false);
+        // Speed up ambient music when closing menu
+        speedUpAmbientMusic();
         startTimerWrapper();
         state.paused = false;
       }
@@ -902,12 +920,16 @@ let settings = loadSettings();
     btnCloseStats.addEventListener("click", () => {
       statsOverlay.hidden = true;
       statsModal.hidden = true;
+      // Speed up music when closing stats and game is active
+      if (state.active) speedUpAmbientMusic();
     });
 
     statsOverlay.addEventListener("click", (e) => {
       if (e.target === statsOverlay) {
         statsOverlay.hidden = true;
         statsModal.hidden = true;
+        // Speed up music when closing stats and game is active
+        if (state.active) speedUpAmbientMusic();
       }
     });
 
@@ -938,7 +960,8 @@ let settings = loadSettings();
     `v${APP_VERSION} • Updated ${dateStr} ${timeStr}`;
   
   // Initialize piano visualization
-  if (settings.pianoMode) {
+  const shouldShowPiano = settings.questionMode === 'noteToDegree' || settings.questionMode === 'scaleRecognition';
+  if (shouldShowPiano) {
     generatePianoKeys(pianoKeyboard, NOTE_TO_PC, NOTE_LIST);
     if (pianoContainer) {
       pianoContainer.hidden = false;

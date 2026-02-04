@@ -1,5 +1,5 @@
 // Game logic and question generation
-// Cache buster: v1.0.7
+// Cache buster: v1.1.2
 
 export function degreeToNote(keyRoot, degreeLabel, degreeMode, NOTE_TO_PC, MAJOR_SCALE_OFFSETS, DIATONIC_DEGREES, CHROMATIC_TO_OFFSET, pcToNote) {
   const rootPc = NOTE_TO_PC.get(keyRoot);

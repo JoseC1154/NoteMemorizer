@@ -8,6 +8,13 @@ let padGain = null;
 let arpeggioGain = null;
 let ambientOscillators = [];
 let ambientInterval = null;
+let ambientMusicPaused = false;
+let playbackRateAnimationId = null;
+let targetPlaybackRate = 1.0;
+let currentPlaybackRate = 0.0; // Start at 0% when page loads
+let startPlaybackRate = 1.0;
+let animationStartTime = 0;
+let animationDuration = 3000; // 3 seconds
 
 export function ensureAudio() {
   if (!audioCtx) {
@@ -384,6 +391,7 @@ export function startAmbientMusic(settings, getVolumeMultiplier) {
   stopAmbientMusic();
   
   ensureAudio();
+  resetAmbientPlaybackRate();
   
   const padVol = getVolumeMultiplier(settings, 'pad');
   const arpeggioVol = getVolumeMultiplier(settings, 'arpeggio');
@@ -436,6 +444,10 @@ export function startAmbientMusic(settings, getVolumeMultiplier) {
         const detune = j === 0 ? -2 : 2; // Slight detuning for analog warmth
         osc.frequency.setValueAtTime(freq, now);
         osc.detune.setValueAtTime(detune, now);
+        
+        // Store base values for playback rate modulation
+        osc._baseFrequency = freq;
+        osc._baseDetune = detune;
         
         // Smooth fade in and out, quieter per oscillator since we have 2x
         oscGain.gain.setValueAtTime(0, now);
@@ -507,6 +519,7 @@ export function startAmbientMusic(settings, getVolumeMultiplier) {
       // Classic 80s synth sound
       arpOsc.type = 'sawtooth';
       arpOsc.frequency.setValueAtTime(frequencies[noteIndex] * 2, arpTime); // One octave up
+      arpOsc._baseFrequency = frequencies[noteIndex] * 2;
       
       // Low-pass filter for that analog warmth
       arpFilter.type = 'lowpass';
@@ -547,6 +560,7 @@ export function startAmbientMusic(settings, getVolumeMultiplier) {
         
         arpOsc.type = 'sawtooth';
         arpOsc.frequency.setValueAtTime(frequencies[noteIndex] * 2, arpTime);
+        arpOsc._baseFrequency = frequencies[noteIndex] * 2;
         
         arpFilter.type = 'lowpass';
         arpFilter.frequency.setValueAtTime(1200, arpTime);
@@ -579,6 +593,9 @@ export function startAmbientMusic(settings, getVolumeMultiplier) {
       stopAmbientMusic();
       return;
     }
+    // Don't play new chords if music is paused (slowed to 0%)
+    if (ambientMusicPaused) return;
+    
     currentChord = (currentChord + 1) % chords.length;
     playChord(chords[currentChord]);
   }, 16000);
@@ -589,6 +606,8 @@ export function stopAmbientMusic() {
     clearInterval(ambientInterval);
     ambientInterval = null;
   }
+  
+  ambientMusicPaused = false;
   
   ambientOscillators.forEach(osc => {
     try {
@@ -621,5 +640,94 @@ export function updateAmbientVolume(settings, getVolumeMultiplier) {
   if (arpeggioGain && audioCtx) {
     const arpeggioVol = getVolumeMultiplier(settings, 'arpeggio');
     arpeggioGain.gain.setValueAtTime(arpeggioVol, audioCtx.currentTime);
+  }
+}
+
+// Animate playback rate for record player effect
+function animatePlaybackRate() {
+  if (!audioCtx || ambientOscillators.length === 0) {
+    if (playbackRateAnimationId) {
+      cancelAnimationFrame(playbackRateAnimationId);
+      playbackRateAnimationId = null;
+    }
+    return;
+  }
+
+  // Time-based interpolation for 3-second transition
+  const now = performance.now();
+  const elapsed = now - animationStartTime;
+  const progress = Math.min(elapsed / animationDuration, 1.0);
+  
+  // Linear interpolation from start to target rate
+  currentPlaybackRate = startPlaybackRate + (targetPlaybackRate - startPlaybackRate) * progress;
+  
+  // Apply playback rate to all active oscillators
+  ambientOscillators.forEach(osc => {
+    try {
+      // Modulate frequency for pitch shifting (playback rate effect)
+      if (osc.frequency && osc.frequency.value) {
+        const baseFreq = osc._baseFrequency || osc.frequency.value;
+        if (!osc._baseFrequency) osc._baseFrequency = baseFreq;
+        osc.frequency.setValueAtTime(baseFreq * currentPlaybackRate, audioCtx.currentTime);
+      }
+      // Also modulate detune for additional effect
+      if (osc.detune) {
+        const baseDetune = osc._baseDetune || osc.detune.value;
+        if (!osc._baseDetune) osc._baseDetune = baseDetune;
+        osc.detune.setValueAtTime(baseDetune * currentPlaybackRate, audioCtx.currentTime);
+      }
+    } catch(e) {
+      // Oscillator might have stopped
+    }
+  });
+  
+  // Continue animation until we reach target
+  if (progress < 1.0) {
+    playbackRateAnimationId = requestAnimationFrame(animatePlaybackRate);
+  } else {
+    currentPlaybackRate = targetPlaybackRate;
+    if (playbackRateAnimationId) {
+      cancelAnimationFrame(playbackRateAnimationId);
+      playbackRateAnimationId = null;
+    }
+  }
+}
+
+// Slow down music like a record player stopping (3 seconds to 0%)
+export function slowDownAmbientMusic() {
+  if (!audioCtx || ambientOscillators.length === 0) return;
+  
+  startPlaybackRate = currentPlaybackRate;
+  targetPlaybackRate = 0.0; // Slow down to 0% speed
+  animationStartTime = performance.now();
+  ambientMusicPaused = true; // Pause chord progression
+  
+  if (!playbackRateAnimationId) {
+    playbackRateAnimationId = requestAnimationFrame(animatePlaybackRate);
+  }
+}
+
+// Speed up music like a record player starting (3 seconds from 0% to 100%)
+export function speedUpAmbientMusic() {
+  if (!audioCtx || ambientOscillators.length === 0) return;
+  
+  startPlaybackRate = currentPlaybackRate;
+  targetPlaybackRate = 1.0; // Return to normal speed
+  animationStartTime = performance.now();
+  ambientMusicPaused = false; // Resume chord progression
+  
+  if (!playbackRateAnimationId) {
+    playbackRateAnimationId = requestAnimationFrame(animatePlaybackRate);
+  }
+}
+
+// Reset playback rate (called when starting ambient music)
+export function resetAmbientPlaybackRate() {
+  currentPlaybackRate = 0.0; // Start at 0%
+  targetPlaybackRate = 0.0;
+  ambientMusicPaused = false; // Not paused when starting fresh
+  if (playbackRateAnimationId) {
+    cancelAnimationFrame(playbackRateAnimationId);
+    playbackRateAnimationId = null;
   }
 }
