@@ -1664,22 +1664,7 @@ body{
 }
 
 .pianoKey.shaded {
-  position: relative;
-}
-
-.pianoKey.white.shaded::after,
-.pianoKey.black.shaded::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: transparent;
-  border-radius: 0 0 4px 4px;
-  pointer-events: none;
-  z-index: 100;
-  display: none;
+  /* No visual change for shaded keys - just normal piano appearance */
 }
 
 .pianoKey.inScale {
@@ -1701,26 +1686,6 @@ body{
   border-radius: 0 0 4px 4px;
   pointer-events: none;
   z-index: 100;
-}
-
-/* Green dots show which notes ARE in the scale */
-.pianoKey.white.inScale::before,
-.pianoKey.black.inScale::before {
-  content: '●';
-  position: absolute;
-  bottom: 8px;
-  left: 50%;
-  transform: translateX(-50%);
-  color: #4ade80;
-  font-size: 10px;
-  text-shadow: 0 0 4px rgba(74, 222, 128, 0.6);
-  z-index: 60;
-  opacity: 0;
-}
-
-.pianoKey.black.inScale::before {
-  bottom: 6px;
-  font-size: 8px;
 }
 
 /* Highlight the question note with a pulsing yellow glow */
