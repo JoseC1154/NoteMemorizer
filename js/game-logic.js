@@ -568,14 +568,15 @@ export function endGame(state, settings, message, answerButtons, elTimerBackgrou
   }
 }
 
-export function nextAfterFeedback(state, settings, answerButtons, lockAnswers, nextQuestionFn) {
+export function nextAfterFeedback(state, settings, answerButtons, lockAnswers, nextQuestionFn, delayMs) {
+  const effectiveDelay = Math.max(0, delayMs ?? settings.modalDuration) + 100;
   setTimeout(() => {
     if (!state.active) return;
     // Clear the correctAnswer highlight
     answerButtons.forEach(btn => btn.classList.remove('correctAnswer'));
     lockAnswers(state, answerButtons, false);
     nextQuestionFn();
-  }, settings.modalDuration + 100);
+  }, effectiveDelay);
 }
 
 export function handleCorrect(
@@ -739,23 +740,31 @@ export function handleWrong(
   renderLives(state, elLives);
   updateRiskVisual(state);
 
-  if (state.lives <= 0) {
-    flashStatus(settings, elStatusPanel, elStatusText, false, `Wrong: ${chosen} — Correct: ${state.current.correctNote} — Game Over`);
-    endGameFn("No lives left.");
-    return;
-  }
+  const correctValue = settings.questionMode === "noteToDegree"
+    ? state.current.correctDegree
+    : state.current.correctNote;
 
   // Highlight the correct answer
   answerButtons.forEach(btn => {
-    if (btn.dataset.note === state.current.correctNote) {
+    if (btn.dataset.note === correctValue) {
       btn.classList.add('correctAnswer');
     }
   });
 
-  flashStatus(settings, elStatusPanel, elStatusText, false, `Wrong: ${chosen} — Correct: ${state.current.correctNote} — Lives: ${state.lives}`);
+  if (state.lives <= 0) {
+    flashStatus(settings, elStatusPanel, elStatusText, false, `The correct answer is ${correctValue}. Game Over.`);
+    lockAnswers(state, answerButtons, true);
+    stopTimerFn(state);
+    setTimeout(() => {
+      endGameFn("No lives left.");
+    }, 5000);
+    return;
+  }
+
+  flashStatus(settings, elStatusPanel, elStatusText, false, `The correct answer is ${correctValue}.`);
   lockAnswers(state, answerButtons, true);
   stopTimerFn(state);
-  nextAfterFeedbackFn(state, settings, answerButtons, lockAnswers);
+  nextAfterFeedbackFn(state, settings, answerButtons, lockAnswers, 5000);
 }
 
 export function handleTimeout(
@@ -796,13 +805,17 @@ export function handleTimeout(
   renderLives(state, elLives);
   updateRiskVisual(state);
 
+  const correctValue = settings.questionMode === "noteToDegree"
+    ? state.current.correctDegree
+    : state.current.correctNote;
+
   if (state.lives <= 0) {
-    flashStatus(settings, elStatusPanel, elStatusText, false, `Time out — Correct: ${state.current.correctNote} — Game Over`);
+    flashStatus(settings, elStatusPanel, elStatusText, false, `The correct answer is ${correctValue}. Game Over.`);
     endGameFn("Time out.");
     return;
   }
 
-  flashStatus(settings, elStatusPanel, elStatusText, false, `Time out — Correct: ${state.current.correctNote} — Lives: ${state.lives}`);
+  flashStatus(settings, elStatusPanel, elStatusText, false, `The correct answer is ${correctValue}.`);
   lockAnswers(state, answerButtons, true);
   nextAfterFeedbackFn(state, settings, answerButtons, lockAnswers);
 }

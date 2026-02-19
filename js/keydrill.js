@@ -72,6 +72,7 @@ import {
   flashStatusWithSuggestions,
   updateRiskVisual,
   renderKeyToggles,
+  renderDegreeToggles,
   renderStats,
   initScaleToggles
 } from './ui.js';
@@ -350,11 +351,15 @@ let settings = loadSettings();
     
     // Show/hide sections based on game mode
     const isPractice = settings.gameMode === "practice";
+    const degreesToPracticeSection = document.getElementById("degreesToPracticeSection");
     if (progressionDifficultySection) {
       progressionDifficultySection.style.display = isPractice ? "none" : "block";
     }
     if (keysToMasterSection) {
       keysToMasterSection.style.display = isPractice ? "block" : "none";
+    }
+    if (degreesToPracticeSection) {
+      degreesToPracticeSection.style.display = "block";
     }
     if (degreeModeSection) {
       degreeModeSection.style.display = isPractice ? "block" : "none";
@@ -411,6 +416,8 @@ let settings = loadSettings();
     }
 
     renderKeyToggles(keyToggles, ALL_KEYS, settings, getVolumeMultiplier, soundDegreeToggle);
+    const degreePool = settings.degreeMode === "diatonic" ? DIATONIC_DEGREES : CHROMATIC_DEGREES;
+    renderDegreeToggles(degreeToggles, degreePool, settings, getVolumeMultiplier, soundDegreeToggle);
     initScaleToggles(scaleToggles, SCALE_TYPES, SCALE_TYPE_NAMES, settings, saveSettingsToStorage, soundDegreeToggle, getVolumeMultiplier);
     btnCloseSettings.focus();
   }
@@ -460,6 +467,8 @@ let settings = loadSettings();
     settings.degreeMode = mode;
     modeDiatonic.setAttribute("aria-checked", mode === "diatonic" ? "true" : "false");
     modeChromatic.setAttribute("aria-checked", mode === "chromatic" ? "true" : "false");
+    const degreePool = mode === "diatonic" ? DIATONIC_DEGREES : CHROMATIC_DEGREES;
+    renderDegreeToggles(degreeToggles, degreePool, settings, getVolumeMultiplier, soundDegreeToggle);
   }
 
   function setGameMode(mode) {
@@ -478,7 +487,7 @@ let settings = loadSettings();
       keysToMasterSection.style.display = isPractice ? "block" : "none";
     }
     if (degreesToPracticeSection) {
-      degreesToPracticeSection.style.display = isPractice ? "block" : "none";
+      degreesToPracticeSection.style.display = "block";
     }
     if (degreeModeSection) {
       degreeModeSection.style.display = isPractice ? "block" : "none";

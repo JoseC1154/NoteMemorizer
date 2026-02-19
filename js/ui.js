@@ -184,6 +184,38 @@ export function renderKeyToggles(keyToggles, ALL_KEYS, settings, getVolumeMultip
   }
 }
 
+export function renderDegreeToggles(degreeToggles, degreePool, settings, getVolumeMultiplier, soundDegreeToggle) {
+  if (!degreeToggles) return;
+  degreeToggles.innerHTML = "";
+
+  const poolSet = new Set(degreePool);
+  const enabled = new Set(settings.degreesEnabled.filter(d => poolSet.has(d)));
+
+  if (enabled.size === 0) {
+    degreePool.forEach(d => enabled.add(d));
+    settings.degreesEnabled = Array.from(enabled);
+  }
+
+  for (const d of degreePool) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "keyBtn";
+    b.textContent = d;
+    b.setAttribute("aria-pressed", enabled.has(d) ? "true" : "false");
+
+    b.addEventListener("click", () => {
+      soundDegreeToggle(settings, getVolumeMultiplier);
+      const isOn = b.getAttribute("aria-pressed") === "true";
+      b.setAttribute("aria-pressed", isOn ? "false" : "true");
+      if (isOn) enabled.delete(d);
+      else enabled.add(d);
+      settings.degreesEnabled = Array.from(enabled);
+    });
+
+    degreeToggles.appendChild(b);
+  }
+}
+
 export function renderStats(getStats) {
   const stats = getStats();
   const questions = stats.questions || [];
