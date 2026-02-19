@@ -385,6 +385,22 @@ let settings = loadSettings();
       pianoContainer.hidden = !shouldShowPiano;
     }
     
+    // Generate piano keys if in piano mode
+    if (shouldShowPiano && pianoKeyboard) {
+      generatePianoKeys(pianoKeyboard, NOTE_TO_PC, NOTE_LIST);
+      
+      // If game is active, use current question's scale; otherwise use first scale
+      let keyForPiano, scaleForPiano;
+      if (state.active && state.current) {
+        keyForPiano = state.current.keyRoot;
+        scaleForPiano = state.current.scaleType || 'major';
+      } else {
+        keyForPiano = settings.keysEnabled[0] || 'C';
+        scaleForPiano = settings.scaleTypesEnabled[0] || 'major';
+      }
+      updatePianoVisualization(pianoKeyboard, keyForPiano, scaleForPiano, SCALE_TYPES, NOTE_TO_PC, pcToNote);
+    }
+    
     // Update main element class for layout
     if (elMain) {
       if (shouldShowPiano) {
@@ -783,7 +799,7 @@ let settings = loadSettings();
     modeNoteToDegree.setAttribute("aria-checked", mode === "noteToDegree" ? "true" : "false");
     modeScaleRecognition.setAttribute("aria-checked", mode === "scaleRecognition" ? "true" : "false");
     
-    // Update piano visibility based on mode
+    // Update piano visibility and generation based on mode
     const shouldShowPiano = mode === "noteToDegree" || mode === "scaleRecognition";
     if (pianoContainer) {
       pianoContainer.hidden = !shouldShowPiano;
@@ -794,6 +810,22 @@ let settings = loadSettings();
       } else {
         elMain.classList.remove('pianoMode');
       }
+    }
+    
+    // Generate piano keys if switching to a piano mode
+    if (shouldShowPiano && pianoKeyboard) {
+      generatePianoKeys(pianoKeyboard, NOTE_TO_PC, NOTE_LIST);
+      
+      // If game is active, use current question's scale; otherwise use first scale
+      let keyForPiano, scaleForPiano;
+      if (state.active && state.current) {
+        keyForPiano = state.current.keyRoot;
+        scaleForPiano = state.current.scaleType || 'major';
+      } else {
+        keyForPiano = settings.keysEnabled[0] || 'C';
+        scaleForPiano = settings.scaleTypesEnabled[0] || 'major';
+      }
+      updatePianoVisualization(pianoKeyboard, keyForPiano, scaleForPiano, SCALE_TYPES, NOTE_TO_PC, pcToNote);
     }
     
     saveSettingsToStorage(settings);

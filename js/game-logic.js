@@ -571,6 +571,8 @@ export function endGame(state, settings, message, answerButtons, elTimerBackgrou
 export function nextAfterFeedback(state, settings, answerButtons, lockAnswers, nextQuestionFn) {
   setTimeout(() => {
     if (!state.active) return;
+    // Clear the correctAnswer highlight
+    answerButtons.forEach(btn => btn.classList.remove('correctAnswer'));
     lockAnswers(state, answerButtons, false);
     nextQuestionFn();
   }, settings.modalDuration + 100);
@@ -742,6 +744,13 @@ export function handleWrong(
     endGameFn("No lives left.");
     return;
   }
+
+  // Highlight the correct answer
+  answerButtons.forEach(btn => {
+    if (btn.dataset.note === state.current.correctNote) {
+      btn.classList.add('correctAnswer');
+    }
+  });
 
   flashStatus(settings, elStatusPanel, elStatusText, false, `Wrong: ${chosen} — Correct: ${state.current.correctNote} — Lives: ${state.lives}`);
   lockAnswers(state, answerButtons, true);

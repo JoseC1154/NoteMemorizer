@@ -32,6 +32,8 @@ export function renderAnswers(state, answerButtons) {
     b.textContent = opts[i] ?? "—";
     b.dataset.note = opts[i] ?? "";
     b.disabled = !state.active || state.locked || !q;
+    // Clear correctAnswer highlight when rendering new answers
+    b.classList.remove('correctAnswer');
   });
 }
 
