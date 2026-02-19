@@ -60,6 +60,13 @@ import {
 } from './piano.js';
 
 import {
+  generateGuitarFretboard,
+  updateGuitarVisualization,
+  highlightGuitarQuestionNote,
+  clearGuitarQuestionHighlight
+} from './guitar.js';
+
+import {
   renderQuestion,
   renderAnswers,
   lockAnswers,
@@ -127,6 +134,8 @@ const {
   menuDropdown,
   btnSettings,
   btnStats,
+  instrumentPiano,
+  instrumentGuitar,
   menuBackdrop,
   overlay,
   modal,
@@ -179,6 +188,10 @@ const {
   toggleAmbient,
   pianoContainer,
   pianoKeyboard,
+  pianoExpandBtn,
+  guitarContainer,
+  guitarFretboard,
+  guitarExpandBtn,
   scaleToggles,
   scaleTypeSection
 } = dom;
@@ -211,6 +224,8 @@ let settings = loadSettings();
     questionSeconds: 0,
     locked: false,
     paused: false,
+    pausedByInstrumentExpand: false,
+    instrumentExpanded: false,
     current: null, // { keyRoot, degreeLabel, correctNote, options[] }
 
     // Progression mode state
@@ -222,6 +237,128 @@ let settings = loadSettings();
       levelStreak: 0 // streak for current level (needs 30 to advance)
     }
   };
+
+  const shouldShowInstrument = () => settings.questionMode === "noteToDegree" || settings.questionMode === "scaleRecognition";
+
+  function getActiveInstrument() {
+    return settings.instrument === "guitar" ? "guitar" : "piano";
+  }
+
+  function getActiveVisualization() {
+    const instrument = getActiveInstrument();
+    if (instrument === "guitar") {
+      return {
+        container: guitarContainer,
+        surface: guitarFretboard,
+        generate: () => generateGuitarFretboard(guitarFretboard, NOTE_TO_PC, pcToNote),
+        update: (surface, keyRoot, scaleType, scaleTypes, noteToPc, pcToNoteFn) =>
+          updateGuitarVisualization(surface, keyRoot, scaleType, scaleTypes, noteToPc, pcToNoteFn),
+        highlight: (surface, note) => highlightGuitarQuestionNote(surface, note),
+        clear: (surface) => clearGuitarQuestionHighlight(surface)
+      };
+    }
+
+    return {
+      container: pianoContainer,
+      surface: pianoKeyboard,
+      generate: () => generatePianoKeys(pianoKeyboard, NOTE_TO_PC, NOTE_LIST),
+      update: (surface, keyRoot, scaleType, scaleTypes, noteToPc, pcToNoteFn) =>
+        updatePianoVisualization(surface, keyRoot, scaleType, scaleTypes, noteToPc, pcToNoteFn),
+      highlight: (surface, note) => highlightQuestionNote(surface, note),
+      clear: (surface) => clearQuestionHighlight(surface)
+    };
+  }
+
+  function renderInstrumentButtons() {
+    const active = getActiveInstrument();
+    if (instrumentPiano) instrumentPiano.setAttribute("aria-pressed", active === "piano" ? "true" : "false");
+    if (instrumentGuitar) instrumentGuitar.setAttribute("aria-pressed", active === "guitar" ? "true" : "false");
+  }
+
+  function renderInstrumentExpandedState() {
+    const active = getActiveVisualization();
+    const expanded = state.instrumentExpanded;
+
+    [pianoContainer, guitarContainer].forEach(container => {
+      if (!container) return;
+      container.classList.remove('instrumentExpanded');
+    });
+
+    if (expanded && active.container) {
+      active.container.classList.add('instrumentExpanded');
+    }
+
+    [pianoExpandBtn, guitarExpandBtn].forEach(btn => {
+      if (!btn) return;
+      btn.setAttribute('aria-pressed', expanded ? 'true' : 'false');
+      btn.textContent = expanded ? '⤡' : '⤢';
+      btn.title = expanded ? 'Collapse instrument view' : 'Expand instrument view';
+    });
+  }
+
+  function setInstrumentExpanded(expanded) {
+    const shouldExpand = !!expanded;
+    if (state.instrumentExpanded === shouldExpand) return;
+
+    state.instrumentExpanded = shouldExpand;
+
+    if (shouldExpand) {
+      if (state.active && !state.paused) {
+        state.paused = true;
+        state.pausedByInstrumentExpand = true;
+        stopTimerWrapper();
+        lockAnswers(state, answerButtons, true);
+      }
+    } else if (state.pausedByInstrumentExpand && state.active) {
+      state.pausedByInstrumentExpand = false;
+      state.paused = false;
+      lockAnswers(state, answerButtons, false);
+      startTimerWrapper();
+    }
+
+    renderInstrumentExpandedState();
+  }
+
+  function renderInstrumentVisualization() {
+    const visible = shouldShowInstrument();
+    const active = getActiveVisualization();
+
+    if (!visible && state.instrumentExpanded) {
+      setInstrumentExpanded(false);
+    }
+
+    if (pianoContainer) pianoContainer.hidden = !visible || active.container !== pianoContainer;
+    if (guitarContainer) guitarContainer.hidden = !visible || active.container !== guitarContainer;
+
+    if (elMain) {
+      if (visible) elMain.classList.add('pianoMode');
+      else elMain.classList.remove('pianoMode');
+    }
+
+    if (!visible || !active.surface) return;
+
+    active.generate();
+
+    let keyForView;
+    let scaleForView;
+    if (state.active && state.current) {
+      keyForView = state.current.keyRoot;
+      scaleForView = state.current.scaleType || 'major';
+    } else {
+      keyForView = settings.keysEnabled[0] || 'C';
+      scaleForView = settings.scaleTypesEnabled[0] || 'major';
+    }
+
+    active.update(active.surface, keyForView, scaleForView, SCALE_TYPES, NOTE_TO_PC, pcToNote);
+
+    if (settings.questionMode === "noteToDegree" && state.current?.questionNote) {
+      active.highlight(active.surface, state.current.questionNote);
+    } else {
+      active.clear(active.surface);
+    }
+
+    renderInstrumentExpandedState();
+  }
 
   // =========================
   // Wrapper functions for game logic
@@ -237,12 +374,15 @@ let settings = loadSettings();
     speedUpAmbientMusic();
   };
   
-  const nextQuestionWrapper = () => nextQuestion(
-    state, settings, ALL_KEYS, DIATONIC_DEGREES, CHROMATIC_DEGREES, NOTE_TO_PC, MAJOR_SCALE_OFFSETS,
-    CHROMATIC_TO_OFFSET, NOTE_LIST, SCALE_TYPES, SCALE_TYPE_NAMES, pcToNote, elQuestionText, elTimerBackground,
-    answerButtons, elLevelInfo, pianoKeyboard, renderQuestion, renderAnswers, renderLevelInfo, startTimerWrapper,
-    updatePianoVisualization, highlightQuestionNote
-  );
+  const nextQuestionWrapper = () => {
+    const activeView = getActiveVisualization();
+    return nextQuestion(
+      state, settings, ALL_KEYS, DIATONIC_DEGREES, CHROMATIC_DEGREES, NOTE_TO_PC, MAJOR_SCALE_OFFSETS,
+      CHROMATIC_TO_OFFSET, NOTE_LIST, SCALE_TYPES, SCALE_TYPE_NAMES, pcToNote, elQuestionText, elTimerBackground,
+      answerButtons, elLevelInfo, activeView.surface, renderQuestion, renderAnswers, renderLevelInfo, startTimerWrapper,
+      activeView.update, activeView.highlight
+    );
+  };
   
   const startTimerWrapper = () => startTimer(
     state, settings, elTimerBackground, updateRiskVisual, soundTick, getVolumeMultiplier, handleTimeoutWrapper, clamp
@@ -384,36 +524,8 @@ let settings = loadSettings();
     toggleAmbient.setAttribute("aria-pressed", settings.ambientOn ? "true" : "false");
     toggleAmbient.textContent = `Music: ${settings.ambientOn ? "On" : "Off"}`;
     
-    // Show piano based on question mode
-    const shouldShowPiano = settings.questionMode === "noteToDegree" || settings.questionMode === "scaleRecognition";
-    if (pianoContainer) {
-      pianoContainer.hidden = !shouldShowPiano;
-    }
-    
-    // Generate piano keys if in piano mode
-    if (shouldShowPiano && pianoKeyboard) {
-      generatePianoKeys(pianoKeyboard, NOTE_TO_PC, NOTE_LIST);
-      
-      // If game is active, use current question's scale; otherwise use first scale
-      let keyForPiano, scaleForPiano;
-      if (state.active && state.current) {
-        keyForPiano = state.current.keyRoot;
-        scaleForPiano = state.current.scaleType || 'major';
-      } else {
-        keyForPiano = settings.keysEnabled[0] || 'C';
-        scaleForPiano = settings.scaleTypesEnabled[0] || 'major';
-      }
-      updatePianoVisualization(pianoKeyboard, keyForPiano, scaleForPiano, SCALE_TYPES, NOTE_TO_PC, pcToNote);
-    }
-    
-    // Update main element class for layout
-    if (elMain) {
-      if (shouldShowPiano) {
-        elMain.classList.add('pianoMode');
-      } else {
-        elMain.classList.remove('pianoMode');
-      }
-    }
+    renderInstrumentButtons();
+    renderInstrumentVisualization();
 
     renderKeyToggles(keyToggles, ALL_KEYS, settings, getVolumeMultiplier, soundDegreeToggle);
     const degreePool = settings.degreeMode === "diatonic" ? DIATONIC_DEGREES : CHROMATIC_DEGREES;
@@ -427,7 +539,7 @@ let settings = loadSettings();
     btnSettings.focus();
 
     // Resume the game if it was paused
-    if (state.paused && state.active) {
+    if (state.paused && state.active && !state.instrumentExpanded) {
       state.paused = false;
       lockAnswers(state, answerButtons, false);
       // Speed up ambient music when resuming from settings
@@ -648,7 +760,7 @@ let settings = loadSettings();
     } else {
       // Closing menu - resume if game was paused
       triangleMenu.classList.remove('active');
-      if (state.paused && state.active) {
+      if (state.paused && state.active && !state.instrumentExpanded) {
         lockAnswers(state, answerButtons, false);
         // Speed up ambient music when closing menu
         speedUpAmbientMusic();
@@ -677,7 +789,7 @@ let settings = loadSettings();
       triangleMenu.classList.remove('active');
       
       // Resume game if it was paused
-      if (state.paused && state.active) {
+      if (state.paused && state.active && !state.instrumentExpanded) {
         lockAnswers(state, answerButtons, false);
         // Speed up ambient music when closing menu
         speedUpAmbientMusic();
@@ -807,37 +919,53 @@ let settings = loadSettings();
     modeDegreeToNote.setAttribute("aria-checked", mode === "degreeToNote" ? "true" : "false");
     modeNoteToDegree.setAttribute("aria-checked", mode === "noteToDegree" ? "true" : "false");
     modeScaleRecognition.setAttribute("aria-checked", mode === "scaleRecognition" ? "true" : "false");
-    
-    // Update piano visibility and generation based on mode
-    const shouldShowPiano = mode === "noteToDegree" || mode === "scaleRecognition";
-    if (pianoContainer) {
-      pianoContainer.hidden = !shouldShowPiano;
-    }
-    if (elMain) {
-      if (shouldShowPiano) {
-        elMain.classList.add('pianoMode');
-      } else {
-        elMain.classList.remove('pianoMode');
-      }
-    }
-    
-    // Generate piano keys if switching to a piano mode
-    if (shouldShowPiano && pianoKeyboard) {
-      generatePianoKeys(pianoKeyboard, NOTE_TO_PC, NOTE_LIST);
-      
-      // If game is active, use current question's scale; otherwise use first scale
-      let keyForPiano, scaleForPiano;
-      if (state.active && state.current) {
-        keyForPiano = state.current.keyRoot;
-        scaleForPiano = state.current.scaleType || 'major';
-      } else {
-        keyForPiano = settings.keysEnabled[0] || 'C';
-        scaleForPiano = settings.scaleTypesEnabled[0] || 'major';
-      }
-      updatePianoVisualization(pianoKeyboard, keyForPiano, scaleForPiano, SCALE_TYPES, NOTE_TO_PC, pcToNote);
-    }
+    renderInstrumentVisualization();
     
     saveSettingsToStorage(settings);
+  }
+
+  function setInstrument(instrument) {
+    settings.instrument = instrument === "guitar" ? "guitar" : "piano";
+    renderInstrumentButtons();
+    renderInstrumentVisualization();
+    saveSettingsToStorage(settings);
+
+    if (state.active) {
+      stopTimerWrapper();
+      state.locked = false;
+      lockAnswers(state, answerButtons, false);
+      nextQuestionWrapper();
+    }
+  }
+
+  if (instrumentPiano) {
+    instrumentPiano.addEventListener("click", () => {
+      soundDegreeToggle(settings, getVolumeMultiplier);
+      setInstrument("piano");
+    });
+  }
+
+  if (instrumentGuitar) {
+    instrumentGuitar.addEventListener("click", () => {
+      soundDegreeToggle(settings, getVolumeMultiplier);
+      setInstrument("guitar");
+    });
+  }
+
+  if (pianoExpandBtn) {
+    pianoExpandBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      soundDegreeToggle(settings, getVolumeMultiplier);
+      setInstrumentExpanded(!state.instrumentExpanded);
+    });
+  }
+
+  if (guitarExpandBtn) {
+    guitarExpandBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      soundDegreeToggle(settings, getVolumeMultiplier);
+      setInstrumentExpanded(!state.instrumentExpanded);
+    });
   }
   
   modeDegreeToNote.addEventListener("click", () => {
@@ -897,6 +1025,7 @@ let settings = loadSettings();
       nextQuestionWrapper();
     } else {
       renderAnswers(state, answerButtons);
+      renderInstrumentVisualization();
     }
 
     setStatusNeutral(elStatusPanel, elStatusText, "Settings saved.");
@@ -1000,22 +1129,7 @@ let settings = loadSettings();
   document.getElementById("version").textContent = 
     `v${APP_VERSION} • Updated ${dateStr} ${timeStr}`;
   
-  // Initialize piano visualization
-  const shouldShowPiano = settings.questionMode === 'noteToDegree' || settings.questionMode === 'scaleRecognition';
-  if (shouldShowPiano) {
-    generatePianoKeys(pianoKeyboard, NOTE_TO_PC, NOTE_LIST);
-    if (pianoContainer) {
-      pianoContainer.hidden = false;
-    }
-    // Add piano mode class to main element
-    if (elMain) {
-      elMain.classList.add('pianoMode');
-    }
-    const firstKey = settings.keysEnabled[0] || 'C';
-    const firstScale = settings.scaleTypesEnabled[0] || 'major';
-    updatePianoVisualization(pianoKeyboard, firstKey, firstScale, SCALE_TYPES, NOTE_TO_PC, pcToNote);
-  } else if (pianoContainer) {
-    pianoContainer.hidden = true;
-  }
+  renderInstrumentButtons();
+  renderInstrumentVisualization();
   
   initScaleToggles(scaleToggles, SCALE_TYPES, SCALE_TYPE_NAMES, settings, saveSettingsToStorage, soundDegreeToggle, getVolumeMultiplier);

@@ -23,6 +23,8 @@ export const dom = {
   menuDropdown: document.getElementById("menuDropdown"),
   btnSettings: document.getElementById("btnSettings"),
   btnStats: document.getElementById("btnStats"),
+  instrumentPiano: document.getElementById("instrumentPiano"),
+  instrumentGuitar: document.getElementById("instrumentGuitar"),
   menuBackdrop: document.querySelector(".menuBackdrop"),
 
   // Settings modal
@@ -91,6 +93,10 @@ export const dom = {
   // Piano visualization
   pianoContainer: document.getElementById("pianoContainer"),
   pianoKeyboard: document.getElementById("pianoKeyboard"),
+  pianoExpandBtn: document.getElementById("pianoExpandBtn"),
+  guitarContainer: document.getElementById("guitarContainer"),
+  guitarFretboard: document.getElementById("guitarFretboard"),
+  guitarExpandBtn: document.getElementById("guitarExpandBtn"),
   scaleToggles: document.getElementById("scaleToggles"),
   scaleTypeSection: document.getElementById("scaleTypeSection")
 };

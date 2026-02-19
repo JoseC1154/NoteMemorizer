@@ -252,14 +252,40 @@ export function nextQuestion(
     const availableScales = settings.scaleTypesEnabled.length ? settings.scaleTypesEnabled : ["major"];
     scaleType = pickRandom(availableScales);
     
-    // Pick a note from the scale
+    // Pick a note that matches enabled degree filters
     const rootPc = NOTE_TO_PC.get(keyRoot);
     const scaleOffsets = SCALE_TYPES[scaleType];
-    const scaleNotes = scaleOffsets.map(offset => pcToNote(rootPc + offset));
-    questionNote = pickRandom(scaleNotes);
-    
-    // Find what degree this note is
-    correctDegree = noteToDegree(questionNote, keyRoot, degreeMode, scaleType, NOTE_TO_PC, SCALE_TYPES, DIATONIC_DEGREES, CHROMATIC_DEGREES, CHROMATIC_TO_OFFSET, pcToNote);
+    let candidateDegrees = availableDegrees.length ? [...availableDegrees] : [...degreePool];
+
+    if (degreeMode === "diatonic") {
+      candidateDegrees = candidateDegrees.filter(d => DIATONIC_DEGREES.includes(d));
+      if (!candidateDegrees.length) {
+        candidateDegrees = [...DIATONIC_DEGREES];
+      }
+
+      correctDegree = pickRandom(candidateDegrees);
+      const degreeIndex = DIATONIC_DEGREES.indexOf(correctDegree);
+      const degreeOffset = scaleOffsets[Math.max(0, degreeIndex)];
+      questionNote = pcToNote(rootPc + degreeOffset);
+    } else {
+      // In chromatic mode, only use enabled degrees that are present in this scale
+      candidateDegrees = candidateDegrees.filter(d => {
+        const off = CHROMATIC_TO_OFFSET[d];
+        return typeof off === "number" && scaleOffsets.includes(off);
+      });
+
+      if (!candidateDegrees.length) {
+        candidateDegrees = CHROMATIC_DEGREES.filter(d => {
+          const off = CHROMATIC_TO_OFFSET[d];
+          return typeof off === "number" && scaleOffsets.includes(off);
+        });
+      }
+
+      correctDegree = pickRandom(candidateDegrees);
+      const degreeOffset = CHROMATIC_TO_OFFSET[correctDegree];
+      questionNote = pcToNote(rootPc + degreeOffset);
+    }
+
     correctNote = questionNote; // For stats tracking
     
     // Generate degree options
@@ -337,8 +363,10 @@ export function startGame(
   // Restore opacity to all elements
   const elAnswerGrid = document.getElementById("answerGrid");
   const pianoContainer = document.getElementById("pianoContainer");
+  const guitarContainer = document.getElementById("guitarContainer");
   if (elAnswerGrid) elAnswerGrid.style.opacity = '1';
   if (pianoContainer) pianoContainer.style.opacity = '1';
+  if (guitarContainer) guitarContainer.style.opacity = '1';
   if (elBonusButton) elBonusButton.style.opacity = '1';
 
   state.active = true;
@@ -550,9 +578,11 @@ export function endGame(state, settings, message, answerButtons, elTimerBackgrou
   // Hide everything except question box
   const elAnswerGrid = document.getElementById("answerGrid");
   const pianoContainer = document.getElementById("pianoContainer");
+  const guitarContainer = document.getElementById("guitarContainer");
   const elBonusButton = document.getElementById("bonusButton");
   if (elAnswerGrid) elAnswerGrid.style.opacity = '0.2';
   if (pianoContainer) pianoContainer.style.opacity = '0.2';
+  if (guitarContainer) guitarContainer.style.opacity = '0.2';
   if (elBonusButton) elBonusButton.style.opacity = '0.2';
   
   // Show game over in status panel

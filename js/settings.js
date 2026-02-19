@@ -7,6 +7,7 @@ export const STORAGE_KEY = "keydrill_settings_v1"; // Temporary session settings
 export const DEFAULTS_KEY = "keydrill_defaults_v1"; // Persistent user defaults
 
 export const defaultSettings = {
+  instrument: "piano", // "piano" | "guitar"
   keysEnabled: ["C"],
   degreesEnabled: [...DIATONIC_DEGREES], // Default to all diatonic degrees
   secondsPerQuestion: 8,
@@ -62,6 +63,9 @@ export function loadSettings() {
     }
     if (parsed.degreeMode === "diatonic" || parsed.degreeMode === "chromatic") {
       s.degreeMode = parsed.degreeMode;
+    }
+    if (parsed.instrument === "piano" || parsed.instrument === "guitar") {
+      s.instrument = parsed.instrument;
     }
     if (parsed.questionMode === "degreeToNote" || parsed.questionMode === "noteToDegree" || parsed.questionMode === "scaleRecognition") {
       s.questionMode = parsed.questionMode;
