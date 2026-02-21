@@ -59,7 +59,7 @@ export function generateGuitarFretboard(guitarFretboard, NOTE_TO_PC, pcToNote) {
 
     const inlayBottom = document.createElement("div");
     inlayBottom.className = "guitarInlay double bottom";
-    inlayBottom.style.left = `${center}%`;
+  inlayBottom.style.left = `98.2%`;
     neck.appendChild(inlayBottom);
   }
 
