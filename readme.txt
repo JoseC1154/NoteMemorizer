@@ -37,3 +37,4 @@ TODO:
 -when in landscape mode the and there is a game over the only thing on screen should be the questionBox and the menueToggle. the questionBox should be centered on screen.
 -When instrument is in expanded viev no need for additional instrument buttons
 -add a gofund donation me button.
+-give the user the option of selecting the answer on the instrument or on the answer choices. 
