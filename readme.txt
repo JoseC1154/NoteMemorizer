@@ -32,4 +32,8 @@ TODO:
 - when in degree to note mode the instrument buttons should be disabled.
 -if in landscape mode the instrument buttons should be vertical: +, Piano, Guitar, Bass instead of horizontal.
 - Add Bass instrument.
--when the guitar is in phone display the note positions don't resize small enough making them look like they are jumbled up together. 
+-when the guitar is in phone display the note positions don't resize small enough making them look like they are jumbled up together.
+-when in expanded view I would like a new button to toggle the display of notes. 
+-when in landscape mode the and there is a game over the only thing on screen should be the questionBox and the menueToggle. the questionBox should be centered on screen.
+-When instrument is in expanded viev no need for additional instrument buttons
+-
