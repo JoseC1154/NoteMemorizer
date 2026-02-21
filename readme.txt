@@ -26,6 +26,16 @@ TODO:
 -Continue refactoring: Extract ui.js, game-logic.js, event-handlers.js modules
 -on piano mode after ten correct of one scale that key is taken off the list tested.
 -as the changes are taken place the setting should reflect.
--I would like the music to wind down in tempo or speed then stop when not in the game, a synthy wavy freeze of a chord when adjusting settings the to wind back up when the game starts.
--i button for examination of piano scales.
--in stats i don't see the scale recognition suggestions. 
+-in stats i don't see the scale recognition suggestions.
+-in instrument expanded mode the question should be along with the expanded mode.
+-when the test is on and the width is longer than the height like in phone mode the answer button should slide to the right under the question box or instrument container 1 by 1 or 2 by 2 to the left the up into spot in an animated way. to take advantage of the space.
+-when in degree to note mode the instrument buttons should be disabled.
+-if in landscape mode the instrument buttons should be vertical: +, Piano, Guitar, Bass instead of horizontal.
+-Add Bass instrument.
+-when the guitar is in phone display the note positions don't resize small enough making them look like they are jumbled up together then when the screen is larger displays they look very small, they should resize proportionally.
+-when in expanded view I would like a new button to toggle the display of notes. 
+-when in landscape mode the and there is a game over the only thing on screen should be the questionBox and the menueToggle. the questionBox should be centered on screen.
+-When instrument is in expanded viev no need for additional instrument buttons
+-add a gofund donation me button.
+-give the user the option of selecting the answer on the instrument or on the answer choices.
+-a way for the user to back step to the previous question and its answer, as a study. (3 Max)
