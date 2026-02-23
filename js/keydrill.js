@@ -116,6 +116,7 @@ import {
 const {
   elQuestionText,
   elQuestionBox,
+  studyBackBtn,
   elRestartHint,
   elTimer,
   elTimerBackground,
@@ -183,21 +184,31 @@ const {
   degreeModeSection,
   modeDiatonic,
   modeChromatic,
+  inputChoices,
+  inputInstrument,
+  inputBoth,
   toggleSound,
   toggleTick,
   toggleAmbient,
   pianoContainer,
   pianoKeyboard,
   pianoExpandBtn,
+  pianoNotesBtn,
+  pianoQuestionOverlay,
   guitarContainer,
   guitarFretboard,
   guitarExpandBtn,
+  guitarNotesBtn,
+  guitarQuestionOverlay,
   scaleToggles,
   scaleTypeSection
 } = dom;
 
 // Load settings from storage
 let settings = loadSettings();
+if (settings.questionMode === "degreeToNote" && settings.answerInputMode === "choices") {
+  settings.answerInputMode = "both";
+}
   // =========================
   // Game state
   // =========================
@@ -225,8 +236,13 @@ let settings = loadSettings();
     locked: false,
     paused: false,
     pausedByInstrumentExpand: false,
+    pausedByStudyBack: false,
     instrumentExpanded: false,
+    expandedNotesVisible: false,
     current: null, // { keyRoot, degreeLabel, correctNote, options[] }
+    studyBackupCurrent: null,
+    studyHistory: [], // up to 3 previous questions
+    studyStepIndex: -1,
 
     // Progression mode state
     progression: {
@@ -238,10 +254,73 @@ let settings = loadSettings();
     }
   };
 
-  const shouldShowInstrument = () => settings.questionMode === "noteToDegree" || settings.questionMode === "scaleRecognition";
+  const canInstrumentAnswerCurrentMode = () => settings.questionMode === "degreeToNote";
+
+  const shouldShowInstrument = () => {
+    if (settings.questionMode === "degreeToNote" || settings.questionMode === "noteToDegree" || settings.questionMode === "scaleRecognition") return true;
+    if (canInstrumentAnswerCurrentMode() && settings.answerInputMode !== "choices") return true;
+    return false;
+  };
+
+  function areChoiceAnswersEnabled() {
+    if (!canInstrumentAnswerCurrentMode()) return true;
+    return settings.answerInputMode !== "instrument";
+  }
+
+  function areInstrumentAnswersEnabled() {
+    if (!canInstrumentAnswerCurrentMode()) return false;
+    return settings.answerInputMode === "instrument" || settings.answerInputMode === "both";
+  }
+
+  function renderAnswerInputModeButtons() {
+    if (!inputChoices || !inputInstrument || !inputBoth) return;
+    inputChoices.setAttribute("aria-checked", settings.answerInputMode === "choices" ? "true" : "false");
+    inputInstrument.setAttribute("aria-checked", settings.answerInputMode === "instrument" ? "true" : "false");
+    inputBoth.setAttribute("aria-checked", settings.answerInputMode === "both" ? "true" : "false");
+  }
+
+  function syncAnswerInputAvailability() {
+    const choicesEnabled = areChoiceAnswersEnabled();
+    if (elAnswerGrid) {
+      elAnswerGrid.style.opacity = choicesEnabled ? "1" : "0.45";
+      elAnswerGrid.style.pointerEvents = choicesEnabled ? "auto" : "none";
+    }
+
+    answerButtons.forEach(btn => {
+      btn.disabled = !choicesEnabled || !state.active || state.locked || !state.current;
+    });
+  }
 
   function getActiveInstrument() {
     return settings.instrument === "guitar" ? "guitar" : "piano";
+  }
+
+  function applyExpandedNoteLabels() {
+    const showLabels = state.instrumentExpanded && state.expandedNotesVisible;
+    if (pianoKeyboard) pianoKeyboard.classList.toggle('showNoteLabels', showLabels);
+    if (guitarFretboard) guitarFretboard.classList.toggle('showNoteLabels', showLabels);
+  }
+
+  function getCurrentQuestionText() {
+    return elQuestionText?.textContent || "";
+  }
+
+  function renderExpandedQuestionOverlay() {
+    const expanded = state.instrumentExpanded;
+    const active = getActiveInstrument();
+    const questionText = state.active && state.current ? getCurrentQuestionText() : "";
+
+    if (pianoQuestionOverlay) {
+      const show = expanded && active === "piano" && !!questionText;
+      pianoQuestionOverlay.hidden = !show;
+      if (show) pianoQuestionOverlay.textContent = questionText;
+    }
+
+    if (guitarQuestionOverlay) {
+      const show = expanded && active === "guitar" && !!questionText;
+      guitarQuestionOverlay.hidden = !show;
+      if (show) guitarQuestionOverlay.textContent = questionText;
+    }
   }
 
   function getActiveVisualization() {
@@ -278,6 +357,7 @@ let settings = loadSettings();
   function renderInstrumentExpandedState() {
     const active = getActiveVisualization();
     const expanded = state.instrumentExpanded;
+    const instrumentToggleGroup = document.querySelector('.instrumentToggleGroup');
 
     [pianoContainer, guitarContainer].forEach(container => {
       if (!container) return;
@@ -294,6 +374,20 @@ let settings = loadSettings();
       btn.textContent = expanded ? '⤡' : '⤢';
       btn.title = expanded ? 'Collapse instrument view' : 'Expand instrument view';
     });
+
+    [pianoNotesBtn, guitarNotesBtn].forEach(btn => {
+      if (!btn) return;
+      btn.hidden = !expanded;
+      btn.setAttribute('aria-pressed', state.expandedNotesVisible ? 'true' : 'false');
+      btn.title = state.expandedNotesVisible ? 'Hide note labels' : 'Show note labels';
+    });
+
+    if (instrumentToggleGroup) {
+      instrumentToggleGroup.hidden = expanded;
+    }
+
+    applyExpandedNoteLabels();
+    renderExpandedQuestionOverlay();
   }
 
   function setInstrumentExpanded(expanded) {
@@ -335,7 +429,12 @@ let settings = loadSettings();
       else elMain.classList.remove('pianoMode');
     }
 
-    if (!visible || !active.surface) return;
+    if (!visible || !active.surface) {
+      if (pianoQuestionOverlay) pianoQuestionOverlay.hidden = true;
+      if (guitarQuestionOverlay) guitarQuestionOverlay.hidden = true;
+      syncAnswerInputAvailability();
+      return;
+    }
 
     active.generate();
 
@@ -358,6 +457,107 @@ let settings = loadSettings();
     }
 
     renderInstrumentExpandedState();
+    renderExpandedQuestionOverlay();
+    syncAnswerInputAvailability();
+  }
+
+  function getCorrectValueForQuestion(question, questionMode) {
+    if (!question) return "";
+    return questionMode === "noteToDegree" ? question.correctDegree : question.correctNote;
+  }
+
+  function updateStudyBackButtonState() {
+    if (!studyBackBtn) return;
+    const canUse = state.active && state.studyHistory.length > 0;
+    studyBackBtn.setAttribute("aria-disabled", canUse ? "false" : "true");
+  }
+
+  function pushStudyHistory(question, questionMode) {
+    if (!question) return;
+    const snapshot = {
+      question: structuredClone(question),
+      questionMode
+    };
+    state.studyHistory.push(snapshot);
+    if (state.studyHistory.length > 3) {
+      state.studyHistory.shift();
+    }
+    updateStudyBackButtonState();
+  }
+
+  function renderStudySnapshot(snapshot) {
+    if (!snapshot?.question) return;
+
+    state.current = structuredClone(snapshot.question);
+
+    const settingsForSnapshot = {
+      ...settings,
+      questionMode: snapshot.questionMode
+    };
+
+    renderQuestion(state, settingsForSnapshot, elQuestionText, elTimerBackground, SCALE_TYPE_NAMES);
+    renderAnswers(state, answerButtons);
+
+    const correctValue = getCorrectValueForQuestion(state.current, snapshot.questionMode);
+    answerButtons.forEach(btn => {
+      if (btn.dataset.note === correctValue) {
+        btn.classList.add('correctAnswer');
+      }
+    });
+
+    lockAnswers(state, answerButtons, true);
+
+    const step = state.studyStepIndex + 1;
+    const max = state.studyHistory.length;
+    setStatusNeutral(elStatusPanel, elStatusText, `Study Back ${step}/${max}: ${correctValue}`);
+  }
+
+  function resumeFromStudyBack() {
+    if (!state.active || !state.pausedByStudyBack) return;
+
+    if (state.studyBackupCurrent) {
+      state.current = structuredClone(state.studyBackupCurrent);
+    }
+
+    state.studyBackupCurrent = null;
+    state.studyStepIndex = -1;
+    state.pausedByStudyBack = false;
+    state.paused = false;
+
+    renderQuestion(state, settings, elQuestionText, elTimerBackground, SCALE_TYPE_NAMES);
+    renderAnswers(state, answerButtons);
+    lockAnswers(state, answerButtons, false);
+    syncAnswerInputAvailability();
+    renderInstrumentVisualization();
+    startTimerWrapper();
+    setStatusNeutral(elStatusPanel, elStatusText, "Resumed.");
+    updateStudyBackButtonState();
+  }
+
+  function stepBackStudyQuestion() {
+    if (!state.active || !state.studyHistory.length || state.locked) return;
+
+    if (!state.pausedByStudyBack) {
+      state.studyBackupCurrent = state.current ? structuredClone(state.current) : null;
+      state.studyStepIndex = -1;
+      state.pausedByStudyBack = true;
+      state.paused = true;
+      stopTimerWrapper();
+    }
+
+    const lastIndex = state.studyHistory.length - 1;
+    if (state.studyStepIndex >= lastIndex) {
+      resumeFromStudyBack();
+      return;
+    }
+
+    state.studyStepIndex += 1;
+    const snapshot = state.studyHistory[lastIndex - state.studyStepIndex];
+    renderStudySnapshot(snapshot);
+  }
+
+  function syncGameActiveClass() {
+    document.body.classList.toggle('gameActive', !!state.active);
   }
 
   // =========================
@@ -370,18 +570,39 @@ let settings = loadSettings();
       ensureAudio, startAmbientMusic, getVolumeMultiplier, renderLives, renderScore, renderBonus, renderLevelInfo,
       setStatusNeutral, updateRiskVisual, nextQuestionWrapper, initProgressionModeWrapper, ALL_KEYS
     );
+    syncGameActiveClass();
+    state.studyHistory = [];
+    state.studyStepIndex = -1;
+    state.studyBackupCurrent = null;
+    state.pausedByStudyBack = false;
+    updateStudyBackButtonState();
     // Speed up ambient music when starting game
     speedUpAmbientMusic();
   };
   
   const nextQuestionWrapper = () => {
+    if (state.active && state.current && !state.pausedByStudyBack) {
+      pushStudyHistory(state.current, settings.questionMode);
+    }
+
+    if (state.pausedByStudyBack) {
+      state.studyStepIndex = -1;
+      state.studyBackupCurrent = null;
+      state.pausedByStudyBack = false;
+      state.paused = false;
+    }
+
     const activeView = getActiveVisualization();
-    return nextQuestion(
+    const result = nextQuestion(
       state, settings, ALL_KEYS, DIATONIC_DEGREES, CHROMATIC_DEGREES, NOTE_TO_PC, MAJOR_SCALE_OFFSETS,
       CHROMATIC_TO_OFFSET, NOTE_LIST, SCALE_TYPES, SCALE_TYPE_NAMES, pcToNote, elQuestionText, elTimerBackground,
       answerButtons, elLevelInfo, activeView.surface, renderQuestion, renderAnswers, renderLevelInfo, startTimerWrapper,
       activeView.update, activeView.highlight
     );
+
+    syncAnswerInputAvailability();
+    updateStudyBackButtonState();
+    return result;
   };
   
   const startTimerWrapper = () => startTimer(
@@ -392,11 +613,15 @@ let settings = loadSettings();
   
   const initProgressionModeWrapper = () => initProgressionMode(state, settings, ALL_KEYS);
   
-  const endGameWrapper = (message) => endGame(
-    state, settings, message, answerButtons, elTimerBackground, elQuestionText, lockAnswers, updateRiskVisual,
-    getStats, saveStats, flashStatus, elStatusPanel, elStatusText, soundGameOver, getVolumeMultiplier,
-    stopTimerWrapper, stopAmbientMusic, generateCompactSuggestionsWrapper
-  );
+  const endGameWrapper = (message) => {
+    endGame(
+      state, settings, message, answerButtons, elTimerBackground, elQuestionText, lockAnswers, updateRiskVisual,
+      getStats, saveStats, flashStatus, elStatusPanel, elStatusText, soundGameOver, getVolumeMultiplier,
+      stopTimerWrapper, stopAmbientMusic, generateCompactSuggestionsWrapper
+    );
+    syncGameActiveClass();
+    updateStudyBackButtonState();
+  };
   
   const generateCompactSuggestionsWrapper = () => generateCompactSuggestions(getStats);
   
@@ -423,6 +648,14 @@ let settings = loadSettings();
   );
   
   const onAnswerClickWrapper = (btn) => onAnswerClick(state, btn, handleCorrectWrapper, handleWrongWrapper, settings);
+
+  const onInstrumentAnswer = (chosen) => {
+    if (!state.active || state.locked || !state.current || !areInstrumentAnswersEnabled()) return;
+
+    const correct = state.current.correctNote;
+    if (chosen === correct) handleCorrectWrapper(chosen);
+    else handleWrongWrapper(chosen);
+  };
 
   // =========================
   // Settings Modal
@@ -514,6 +747,8 @@ let settings = loadSettings();
       modeNoteToDegree.setAttribute("aria-checked", settings.questionMode === "noteToDegree" ? "true" : "false");
       modeScaleRecognition.setAttribute("aria-checked", settings.questionMode === "scaleRecognition" ? "true" : "false");
     }
+
+    renderAnswerInputModeButtons();
 
     toggleSound.setAttribute("aria-pressed", settings.audioOn ? "true" : "false");
     toggleSound.textContent = `Sounds: ${settings.audioOn ? "On" : "Off"}`;
@@ -613,10 +848,49 @@ let settings = loadSettings();
     difficultyHard.setAttribute("aria-checked", difficulty === "hard" ? "true" : "false");
   }
 
+  function setAnswerInputMode(mode) {
+    settings.answerInputMode = mode === "instrument" || mode === "both" ? mode : "choices";
+    renderAnswerInputModeButtons();
+    renderInstrumentVisualization();
+    syncAnswerInputAvailability();
+    saveSettingsToStorage(settings);
+  }
+
+  function toggleExpandedNotesVisibility() {
+    state.expandedNotesVisible = !state.expandedNotesVisible;
+    renderInstrumentExpandedState();
+  }
+
   // =========================
   // Wire up events
   // =========================
   answerButtons.forEach(b => b.addEventListener("click", () => onAnswerClickWrapper(b)));
+
+  if (pianoKeyboard) {
+    pianoKeyboard.addEventListener("click", (e) => {
+      const key = e.target.closest('.pianoKey');
+      if (!key?.dataset?.note) return;
+      onInstrumentAnswer(key.dataset.note);
+    });
+  }
+
+  if (guitarFretboard) {
+    guitarFretboard.addEventListener("click", (e) => {
+      const position = e.target.closest('.guitarPosition');
+      if (!position?.dataset?.note) return;
+      onInstrumentAnswer(position.dataset.note);
+    });
+  }
+
+  if (studyBackBtn) {
+    studyBackBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (studyBackBtn.getAttribute("aria-disabled") === "true") return;
+      soundButtonClick(settings, getVolumeMultiplier);
+      stepBackStudyQuestion();
+    });
+  }
 
   // Bonus button handler
   if (elBonusButton) {
@@ -916,10 +1190,15 @@ let settings = loadSettings();
   
   function setQuestionMode(mode) {
     settings.questionMode = mode;
+    if (mode === "degreeToNote" && settings.answerInputMode === "choices") {
+      settings.answerInputMode = "both";
+      renderAnswerInputModeButtons();
+    }
     modeDegreeToNote.setAttribute("aria-checked", mode === "degreeToNote" ? "true" : "false");
     modeNoteToDegree.setAttribute("aria-checked", mode === "noteToDegree" ? "true" : "false");
     modeScaleRecognition.setAttribute("aria-checked", mode === "scaleRecognition" ? "true" : "false");
     renderInstrumentVisualization();
+    syncAnswerInputAvailability();
     
     saveSettingsToStorage(settings);
   }
@@ -960,6 +1239,22 @@ let settings = loadSettings();
     });
   }
 
+  if (pianoNotesBtn) {
+    pianoNotesBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      soundDegreeToggle(settings, getVolumeMultiplier);
+      toggleExpandedNotesVisibility();
+    });
+  }
+
+  if (guitarNotesBtn) {
+    guitarNotesBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      soundDegreeToggle(settings, getVolumeMultiplier);
+      toggleExpandedNotesVisibility();
+    });
+  }
+
   if (guitarExpandBtn) {
     guitarExpandBtn.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -980,6 +1275,25 @@ let settings = loadSettings();
     soundDegreeToggle(settings, getVolumeMultiplier);
     setQuestionMode("scaleRecognition");
   });
+
+  if (inputChoices) {
+    inputChoices.addEventListener("click", () => {
+      soundDegreeToggle(settings, getVolumeMultiplier);
+      setAnswerInputMode("choices");
+    });
+  }
+  if (inputInstrument) {
+    inputInstrument.addEventListener("click", () => {
+      soundDegreeToggle(settings, getVolumeMultiplier);
+      setAnswerInputMode("instrument");
+    });
+  }
+  if (inputBoth) {
+    inputBoth.addEventListener("click", () => {
+      soundDegreeToggle(settings, getVolumeMultiplier);
+      setAnswerInputMode("both");
+    });
+  }
 
   toggleSound.addEventListener("click", () => {
     soundDegreeToggle(settings, getVolumeMultiplier);
@@ -1026,6 +1340,7 @@ let settings = loadSettings();
     } else {
       renderAnswers(state, answerButtons);
       renderInstrumentVisualization();
+      syncAnswerInputAvailability();
     }
 
     setStatusNeutral(elStatusPanel, elStatusText, "Settings saved.");
@@ -1131,5 +1446,9 @@ let settings = loadSettings();
   
   renderInstrumentButtons();
   renderInstrumentVisualization();
+  renderAnswerInputModeButtons();
+  syncAnswerInputAvailability();
+  syncGameActiveClass();
+  updateStudyBackButtonState();
   
   initScaleToggles(scaleToggles, SCALE_TYPES, SCALE_TYPE_NAMES, settings, saveSettingsToStorage, soundDegreeToggle, getVolumeMultiplier);

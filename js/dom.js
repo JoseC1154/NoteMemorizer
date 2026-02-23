@@ -3,6 +3,7 @@ export const dom = {
   // Question elements
   elQuestionText: document.getElementById("questionText"),
   elQuestionBox: document.getElementById("questionBox"),
+  studyBackBtn: document.getElementById("studyBackBtn"),
   elRestartHint: document.getElementById("restartHint"),
   elTimer: document.getElementById("timer"),
   elTimerBackground: document.getElementById("timerBackground"),
@@ -84,6 +85,9 @@ export const dom = {
   degreeModeSection: document.getElementById("degreeModeSection"),
   modeDiatonic: document.getElementById("modeDiatonic"),
   modeChromatic: document.getElementById("modeChromatic"),
+  inputChoices: document.getElementById("inputChoices"),
+  inputInstrument: document.getElementById("inputInstrument"),
+  inputBoth: document.getElementById("inputBoth"),
 
   // Audio toggles
   toggleSound: document.getElementById("toggleSound"),
@@ -94,9 +98,13 @@ export const dom = {
   pianoContainer: document.getElementById("pianoContainer"),
   pianoKeyboard: document.getElementById("pianoKeyboard"),
   pianoExpandBtn: document.getElementById("pianoExpandBtn"),
+  pianoNotesBtn: document.getElementById("pianoNotesBtn"),
+  pianoQuestionOverlay: document.getElementById("pianoQuestionOverlay"),
   guitarContainer: document.getElementById("guitarContainer"),
   guitarFretboard: document.getElementById("guitarFretboard"),
   guitarExpandBtn: document.getElementById("guitarExpandBtn"),
+  guitarNotesBtn: document.getElementById("guitarNotesBtn"),
+  guitarQuestionOverlay: document.getElementById("guitarQuestionOverlay"),
   scaleToggles: document.getElementById("scaleToggles"),
   scaleTypeSection: document.getElementById("scaleTypeSection")
 };

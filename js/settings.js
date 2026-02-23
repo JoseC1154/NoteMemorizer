@@ -8,6 +8,7 @@ export const DEFAULTS_KEY = "keydrill_defaults_v1"; // Persistent user defaults
 
 export const defaultSettings = {
   instrument: "piano", // "piano" | "guitar"
+  answerInputMode: "both", // "choices" | "instrument" | "both"
   keysEnabled: ["C"],
   degreesEnabled: [...DIATONIC_DEGREES], // Default to all diatonic degrees
   secondsPerQuestion: 8,
@@ -66,6 +67,9 @@ export function loadSettings() {
     }
     if (parsed.instrument === "piano" || parsed.instrument === "guitar") {
       s.instrument = parsed.instrument;
+    }
+    if (parsed.answerInputMode === "choices" || parsed.answerInputMode === "instrument" || parsed.answerInputMode === "both") {
+      s.answerInputMode = parsed.answerInputMode;
     }
     if (parsed.questionMode === "degreeToNote" || parsed.questionMode === "noteToDegree" || parsed.questionMode === "scaleRecognition") {
       s.questionMode = parsed.questionMode;

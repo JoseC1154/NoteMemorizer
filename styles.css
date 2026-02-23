@@ -256,6 +256,10 @@ body{
   z-index: 10001;
 }
 
+.instrumentToggleGroup[hidden] {
+  display: none !important;
+}
+
 .instrumentToggle {
   appearance: none;
   width: 34px;
@@ -281,6 +285,12 @@ body{
   background: linear-gradient(180deg, rgba(64,230,160,0.28), rgba(64,230,160,0.14));
   border-color: rgba(64,230,160,0.5);
   box-shadow: 0 0 12px rgba(64,230,160,0.35);
+}
+
+.instrumentToggle:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  border-color: rgba(255,255,255,0.12);
 }
 
 .triangleToggle::before {
@@ -490,6 +500,10 @@ body{
 /* Piano mode layout adjustments */
 .main.pianoMode {
   gap: 8px;
+  margin-top: 50px;
+  margin-left: 52px;
+  padding-right: 12px;
+  padding-bottom: 12px;
 }
 
 .main.pianoMode .answerGrid {
@@ -527,6 +541,38 @@ body{
   position: relative;
   flex-shrink: 0;
   overflow: visible;
+}
+
+.studyBackBtn {
+  position: absolute;
+  bottom: 0.7rem;
+  left: 0.7rem;
+  transform: none;
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.24);
+  background: rgba(8, 16, 36, 0.72);
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 4;
+  pointer-events: auto;
+  cursor: pointer;
+  transition: transform 0.15s ease, opacity 0.15s ease, border-color 0.15s ease;
+}
+
+.studyBackBtn[aria-disabled="true"] {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.studyBackBtn[aria-disabled="false"]:hover {
+  border-color: rgba(255,255,255,0.45);
+  transform: scale(1.06);
 }
 
 .timerBackground {
@@ -1078,6 +1124,115 @@ body{
   .statusPanel{ display:none; }
   .app{ padding: 10px; gap: 10px; }
   .questionBox{ padding: 12px; }
+
+  .triangleToggle {
+    top: 10px;
+    left: 10px;
+  }
+
+  .instrumentToggleGroup {
+    top: 52px;
+    left: 10px;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  body.gameActive .main {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(88px, 16vw);
+    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-areas:
+      "question answers"
+      "instrument answers";
+    column-gap: 8px;
+    row-gap: 8px;
+    align-items: stretch;
+    overflow: hidden;
+  }
+
+  body.gameActive .main .questionBox {
+    grid-area: question;
+    margin: 0;
+    padding: 0.85rem 1rem;
+    min-height: 0;
+  }
+
+  body.gameActive .main .questionText {
+    font-size: clamp(1.05rem, 2.3vw, 1.65rem);
+  }
+
+  body.gameActive .main .timerBackground {
+    font-size: clamp(4rem, 10vw, 7rem);
+  }
+
+  body.gameActive .main .pianoContainer,
+  body.gameActive .main .guitarContainer {
+    grid-area: instrument;
+    margin: 0;
+    min-height: 0;
+    height: 100%;
+  }
+
+  body.gameActive .main .answerGrid {
+    grid-area: answers;
+    grid-template-columns: minmax(0, 1fr);
+    grid-auto-rows: minmax(0, 1fr);
+    align-content: stretch;
+    gap: 6px;
+    height: 100%;
+    min-height: 0;
+    margin: 0;
+    justify-self: end;
+    width: min(16vw, 132px);
+    padding-right: 4px;
+  }
+
+  body.gameActive .main .answerBtn {
+    min-height: 0;
+    padding: clamp(0.22rem, 0.9vh, 0.5rem) 0.3rem;
+    min-height: clamp(22px, 4.2vh, 34px);
+    font-size: clamp(9px, 1.2vw, 11px);
+    animation: answerSlideLandscape 0.35s ease both;
+  }
+
+  body.gameActive .main .answerBtn:nth-child(1) { animation-delay: 0.02s; }
+  body.gameActive .main .answerBtn:nth-child(2) { animation-delay: 0.06s; }
+  body.gameActive .main .answerBtn:nth-child(3) { animation-delay: 0.10s; }
+  body.gameActive .main .answerBtn:nth-child(4) { animation-delay: 0.14s; }
+  body.gameActive .main .answerBtn:nth-child(5) { animation-delay: 0.18s; }
+  body.gameActive .main .answerBtn:nth-child(6) { animation-delay: 0.22s; }
+
+  body.gameActive .main .bonusButton {
+    position: fixed;
+    left: 10px;
+    right: auto;
+    bottom: 10px;
+    margin-top: 0;
+    align-self: auto;
+    z-index: 10001;
+  }
+
+  .main.pianoMode .bonusButton {
+    position: fixed;
+    left: 10px;
+    right: auto;
+    bottom: 10px;
+    margin-top: 0;
+    align-self: auto;
+    flex-shrink: 0;
+    z-index: 10001;
+  }
+}
+
+@keyframes answerSlideLandscape {
+  from {
+    opacity: 0;
+    transform: translate(-18px, 14px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(0, 0);
+  }
 }
 
 /* Ensure no overflow on mobile portrait */
@@ -1679,6 +1834,55 @@ body{
   border-color: rgba(64,230,160,0.5);
 }
 
+.instrumentNotesBtn {
+  appearance: none;
+  position: absolute;
+  top: 10px;
+  right: 52px;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.22);
+  background: rgba(0,0,0,0.45);
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+  z-index: 120;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.instrumentNotesBtn[hidden] {
+  display: none !important;
+}
+
+.instrumentNotesBtn:hover {
+  border-color: rgba(255,255,255,0.35);
+  transform: translateY(-1px);
+}
+
+.instrumentNotesBtn[aria-pressed="true"] {
+  background: rgba(100,150,255,0.24);
+  border-color: rgba(100,150,255,0.55);
+}
+
+.instrumentQuestionOverlay {
+  position: absolute;
+  top: 56px;
+  left: 12px;
+  right: 12px;
+  text-align: center;
+  font-size: clamp(1rem, 2.2vw, 1.5rem);
+  font-weight: 800;
+  color: var(--text);
+  text-shadow: 0 2px 8px rgba(0,0,0,0.65);
+  z-index: 130;
+  pointer-events: none;
+}
+
 .guitarContainer {
   display: block;
   width: 100%;
@@ -1839,6 +2043,19 @@ body{
   animation: pulse-question 1.5s ease-in-out infinite;
 }
 
+.guitarFretboard.showNoteLabels .guitarPosition::after {
+  content: attr(data-note);
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 8px;
+  font-weight: 800;
+  color: rgba(255,255,255,0.95);
+  text-shadow: 0 1px 3px rgba(0,0,0,0.75);
+  pointer-events: none;
+}
+
 .pianoContainer[hidden] {
   display: none !important;
 }
@@ -1964,6 +2181,28 @@ body{
 .pianoKey.black.questionNote {
   box-shadow: inset 0 0 12px rgba(251, 191, 36, 0.5) !important;
   border: 2px solid #fbbf24 !important;
+}
+
+.pianoKeyboard.showNoteLabels .pianoKey::before {
+  content: attr(data-note);
+  position: absolute;
+  left: 50%;
+  bottom: 8px;
+  transform: translateX(-50%);
+  font-size: 10px;
+  font-weight: 800;
+  z-index: 101;
+  pointer-events: none;
+}
+
+.pianoKeyboard.showNoteLabels .pianoKey.white::before {
+  color: rgba(10,10,10,0.85);
+}
+
+.pianoKeyboard.showNoteLabels .pianoKey.black::before {
+  color: rgba(255,255,255,0.92);
+  bottom: 6px;
+  font-size: 9px;
 }
 
 @keyframes pulse-question {
