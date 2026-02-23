@@ -1,7 +1,7 @@
 /* Basic reset only */
 * { box-sizing: border-box; }
 html, body { height: 100%; }
-body { margin: 0; }
+body { margin: 0; padding: 0; }
 
 /* App layout */
 :root{
@@ -21,16 +21,17 @@ body{
   font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
   color: var(--text);
   background: radial-gradient(1200px 900px at 50% 0%, #15214a 0%, var(--bg0) 55%, #02030a 100%);
+  padding: max(0px, env(safe-area-inset-top)) max(0px, env(safe-area-inset-right)) max(0px, env(safe-area-inset-bottom)) max(0px, env(safe-area-inset-left));
 }
 
 .app{
   height: 100vh;
   display: flex;
   flex-direction: column;
-  padding: 20px;
+  padding: max(20px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
   gap: 12px;
-  max-width: 680px;
-  margin: 0 auto;
+  max-width: none;
+  margin: 0;
   overflow: hidden;
 }
 
@@ -836,6 +837,29 @@ body{
   display: block;
 }
 
+.statusPanel.gameOver {
+  width: min(82vw, 480px);
+  max-width: 480px;
+  min-height: clamp(96px, 12vh, 124px);
+  max-height: 70vh;
+}
+
+.statusPanel.gameOver .statusContent {
+  padding: 10px 12px;
+  gap: 8px;
+}
+
+.statusPanel.gameOver .statusText {
+  font-size: clamp(12px, 1.7vw, 15px);
+  line-height: 1.15;
+}
+
+body.gameOverVisible .questionStats,
+body.gameOverVisible .timerBackground {
+  opacity: 0;
+  visibility: hidden;
+}
+
 @keyframes modalSlideIn {
   from {
     transform: translate(-50%, -50%) scale(0.9);
@@ -1126,6 +1150,22 @@ body{
     gap: 10px;
   }
   .questionBox{ padding: 12px; }
+
+  .statusPanel.gameOver {
+    width: min(70vw, 420px);
+    max-width: 420px;
+    min-height: clamp(78px, 9vh, 96px);
+    max-height: 58vh;
+  }
+
+  .statusPanel.gameOver .statusContent {
+    padding: 8px 10px;
+    gap: 6px;
+  }
+
+  .statusPanel.gameOver .statusText {
+    font-size: clamp(11px, 1.8vw, 13px);
+  }
 
   .main.pianoMode {
     margin-top: 0;

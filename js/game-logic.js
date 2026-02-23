@@ -350,8 +350,9 @@ export function startGame(
   if (elStatusPanel && elStatusOverlay) {
     elStatusPanel.hidden = true;
     elStatusOverlay.hidden = true;
-    elStatusPanel.classList.remove("good", "bad");
+    elStatusPanel.classList.remove("good", "bad", "gameOver");
   }
+  document.body.classList.remove("gameOverVisible");
   
   // Hide suggestions in question box
   const questionSuggestions = document.getElementById("questionSuggestions");
@@ -586,6 +587,10 @@ export function endGame(state, settings, message, answerButtons, elTimerBackgrou
   if (elBonusButton) elBonusButton.style.opacity = '0.2';
   
   // Show game over in status panel
+  if (elStatusPanel) {
+    elStatusPanel.classList.add("gameOver");
+  }
+  document.body.classList.add("gameOverVisible");
   flashStatus(settings, elStatusPanel, elStatusText, false, `${message} — Final Score: ${state.score}`);
   
   // Show suggestions in question box
