@@ -1306,6 +1306,23 @@ body.gameOverVisible .timerBackground {
     flex-shrink: 0;
     z-index: 10001;
   }
+
+  /* Scale up note labels in landscape expanded view */
+  .guitarFretboard.showNoteLabels .guitarPosition::after {
+    font-size: 14px;
+  }
+
+  .bassFretboard.showNoteLabels .bassPosition::after {
+    font-size: 14px;
+  }
+
+  .pianoKeyboard.showNoteLabels .pianoKey::before {
+    font-size: 10px;
+  }
+
+  .pianoKeyboard.showNoteLabels .pianoKey.black::before {
+    font-size: 8px;
+  }
 }
 
 @keyframes answerSlideLandscape {
@@ -2143,7 +2160,7 @@ body.gameOverVisible .timerBackground {
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  font-size: 8px;
+  font-size: clamp(10px, 1.5vw, 18px);
   font-weight: 800;
   color: rgba(255,255,255,0.95);
   text-shadow: 0 1px 3px rgba(0,0,0,0.75);
@@ -2272,7 +2289,7 @@ body.gameOverVisible .timerBackground {
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  font-size: 8px;
+  font-size: clamp(10px, 1.5vw, 18px);
   font-weight: 800;
   color: rgba(255,255,255,0.95);
   text-shadow: 0 1px 3px rgba(0,0,0,0.75);
@@ -2413,7 +2430,7 @@ body.gameOverVisible .timerBackground {
   left: 50%;
   bottom: 8px;
   transform: translateX(-50%);
-  font-size: 10px;
+  font-size: clamp(9px, 1.2vw, 14px);
   font-weight: 800;
   z-index: 101;
   pointer-events: none;
