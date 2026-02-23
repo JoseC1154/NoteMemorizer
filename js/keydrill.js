@@ -67,6 +67,13 @@ import {
 } from './guitar.js';
 
 import {
+  generateBassFretboard,
+  updateBassVisualization,
+  highlightBassQuestionNote,
+  clearBassQuestionHighlight
+} from './bass.js';
+
+import {
   renderQuestion,
   renderAnswers,
   lockAnswers,
@@ -137,6 +144,7 @@ const {
   btnStats,
   instrumentPiano,
   instrumentGuitar,
+  instrumentBass,
   menuBackdrop,
   overlay,
   modal,
@@ -200,6 +208,11 @@ const {
   guitarExpandBtn,
   guitarNotesBtn,
   guitarQuestionOverlay,
+  bassContainer,
+  bassFretboard,
+  bassExpandBtn,
+  bassNotesBtn,
+  bassQuestionOverlay,
   scaleToggles,
   scaleTypeSection
 } = dom;
@@ -292,13 +305,17 @@ if (settings.questionMode === "degreeToNote" && settings.answerInputMode === "ch
   }
 
   function getActiveInstrument() {
-    return settings.instrument === "guitar" ? "guitar" : "piano";
+    if (["piano", "guitar", "bass"].includes(settings.instrument)) {
+      return settings.instrument;
+    }
+    return "piano";
   }
 
   function applyExpandedNoteLabels() {
     const showLabels = state.instrumentExpanded && state.expandedNotesVisible;
     if (pianoKeyboard) pianoKeyboard.classList.toggle('showNoteLabels', showLabels);
     if (guitarFretboard) guitarFretboard.classList.toggle('showNoteLabels', showLabels);
+    if (bassFretboard) bassFretboard.classList.toggle('showNoteLabels', showLabels);
   }
 
   function getCurrentQuestionText() {
@@ -321,6 +338,12 @@ if (settings.questionMode === "degreeToNote" && settings.answerInputMode === "ch
       guitarQuestionOverlay.hidden = !show;
       if (show) guitarQuestionOverlay.textContent = questionText;
     }
+
+    if (bassQuestionOverlay) {
+      const show = expanded && active === "bass" && !!questionText;
+      bassQuestionOverlay.hidden = !show;
+      if (show) bassQuestionOverlay.textContent = questionText;
+    }
   }
 
   function getActiveVisualization() {
@@ -334,6 +357,18 @@ if (settings.questionMode === "degreeToNote" && settings.answerInputMode === "ch
           updateGuitarVisualization(surface, keyRoot, scaleType, scaleTypes, noteToPc, pcToNoteFn),
         highlight: (surface, note) => highlightGuitarQuestionNote(surface, note),
         clear: (surface) => clearGuitarQuestionHighlight(surface)
+      };
+    }
+    
+    if (instrument === "bass") {
+      return {
+        container: bassContainer,
+        surface: bassFretboard,
+        generate: () => generateBassFretboard(bassFretboard, NOTE_TO_PC, pcToNote),
+        update: (surface, keyRoot, scaleType, scaleTypes, noteToPc, pcToNoteFn) =>
+          updateBassVisualization(surface, keyRoot, scaleType, scaleTypes, noteToPc, pcToNoteFn),
+        highlight: (surface, note) => highlightBassQuestionNote(surface, note),
+        clear: (surface) => clearBassQuestionHighlight(surface)
       };
     }
 
@@ -352,6 +387,7 @@ if (settings.questionMode === "degreeToNote" && settings.answerInputMode === "ch
     const active = getActiveInstrument();
     if (instrumentPiano) instrumentPiano.setAttribute("aria-pressed", active === "piano" ? "true" : "false");
     if (instrumentGuitar) instrumentGuitar.setAttribute("aria-pressed", active === "guitar" ? "true" : "false");
+    if (instrumentBass) instrumentBass.setAttribute("aria-pressed", active === "bass" ? "true" : "false");
   }
 
   function renderInstrumentExpandedState() {
@@ -359,7 +395,7 @@ if (settings.questionMode === "degreeToNote" && settings.answerInputMode === "ch
     const expanded = state.instrumentExpanded;
     const instrumentToggleGroup = document.querySelector('.instrumentToggleGroup');
 
-    [pianoContainer, guitarContainer].forEach(container => {
+    [pianoContainer, guitarContainer, bassContainer].forEach(container => {
       if (!container) return;
       container.classList.remove('instrumentExpanded');
     });
@@ -368,14 +404,14 @@ if (settings.questionMode === "degreeToNote" && settings.answerInputMode === "ch
       active.container.classList.add('instrumentExpanded');
     }
 
-    [pianoExpandBtn, guitarExpandBtn].forEach(btn => {
+    [pianoExpandBtn, guitarExpandBtn, bassExpandBtn].forEach(btn => {
       if (!btn) return;
       btn.setAttribute('aria-pressed', expanded ? 'true' : 'false');
       btn.textContent = expanded ? '⤡' : '⤢';
       btn.title = expanded ? 'Collapse instrument view' : 'Expand instrument view';
     });
 
-    [pianoNotesBtn, guitarNotesBtn].forEach(btn => {
+    [pianoNotesBtn, guitarNotesBtn, bassNotesBtn].forEach(btn => {
       if (!btn) return;
       btn.hidden = !expanded;
       btn.setAttribute('aria-pressed', state.expandedNotesVisible ? 'true' : 'false');
@@ -423,6 +459,7 @@ if (settings.questionMode === "degreeToNote" && settings.answerInputMode === "ch
 
     if (pianoContainer) pianoContainer.hidden = !visible || active.container !== pianoContainer;
     if (guitarContainer) guitarContainer.hidden = !visible || active.container !== guitarContainer;
+    if (bassContainer) bassContainer.hidden = !visible || active.container !== bassContainer;
 
     if (elMain) {
       if (visible) elMain.classList.add('pianoMode');
@@ -1204,7 +1241,9 @@ if (settings.questionMode === "degreeToNote" && settings.answerInputMode === "ch
   }
 
   function setInstrument(instrument) {
-    settings.instrument = instrument === "guitar" ? "guitar" : "piano";
+    if (["piano", "guitar", "bass"].includes(instrument)) {
+      settings.instrument = instrument;
+    }
     renderInstrumentButtons();
     renderInstrumentVisualization();
     saveSettingsToStorage(settings);
@@ -1228,6 +1267,13 @@ if (settings.questionMode === "degreeToNote" && settings.answerInputMode === "ch
     instrumentGuitar.addEventListener("click", () => {
       soundDegreeToggle(settings, getVolumeMultiplier);
       setInstrument("guitar");
+    });
+  }
+
+  if (instrumentBass) {
+    instrumentBass.addEventListener("click", () => {
+      soundDegreeToggle(settings, getVolumeMultiplier);
+      setInstrument("bass");
     });
   }
 
@@ -1260,6 +1306,22 @@ if (settings.questionMode === "degreeToNote" && settings.answerInputMode === "ch
       e.stopPropagation();
       soundDegreeToggle(settings, getVolumeMultiplier);
       setInstrumentExpanded(!state.instrumentExpanded);
+    });
+  }
+
+  if (bassExpandBtn) {
+    bassExpandBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      soundDegreeToggle(settings, getVolumeMultiplier);
+      setInstrumentExpanded(!state.instrumentExpanded);
+    });
+  }
+
+  if (bassNotesBtn) {
+    bassNotesBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      soundDegreeToggle(settings, getVolumeMultiplier);
+      toggleExpandedNotesVisibility();
     });
   }
   

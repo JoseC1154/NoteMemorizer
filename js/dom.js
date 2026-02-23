@@ -26,6 +26,7 @@ export const dom = {
   btnStats: document.getElementById("btnStats"),
   instrumentPiano: document.getElementById("instrumentPiano"),
   instrumentGuitar: document.getElementById("instrumentGuitar"),
+  instrumentBass: document.getElementById("instrumentBass"),
   menuBackdrop: document.querySelector(".menuBackdrop"),
 
   // Settings modal
@@ -105,6 +106,11 @@ export const dom = {
   guitarExpandBtn: document.getElementById("guitarExpandBtn"),
   guitarNotesBtn: document.getElementById("guitarNotesBtn"),
   guitarQuestionOverlay: document.getElementById("guitarQuestionOverlay"),
+  bassContainer: document.getElementById("bassContainer"),
+  bassFretboard: document.getElementById("bassFretboard"),
+  bassExpandBtn: document.getElementById("bassExpandBtn"),
+  bassNotesBtn: document.getElementById("bassNotesBtn"),
+  bassQuestionOverlay: document.getElementById("bassQuestionOverlay"),
   scaleToggles: document.getElementById("scaleToggles"),
   scaleTypeSection: document.getElementById("scaleTypeSection")
 };

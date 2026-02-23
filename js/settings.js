@@ -7,7 +7,7 @@ export const STORAGE_KEY = "keydrill_settings_v1"; // Temporary session settings
 export const DEFAULTS_KEY = "keydrill_defaults_v1"; // Persistent user defaults
 
 export const defaultSettings = {
-  instrument: "piano", // "piano" | "guitar"
+  instrument: "piano", // "piano" | "guitar" | "bass"
   answerInputMode: "both", // "choices" | "instrument" | "both"
   keysEnabled: ["C"],
   degreesEnabled: [...DIATONIC_DEGREES], // Default to all diatonic degrees
@@ -20,7 +20,7 @@ export const defaultSettings = {
   tickOn: true,
   ambientOn: true,
   modalDuration: 2000, // milliseconds
-  scaleTypesEnabled: ["major", "minor", "dorian", "mixolydian"], // Enabled scale types
+  scaleTypesEnabled: ["major"], // Enabled scale types
   // Audio mixer volumes (0-100)
   volumes: {
     pad: 100,
@@ -65,7 +65,7 @@ export function loadSettings() {
     if (parsed.degreeMode === "diatonic" || parsed.degreeMode === "chromatic") {
       s.degreeMode = parsed.degreeMode;
     }
-    if (parsed.instrument === "piano" || parsed.instrument === "guitar") {
+    if (parsed.instrument === "piano" || parsed.instrument === "guitar" || parsed.instrument === "bass") {
       s.instrument = parsed.instrument;
     }
     if (parsed.answerInputMode === "choices" || parsed.answerInputMode === "instrument" || parsed.answerInputMode === "both") {
