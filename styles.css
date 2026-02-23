@@ -500,10 +500,6 @@ body{
 /* Piano mode layout adjustments */
 .main.pianoMode {
   gap: 8px;
-  margin-top: 50px;
-  margin-left: 52px;
-  padding-right: 12px;
-  padding-bottom: 12px;
 }
 
 .main.pianoMode .answerGrid {
@@ -1122,8 +1118,22 @@ body{
 @media (orientation: landscape) and (max-height: 520px){
   .header{ display:none; }
   .statusPanel{ display:none; }
-  .app{ padding: 10px; gap: 10px; }
+  .app{
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 10px;
+    gap: 10px;
+  }
   .questionBox{ padding: 12px; }
+
+  .main.pianoMode {
+    margin-top: 0;
+    margin-left: 0;
+    padding-right: 12px;
+    padding-bottom: 12px;
+    padding-left: 52px;
+  }
 
   .triangleToggle {
     top: 10px;
@@ -1140,7 +1150,7 @@ body{
   body.gameActive .main {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(88px, 16vw);
-    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
     grid-template-areas:
       "question answers"
       "instrument answers";
@@ -1170,7 +1180,7 @@ body{
     grid-area: instrument;
     margin: 0;
     min-height: 0;
-    height: 100%;
+    height: auto;
   }
 
   body.gameActive .main .answerGrid {
