@@ -41,17 +41,23 @@
     </header>
 
     <main class="main" role="main">
-      <button class="questionBox" id="questionBox" type="button" aria-live="polite" aria-atomic="true">
-        <span class="studyBackBtn" id="studyBackBtn" title="Back step study view (max 3)" aria-disabled="true">↶</span>
-        <div class="questionStats">
-          <span class="questionStat" id="lives">3 ♥</span>
-          <span class="questionStat score" id="score">0</span>
+      <div class="questionBoxWrap">
+        <div class="questionBox" id="questionBox" role="button" tabindex="0" aria-live="polite" aria-atomic="true">
+          <span class="studyBackBtn" id="studyBackBtn" title="Back step study view (max 3)" aria-disabled="true">↶</span>
+          <div class="questionStats">
+            <span class="questionStat" id="lives">3 ♥</span>
+            <span class="questionStat score" id="score">0</span>
+          </div>
+          <div class="timerBackground" id="timerBackground"></div>
+          <div class="questionText" id="questionText">Click to start!</div>
+          <div class="restartHint" id="restartHint">Press to restart</div>
+          <div class="questionSuggestions" id="questionSuggestions" hidden></div>
+          <button class="bonusButton" id="bonusButton" type="button" title="Use bonus to slow time (5 points)" hidden>
+            <span class="bonusIcon">⏳</span>
+            <span class="bonusCount" id="bonusCount">0</span>
+          </button>
         </div>
-        <div class="timerBackground" id="timerBackground"></div>
-        <div class="questionText" id="questionText">Click to start!</div>
-        <div class="restartHint" id="restartHint">Press to restart</div>
-        <div class="questionSuggestions" id="questionSuggestions" hidden></div>
-      </button>
+      </div>
 
       <!-- Piano Visualization -->
       <div class="pianoContainer" id="pianoContainer" hidden>
@@ -102,10 +108,6 @@
         <button class="answerBtn" type="button">—</button>
         <button class="answerBtn" type="button">—</button>
       </div>
-      <button class="bonusButton" id="bonusButton" type="button" title="Use bonus to slow time (5 points)" hidden>
-        <span class="bonusIcon">⏳</span>
-        <span class="bonusCount" id="bonusCount">0</span>
-      </button>
     </main>
   </div>
 
