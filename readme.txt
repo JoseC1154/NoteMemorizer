@@ -28,13 +28,16 @@ TODO:
 -as the changes are taken place the setting should reflect.
 -in stats i don't see the scale recognition suggestions.
 -in instrument expanded mode the question should be along with the expanded mode.
-
 -when in degree to note mode the instrument buttons should be disabled.
-
 -Add Bass instrument.
 -when the guitar is in phone display the note positions don't resize small enough making them look like they are jumbled up together then when the screen is larger displays they look very small, they should resize proportionally.
-
 -when in landscape mode the and there is a game over the only thing on screen should be the questionBox and the menueToggle. the questionBox should be centered on screen.
 -add a gofund donation me button.
+-NEW MODE - finish my scale mode , where the questionBox asks to finish the scale and gives a key and its degree then asks the user to finish the scale. 
+  -show 4 keys from the scale then asks the user to complete the scale.
+    show 3 keys from scale also shows a key hint of one of the highlighted keys for the user to fill in the rest of the notes.
+  -the question box asks what key is the 4 or C Major then asks "fill in the scale that has the note as a 6th Degree." (Compound question.)
+  -
+  
 
 
