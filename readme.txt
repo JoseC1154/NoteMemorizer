@@ -37,7 +37,10 @@ TODO:
   -show 4 keys from the scale then asks the user to complete the scale.
     show 3 keys from scale also shows a key hint of one of the highlighted keys for the user to fill in the rest of the notes.
   -the question box asks what key is the 4 or C Major then asks "fill in the scale that has the note as a 6th Degree." (Compound question.)
-  -
+-When starting the app I would like to start with an image, then when the image is pressed it would take you to the game start.
+-the click to start should be the only thing showing before a game start.
+-when a answer is correct could we have a the background flash an appropriate green tone to match the asthetic of the app then when wrong red .
+
   
 
 /*     /// PROMPT FOR PIANO SIZE ////
