@@ -40,4 +40,64 @@ TODO:
   -
   
 
+/*     /// PROMPT FOR PIANO SIZE ////
 
+🔧 PROMPT: Fix Piano Responsiveness Without Distortion
+
+I have a responsive piano keyboard UI inside a container.
+On mobile it looks correct, but on desktop the piano becomes disproportionate because the container scales wider than the piano’s intended design size.
+
+Goal:
+
+The piano must maintain its original proportions at all screen sizes
+
+No stretching or key distortion
+
+Desktop should either scale the piano proportionally or cap its max width and center it
+
+Mobile behavior must remain unchanged
+
+Constraints:
+
+Do NOT redesign the piano
+
+Do NOT change key ratios
+
+Prefer CSS-first solutions
+
+JavaScript is allowed only if needed for proportional scaling
+
+Current container CSS:
+
+.pianoContainer {
+  display: block;
+  width: 99%;
+  margin: 12px 0;
+  padding: 16px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  position: relative;
+  z-index: 50;
+}
+
+Tasks:
+
+Identify why the piano distorts on desktop
+
+Apply ONE of the following (choose best):
+
+Max-width + centering
+
+Proportional scale using transform: scale()
+
+True responsive key layout using flex/percentages
+
+Provide exact CSS (and JS if needed)
+
+Ensure the solution works inside flex/grid layouts
+
+Output only the final recommended fix, not multiple alternatives.
+
+*/
