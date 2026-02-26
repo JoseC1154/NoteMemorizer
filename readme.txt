@@ -17,7 +17,6 @@
 -Note to Degree mode: Shows piano and asks "Eb is what degree in the Db major scale?"
 
 TODO:
--then when closed should restart or install play pause button 
 -awards after broken record.
 -create timed chord builder.
 -As the streaks build the seconds get shorter but if the user continue to answer incorrectly additional seconds should be added. (or not)
@@ -27,17 +26,8 @@ TODO:
 -on piano mode after ten correct of one scale that key is taken off the list tested.
 -as the changes are taken place the setting should reflect.
 -in stats i don't see the scale recognition suggestions.
--in instrument expanded mode the question should be along with the expanded mode.
--when in degree to note mode the instrument buttons should be disabled.
--Add Bass instrument.
 -when the guitar is in phone display the note positions don't resize small enough making them look like they are jumbled up together then when the screen is larger displays they look very small, they should resize proportionally.
 -when in landscape mode the and there is a game over the only thing on screen should be the questionBox and the menueToggle. the questionBox should be centered on screen.
--add a gofund donation me button.
--NEW MODE - finish my scale mode , where the questionBox asks to finish the scale and gives a key and its degree then asks the user to finish the scale. 
-  -show 4 keys from the scale then asks the user to complete the scale.
-    show 3 keys from scale also shows a key hint of one of the highlighted keys for the user to fill in the rest of the notes.
-  -the question box asks what key is the 4 or C Major then asks "fill in the scale that has the note as a 6th Degree." (Compound question.)
 -When starting the app I would like to start with an image, then when the image is pressed it would take you to the game start.
 -the click to start should be the only thing showing before a game start.
 -when a answer is correct could we have a the background flash an appropriate green tone to match the asthetic of the app then when wrong red .
-
