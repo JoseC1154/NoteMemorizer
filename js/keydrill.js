@@ -129,6 +129,7 @@ const {
   elTimerBackground,
   elLives,
   elScore,
+  elPlayPauseBtn,
   elBonusButton,
   elBonusCount,
   elLevelInfo,
@@ -142,6 +143,7 @@ const {
   menuDropdown,
   btnSettings,
   btnStats,
+  btnDonate,
   instrumentPiano,
   instrumentGuitar,
   instrumentBass,
@@ -222,6 +224,9 @@ let settings = loadSettings();
 if (settings.questionMode === "degreeToNote" && settings.answerInputMode === "choices") {
   settings.answerInputMode = "both";
 }
+if (settings.questionMode === "finishScale" && settings.answerInputMode === "choices") {
+  settings.answerInputMode = "instrument";
+}
   // =========================
   // Game state
   // =========================
@@ -248,10 +253,12 @@ if (settings.questionMode === "degreeToNote" && settings.answerInputMode === "ch
     questionSeconds: 0,
     locked: false,
     paused: false,
+    pausedByUser: false,
     pausedByInstrumentExpand: false,
     pausedByStudyBack: false,
     instrumentExpanded: false,
     expandedNotesVisible: false,
+    finishScaleReviewMode: false,
     current: null, // { keyRoot, degreeLabel, correctNote, options[] }
     studyBackupCurrent: null,
     studyHistory: [], // up to 3 previous questions
@@ -267,10 +274,10 @@ if (settings.questionMode === "degreeToNote" && settings.answerInputMode === "ch
     }
   };
 
-  const canInstrumentAnswerCurrentMode = () => settings.questionMode === "degreeToNote";
+  const canInstrumentAnswerCurrentMode = () => settings.questionMode === "degreeToNote" || settings.questionMode === "finishScale";
 
   const shouldShowInstrument = () => {
-    if (settings.questionMode === "degreeToNote" || settings.questionMode === "noteToDegree" || settings.questionMode === "scaleRecognition") return true;
+    if (settings.questionMode === "degreeToNote" || settings.questionMode === "noteToDegree" || settings.questionMode === "scaleRecognition" || settings.questionMode === "finishScale") return true;
     if (canInstrumentAnswerCurrentMode() && settings.answerInputMode !== "choices") return true;
     return false;
   };
@@ -441,9 +448,14 @@ if (settings.questionMode === "degreeToNote" && settings.answerInputMode === "ch
       }
     } else if (state.pausedByInstrumentExpand && state.active) {
       state.pausedByInstrumentExpand = false;
-      state.paused = false;
-      lockAnswers(state, answerButtons, false);
-      startTimerWrapper();
+      if (state.pausedByUser || state.pausedByStudyBack) {
+        state.paused = true;
+        lockAnswers(state, answerButtons, true);
+      } else {
+        state.paused = false;
+        lockAnswers(state, answerButtons, false);
+        startTimerWrapper();
+      }
     }
 
     renderInstrumentExpandedState();
@@ -462,8 +474,15 @@ if (settings.questionMode === "degreeToNote" && settings.answerInputMode === "ch
     if (bassContainer) bassContainer.hidden = !visible || active.container !== bassContainer;
 
     if (elMain) {
+      elMain.classList.remove('instrument-piano', 'instrument-guitar', 'instrument-bass');
       if (visible) elMain.classList.add('pianoMode');
       else elMain.classList.remove('pianoMode');
+
+      if (visible) {
+        if (active.container === pianoContainer) elMain.classList.add('instrument-piano');
+        else if (active.container === guitarContainer) elMain.classList.add('instrument-guitar');
+        else if (active.container === bassContainer) elMain.classList.add('instrument-bass');
+      }
     }
 
     if (!visible || !active.surface) {
@@ -486,6 +505,7 @@ if (settings.questionMode === "degreeToNote" && settings.answerInputMode === "ch
     }
 
     active.update(active.surface, keyForView, scaleForView, SCALE_TYPES, NOTE_TO_PC, pcToNote);
+    applyFinishScaleMentionedHighlight(active.surface);
 
     if (settings.questionMode === "noteToDegree" && state.current?.questionNote) {
       active.highlight(active.surface, state.current.questionNote);
@@ -498,6 +518,65 @@ if (settings.questionMode === "degreeToNote" && settings.answerInputMode === "ch
     syncAnswerInputAvailability();
   }
 
+  function applyFinishScaleMentionedHighlight(surface) {
+    if (settings.questionMode !== "finishScale" || !state.active || !state.current || !surface) return;
+
+    const mentionedNotes = new Set();
+    const mentionedPianoSteps = new Set();
+
+    if (state.current.finishType === "partial") {
+      if (Array.isArray(state.current.shownSteps)) {
+        state.current.shownSteps.forEach(step => {
+          if (step && step.note != null && step.octave != null) {
+            mentionedPianoSteps.add(`${step.note}|${step.octave}`);
+          }
+        });
+      }
+      if (Array.isArray(state.current.shownNotes)) {
+        state.current.shownNotes.forEach(note => mentionedNotes.add(note));
+      }
+    } else if (state.current.finishType === "compound") {
+      const stage = state.current.compoundStage || 1;
+      if (state.current.sourceKeyRoot) mentionedNotes.add(state.current.sourceKeyRoot);
+      if (stage >= 2 && state.current.pivotNote) mentionedNotes.add(state.current.pivotNote);
+    } else if (state.current.finishType === "oddOneOut") {
+      if (Array.isArray(state.current.shownSteps)) {
+        state.current.shownSteps.forEach(step => {
+          if (step && step.note != null && step.octave != null) {
+            mentionedPianoSteps.add(`${step.note}|${step.octave}`);
+          }
+        });
+      }
+      if (Array.isArray(state.current.shownNotes)) {
+        state.current.shownNotes.forEach(note => mentionedNotes.add(note));
+      }
+    }
+
+    let noteSelector = ".pianoKey";
+    if (surface === guitarFretboard) noteSelector = ".guitarPosition";
+    if (surface === bassFretboard) noteSelector = ".bassPosition";
+
+    const noteElements = surface.querySelectorAll(noteSelector);
+    noteElements.forEach(el => {
+      el.classList.remove("shaded", "inScale", "questionNote");
+    });
+
+    noteElements.forEach(el => {
+      if (surface === pianoKeyboard) {
+        const keyToken = `${el.dataset.note}|${el.dataset.octave}`;
+        if (mentionedPianoSteps.size > 0) {
+          if (mentionedPianoSteps.has(keyToken)) {
+            el.classList.add("inScale");
+          }
+        } else if (mentionedNotes.has(el.dataset.note)) {
+          el.classList.add("inScale");
+        }
+      } else if (mentionedNotes.has(el.dataset.note)) {
+        el.classList.add("inScale");
+      }
+    });
+  }
+
   function getCorrectValueForQuestion(question, questionMode) {
     if (!question) return "";
     return questionMode === "noteToDegree" ? question.correctDegree : question.correctNote;
@@ -507,6 +586,36 @@ if (settings.questionMode === "degreeToNote" && settings.answerInputMode === "ch
     if (!studyBackBtn) return;
     const canUse = state.active && state.studyHistory.length > 0;
     studyBackBtn.setAttribute("aria-disabled", canUse ? "false" : "true");
+  }
+
+  function updatePlayPauseButtonState() {
+    if (!elPlayPauseBtn) return;
+    const isPressed = !!(state.active && state.pausedByUser);
+    elPlayPauseBtn.setAttribute("aria-pressed", isPressed ? "true" : "false");
+    elPlayPauseBtn.textContent = isPressed ? "▶" : "⏸";
+    elPlayPauseBtn.title = isPressed ? "Resume game" : "Pause game";
+  }
+
+  function pauseByUser() {
+    if (!state.active || state.locked || state.pausedByUser || state.instrumentExpanded) return;
+    state.pausedByUser = true;
+    state.paused = true;
+    stopTimerWrapper();
+    lockAnswers(state, answerButtons, true);
+    slowDownAmbientMusic();
+    setStatusNeutral(elStatusPanel, elStatusText, "Paused.");
+    updatePlayPauseButtonState();
+  }
+
+  function resumeByUser() {
+    if (!state.active || !state.pausedByUser || state.instrumentExpanded || state.pausedByStudyBack) return;
+    state.pausedByUser = false;
+    state.paused = false;
+    lockAnswers(state, answerButtons, false);
+    speedUpAmbientMusic();
+    startTimerWrapper();
+    setStatusNeutral(elStatusPanel, elStatusText, "Resumed.");
+    updatePlayPauseButtonState();
   }
 
   function pushStudyHistory(question, questionMode) {
@@ -608,11 +717,14 @@ if (settings.questionMode === "degreeToNote" && settings.answerInputMode === "ch
       setStatusNeutral, updateRiskVisual, nextQuestionWrapper, initProgressionModeWrapper, ALL_KEYS
     );
     syncGameActiveClass();
+    state.pausedByUser = false;
+    state.paused = false;
     state.studyHistory = [];
     state.studyStepIndex = -1;
     state.studyBackupCurrent = null;
     state.pausedByStudyBack = false;
     updateStudyBackButtonState();
+    updatePlayPauseButtonState();
     // Speed up ambient music when starting game
     speedUpAmbientMusic();
   };
@@ -629,13 +741,17 @@ if (settings.questionMode === "degreeToNote" && settings.answerInputMode === "ch
       state.paused = false;
     }
 
+    state.finishScaleReviewMode = false;
+
     const activeView = getActiveVisualization();
     const result = nextQuestion(
       state, settings, ALL_KEYS, DIATONIC_DEGREES, CHROMATIC_DEGREES, NOTE_TO_PC, MAJOR_SCALE_OFFSETS,
       CHROMATIC_TO_OFFSET, NOTE_LIST, SCALE_TYPES, SCALE_TYPE_NAMES, pcToNote, elQuestionText, elTimerBackground,
       answerButtons, elLevelInfo, activeView.surface, renderQuestion, renderAnswers, renderLevelInfo, startTimerWrapper,
-      activeView.update, activeView.highlight
+      activeView.update, activeView.highlight, getActiveInstrument()
     );
+
+    applyFinishScaleMentionedHighlight(activeView.surface);
 
     syncAnswerInputAvailability();
     updateStudyBackButtonState();
@@ -657,6 +773,9 @@ if (settings.questionMode === "degreeToNote" && settings.answerInputMode === "ch
       stopTimerWrapper, stopAmbientMusic, generateCompactSuggestionsWrapper
     );
     syncGameActiveClass();
+    state.pausedByUser = false;
+    state.paused = false;
+    updatePlayPauseButtonState();
     updateStudyBackButtonState();
   };
   
@@ -683,15 +802,238 @@ if (settings.questionMode === "degreeToNote" && settings.answerInputMode === "ch
     state, settings, answerButtons, elLives, elStatusPanel, elStatusText, soundWrong, getVolumeMultiplier,
     recordQuestion, renderLives, updateRiskVisual, flashStatus, lockAnswers, nextAfterFeedbackWrapper, endGameWrapper
   );
+
+  const advanceFromFinishScaleReview = () => {
+    const statusOverlayEl = document.getElementById("statusOverlay");
+    state.finishScaleReviewMode = false;
+    state.locked = false;
+    if (statusOverlayEl) statusOverlayEl.hidden = true;
+    elStatusPanel.hidden = true;
+    elStatusPanel.classList.remove("good", "bad");
+    const statusSuggestions = document.getElementById("statusSuggestions");
+    if (statusSuggestions) {
+      statusSuggestions.hidden = true;
+      statusSuggestions.innerHTML = "";
+    }
+    const questionSuggestions = document.getElementById("questionSuggestions");
+    if (questionSuggestions) {
+      questionSuggestions.hidden = true;
+      questionSuggestions.innerHTML = "";
+    }
+    nextQuestionWrapper();
+  };
+
+  const showFinishScaleReview = (chosenNote) => {
+    soundWrong(settings, getVolumeMultiplier);
+
+    const responseTime = state.questionStartTime ? (Date.now() - state.questionStartTime) / 1000 : 0;
+    if (state.current) {
+      recordQuestion(
+        state.current.keyRoot,
+        state.current.degreeLabel,
+        settings.degreeMode,
+        false,
+        responseTime
+      );
+    }
+
+    state.streak = 0;
+    if (settings.gameMode === "progression") {
+      state.progression.levelStreak = 0;
+    }
+
+    state.lives -= 1;
+    renderLives(state, elLives);
+    updateRiskVisual(state);
+    lockAnswers(state, answerButtons, true);
+    stopTimerWrapper();
+
+    if (state.lives <= 0) {
+      flashStatus(settings, elStatusPanel, elStatusText, false, `Incorrect: ${chosenNote}. Game Over.`);
+      setTimeout(() => {
+        endGameWrapper("No lives left.");
+      }, 5000);
+      return;
+    }
+
+    state.finishScaleReviewMode = true;
+
+    const activeView = getActiveVisualization();
+    const visualizeKey = state.current?.targetKeyRoot || state.current?.keyRoot;
+    const visualizeScale = state.current?.targetScaleType || state.current?.scaleType || "major";
+    const scaleLabel = SCALE_TYPE_NAMES[visualizeScale] || visualizeScale;
+
+    if (activeView.surface && visualizeKey) {
+      activeView.update(activeView.surface, visualizeKey, visualizeScale, SCALE_TYPES, NOTE_TO_PC, pcToNote);
+      activeView.clear(activeView.surface);
+    }
+
+    const statusOverlayEl = document.getElementById("statusOverlay");
+    if (statusOverlayEl) statusOverlayEl.hidden = true;
+    elStatusPanel.hidden = true;
+
+    const questionSuggestions = document.getElementById("questionSuggestions");
+    if (questionSuggestions) {
+      questionSuggestions.hidden = false;
+      questionSuggestions.innerHTML = `
+        <div class="practiceSteps">
+          <div class="practiceStep">
+            <strong>Study Mode:</strong> Incorrect: ${chosenNote}. Study the full ${visualizeKey} ${scaleLabel} scale on the instrument.
+          </div>
+          <button class="btn primary" id="btnNextAfterScaleReview" type="button">Next Question</button>
+        </div>
+      `;
+    }
+
+    const btnNextAfterScaleReview = document.getElementById("btnNextAfterScaleReview");
+    if (btnNextAfterScaleReview) {
+      btnNextAfterScaleReview.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        advanceFromFinishScaleReview();
+      }, { once: true });
+    }
+  };
   
   const onAnswerClickWrapper = (btn) => onAnswerClick(state, btn, handleCorrectWrapper, handleWrongWrapper, settings);
 
-  const onInstrumentAnswer = (chosen) => {
+  const onInstrumentAnswer = (chosen, selectedElement = null) => {
     if (!state.active || state.locked || !state.current || !areInstrumentAnswersEnabled()) return;
 
+    if (settings.questionMode === "finishScale" && state.current.finishType === "partial" && Array.isArray(state.current.remainingNotes) && state.current.remainingNotes.length === 0) {
+      return;
+    }
+
+    const chosenNote = typeof chosen === "string" ? chosen : chosen?.note;
+    const chosenOctave = typeof chosen === "object" ? chosen?.octave : undefined;
+
+    const markWrongWithDelay = () => {
+      stopTimerWrapper();
+      state.locked = true;
+      if (selectedElement) {
+        selectedElement.classList.add("wrongSelection");
+      }
+      setTimeout(() => {
+        if (selectedElement) {
+          selectedElement.classList.remove("wrongSelection");
+        }
+        state.locked = false;
+        showFinishScaleReview(chosenNote);
+      }, 2000);
+    };
+
+    if (settings.questionMode === "finishScale" && state.current.finishType === "oddOneOut") {
+      const isPianoOddMode = Array.isArray(state.current.shownSteps) && state.current.shownSteps.length > 0;
+      const isHighlightedTarget = isPianoOddMode
+        ? state.current.shownSteps.some(step => step.note === chosenNote && String(step.octave) === String(chosenOctave))
+        : (Array.isArray(state.current.shownNotes) && state.current.shownNotes.includes(chosenNote));
+
+      if (!isHighlightedTarget) {
+        return;
+      }
+
+      if (state.current.correctStep) {
+        const stepMatch = state.current.correctStep.note === chosenNote
+          && String(state.current.correctStep.octave) === String(chosenOctave);
+        if (stepMatch) handleCorrectWrapper(chosenNote);
+        else markWrongWithDelay();
+      } else if (chosenNote === state.current.correctNote) {
+        handleCorrectWrapper(chosenNote);
+      } else {
+        markWrongWithDelay();
+      }
+      return;
+    }
+
+    if (settings.questionMode === "finishScale" && state.current.finishType === "compound") {
+      const stage = state.current.compoundStage || 1;
+      const stageOneAnswer = state.current.compoundFirstNote || state.current.pivotNote;
+      const stageTwoAnswer = state.current.compoundSecondNote || state.current.correctNote;
+
+      if (stage === 1) {
+        if (chosenNote !== stageOneAnswer) {
+          markWrongWithDelay();
+          return;
+        }
+
+        state.current.compoundStage = 2;
+        state.current.correctNote = stageTwoAnswer;
+        state.current.correctDegree = state.current.targetDegree || state.current.correctDegree;
+        state.current.degreeLabel = state.current.targetDegree || state.current.degreeLabel;
+
+        renderQuestion(state, settings, elQuestionText, elTimerBackground, SCALE_TYPE_NAMES);
+        renderInstrumentVisualization();
+        setStatusNeutral(elStatusPanel, elStatusText, "Good! Task 1 complete. Now finish task 2.");
+        return;
+      }
+
+      if (chosenNote === stageTwoAnswer) handleCorrectWrapper(chosenNote);
+      else markWrongWithDelay();
+      return;
+    }
+
+    if (settings.questionMode === "finishScale" && state.current.finishType === "partial" && Array.isArray(state.current.remainingNotes) && state.current.remainingNotes.length) {
+      if (Array.isArray(state.current.shownSteps) && state.current.shownSteps.length && chosenOctave != null) {
+        const alreadyShownStep = state.current.shownSteps.some(step => (
+          step && step.note === chosenNote && String(step.octave) === String(chosenOctave)
+        ));
+        if (alreadyShownStep) return;
+      } else if (Array.isArray(state.current.shownNotes) && state.current.shownNotes.includes(chosenNote)) {
+        return;
+      }
+
+      let solvedStep = null;
+      let solvedNoteIndex = -1;
+
+      if (Array.isArray(state.current.remainingSteps) && state.current.remainingSteps.length) {
+        const stepIndex = state.current.remainingSteps.findIndex(step => (
+          step && step.note === chosenNote && (step.octave == null || String(step.octave) === String(chosenOctave))
+        ));
+        if (stepIndex >= 0) {
+          solvedStep = state.current.remainingSteps.splice(stepIndex, 1)[0];
+          solvedNoteIndex = stepIndex;
+        }
+      } else {
+        solvedNoteIndex = state.current.remainingNotes.findIndex(note => note === chosenNote);
+      }
+
+      if (solvedNoteIndex < 0) {
+        markWrongWithDelay();
+        return;
+      }
+
+      const solvedNote = state.current.remainingNotes.splice(solvedNoteIndex, 1)[0];
+      if (!Array.isArray(state.current.shownNotes)) state.current.shownNotes = [];
+      state.current.shownNotes.push(solvedNote);
+      if (Array.isArray(state.current.shownSteps)) {
+        state.current.shownSteps.push(solvedStep || { note: solvedNote });
+      }
+
+      if (state.current.remainingNotes.length > 0) {
+        const nextNote = state.current.remainingNotes[0];
+        state.current.correctNote = nextNote;
+
+        const shownCount = state.current.shownNotes.length;
+        const nextDegree = DIATONIC_DEGREES[shownCount] || state.current.correctDegree;
+        state.current.correctDegree = nextDegree;
+        state.current.degreeLabel = nextDegree;
+
+        renderQuestion(state, settings, elQuestionText, elTimerBackground, SCALE_TYPE_NAMES);
+        renderInstrumentVisualization();
+        setStatusNeutral(elStatusPanel, elStatusText, `Good! ${state.current.remainingNotes.length} note${state.current.remainingNotes.length === 1 ? '' : 's'} left.`);
+        return;
+      }
+
+      state.current.correctNote = solvedNote;
+      state.locked = true;
+      handleCorrectWrapper(chosenNote);
+      return;
+    }
+
     const correct = state.current.correctNote;
-    if (chosen === correct) handleCorrectWrapper(chosen);
-    else handleWrongWrapper(chosen);
+    if (chosenNote === correct) handleCorrectWrapper(chosenNote);
+    else if (settings.questionMode === "finishScale") markWrongWithDelay();
+    else handleWrongWrapper(chosenNote);
   };
 
   // =========================
@@ -779,10 +1121,11 @@ if (settings.questionMode === "degreeToNote" && settings.answerInputMode === "ch
     modeChromatic.setAttribute("aria-checked", settings.degreeMode === "chromatic" ? "true" : "false");
 
     // Initialize unified game mode UI
-    if (modeDegreeToNote && modeNoteToDegree && modeScaleRecognition) {
+    if (modeDegreeToNote && modeNoteToDegree && modeScaleRecognition && modeFinishScale) {
       modeDegreeToNote.setAttribute("aria-checked", settings.questionMode === "degreeToNote" ? "true" : "false");
       modeNoteToDegree.setAttribute("aria-checked", settings.questionMode === "noteToDegree" ? "true" : "false");
       modeScaleRecognition.setAttribute("aria-checked", settings.questionMode === "scaleRecognition" ? "true" : "false");
+      modeFinishScale.setAttribute("aria-checked", settings.questionMode === "finishScale" ? "true" : "false");
     }
 
     renderAnswerInputModeButtons();
@@ -811,7 +1154,7 @@ if (settings.questionMode === "degreeToNote" && settings.answerInputMode === "ch
     btnSettings.focus();
 
     // Resume the game if it was paused
-    if (state.paused && state.active && !state.instrumentExpanded) {
+    if (state.paused && state.active && !state.instrumentExpanded && !state.pausedByUser && !state.pausedByStudyBack) {
       state.paused = false;
       lockAnswers(state, answerButtons, false);
       // Speed up ambient music when resuming from settings
@@ -886,7 +1229,11 @@ if (settings.questionMode === "degreeToNote" && settings.answerInputMode === "ch
   }
 
   function setAnswerInputMode(mode) {
-    settings.answerInputMode = mode === "instrument" || mode === "both" ? mode : "choices";
+    if (settings.questionMode === "finishScale") {
+      settings.answerInputMode = "instrument";
+    } else {
+      settings.answerInputMode = mode === "instrument" || mode === "both" ? mode : "choices";
+    }
     renderAnswerInputModeButtons();
     renderInstrumentVisualization();
     syncAnswerInputAvailability();
@@ -907,7 +1254,7 @@ if (settings.questionMode === "degreeToNote" && settings.answerInputMode === "ch
     pianoKeyboard.addEventListener("click", (e) => {
       const key = e.target.closest('.pianoKey');
       if (!key?.dataset?.note) return;
-      onInstrumentAnswer(key.dataset.note);
+      onInstrumentAnswer({ note: key.dataset.note, octave: key.dataset.octave }, key);
     });
   }
 
@@ -915,7 +1262,15 @@ if (settings.questionMode === "degreeToNote" && settings.answerInputMode === "ch
     guitarFretboard.addEventListener("click", (e) => {
       const position = e.target.closest('.guitarPosition');
       if (!position?.dataset?.note) return;
-      onInstrumentAnswer(position.dataset.note);
+      onInstrumentAnswer(position.dataset.note, position);
+    });
+  }
+
+  if (bassFretboard) {
+    bassFretboard.addEventListener("click", (e) => {
+      const position = e.target.closest('.bassPosition');
+      if (!position?.dataset?.note) return;
+      onInstrumentAnswer(position.dataset.note, position);
     });
   }
 
@@ -936,6 +1291,25 @@ if (settings.questionMode === "degreeToNote" && settings.answerInputMode === "ch
       if (state.bonusPoints >= 5 && !state.bonusActive && state.active && !state.locked) {
         activateBonus();
       }
+    });
+  }
+
+  if (elPlayPauseBtn) {
+    elPlayPauseBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!state.active) return;
+      if (state.pausedByUser) resumeByUser();
+      else pauseByUser();
+    });
+
+    elPlayPauseBtn.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (!state.active) return;
+      if (state.pausedByUser) resumeByUser();
+      else pauseByUser();
     });
   }
 
@@ -1022,6 +1396,18 @@ if (settings.questionMode === "degreeToNote" && settings.answerInputMode === "ch
     statsOverlay.hidden = false;
   });
 
+  if (btnDonate) {
+    btnDonate.addEventListener("click", () => {
+      soundDegreeToggle(settings, getVolumeMultiplier);
+      const triangleMenu = document.querySelector('.triangleMenu');
+      menuDropdown.hidden = true;
+      menuToggle.setAttribute("aria-expanded", "false");
+      triangleMenu.classList.remove('active');
+      setStatusNeutral(elStatusPanel, elStatusText, "💚 GofundMe placeholder ready (coming soon).");
+      elStatusPanel.hidden = false;
+    });
+  }
+
   overlay.addEventListener("click", (e) => {
     if (e.target === overlay) closeSettings();
   });
@@ -1071,7 +1457,7 @@ if (settings.questionMode === "degreeToNote" && settings.answerInputMode === "ch
     } else {
       // Closing menu - resume if game was paused
       triangleMenu.classList.remove('active');
-      if (state.paused && state.active && !state.instrumentExpanded) {
+      if (state.paused && state.active && !state.instrumentExpanded && !state.pausedByUser && !state.pausedByStudyBack) {
         lockAnswers(state, answerButtons, false);
         // Speed up ambient music when closing menu
         speedUpAmbientMusic();
@@ -1100,7 +1486,7 @@ if (settings.questionMode === "degreeToNote" && settings.answerInputMode === "ch
       triangleMenu.classList.remove('active');
       
       // Resume game if it was paused
-      if (state.paused && state.active && !state.instrumentExpanded) {
+      if (state.paused && state.active && !state.instrumentExpanded && !state.pausedByUser && !state.pausedByStudyBack) {
         lockAnswers(state, answerButtons, false);
         // Speed up ambient music when closing menu
         speedUpAmbientMusic();
@@ -1114,6 +1500,10 @@ if (settings.questionMode === "degreeToNote" && settings.answerInputMode === "ch
   const statusOverlay = document.getElementById("statusOverlay");
   if (statusOverlay) {
     statusOverlay.addEventListener("click", () => {
+      if (state.finishScaleReviewMode && state.active) {
+        advanceFromFinishScaleReview();
+        return;
+      }
       elStatusPanel.hidden = true;
       statusOverlay.hidden = true;
       elStatusPanel.classList.remove("good", "bad");
@@ -1224,6 +1614,7 @@ if (settings.questionMode === "degreeToNote" && settings.answerInputMode === "ch
   const modeDegreeToNote = document.getElementById("modeDegreeToNote");
   const modeNoteToDegree = document.getElementById("modeNoteToDegree");
   const modeScaleRecognition = document.getElementById("modeScaleRecognition");
+  const modeFinishScale = document.getElementById("modeFinishScale");
   
   function setQuestionMode(mode) {
     settings.questionMode = mode;
@@ -1231,9 +1622,16 @@ if (settings.questionMode === "degreeToNote" && settings.answerInputMode === "ch
       settings.answerInputMode = "both";
       renderAnswerInputModeButtons();
     }
+    if (mode === "finishScale") {
+      settings.answerInputMode = "instrument";
+      renderAnswerInputModeButtons();
+    }
     modeDegreeToNote.setAttribute("aria-checked", mode === "degreeToNote" ? "true" : "false");
     modeNoteToDegree.setAttribute("aria-checked", mode === "noteToDegree" ? "true" : "false");
     modeScaleRecognition.setAttribute("aria-checked", mode === "scaleRecognition" ? "true" : "false");
+    if (modeFinishScale) {
+      modeFinishScale.setAttribute("aria-checked", mode === "finishScale" ? "true" : "false");
+    }
     renderInstrumentVisualization();
     syncAnswerInputAvailability();
     
@@ -1337,6 +1735,12 @@ if (settings.questionMode === "degreeToNote" && settings.answerInputMode === "ch
     soundDegreeToggle(settings, getVolumeMultiplier);
     setQuestionMode("scaleRecognition");
   });
+  if (modeFinishScale) {
+    modeFinishScale.addEventListener("click", () => {
+      soundDegreeToggle(settings, getVolumeMultiplier);
+      setQuestionMode("finishScale");
+    });
+  }
 
   if (inputChoices) {
     inputChoices.addEventListener("click", () => {
@@ -1512,5 +1916,43 @@ if (settings.questionMode === "degreeToNote" && settings.answerInputMode === "ch
   syncAnswerInputAvailability();
   syncGameActiveClass();
   updateStudyBackButtonState();
+  updatePlayPauseButtonState();
   
   initScaleToggles(scaleToggles, SCALE_TYPES, SCALE_TYPE_NAMES, settings, saveSettingsToStorage, soundDegreeToggle, getVolumeMultiplier);
+
+  // Splash Screen Logic
+  const splashScreen = document.getElementById('splashScreen');
+  const appContainer = document.getElementById('app');
+  const questionBox = document.getElementById('questionBox');
+
+  if (splashScreen && appContainer) {
+    let splashTimeout;
+    
+    const hideSplash = () => {
+      splashScreen.style.opacity = '0';
+      setTimeout(() => {
+        splashScreen.style.display = 'none';
+        appContainer.classList.add('visible');
+      }, 1000); // Wait for fade transition
+    };
+
+    // Fade out splash screen after 8 seconds
+    splashTimeout = setTimeout(hideSplash, 8000);
+
+    // Allow clicking splash screen to skip
+    splashScreen.addEventListener('click', () => {
+      clearTimeout(splashTimeout);
+      hideSplash();
+    });
+  }
+
+  // Initialize audio context on first interaction with the question box
+  if (questionBox) {
+    const initAudioOnStart = () => {
+      if (!state.active) {
+        ensureAudio();
+        questionBox.removeEventListener('click', initAudioOnStart);
+      }
+    };
+    questionBox.addEventListener('click', initAudioOnStart);
+  }

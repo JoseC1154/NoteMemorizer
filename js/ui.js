@@ -3,7 +3,7 @@
 export function renderQuestion(state, settings, elQuestionText, elTimerBackground, SCALE_TYPE_NAMES) {
   const q = state.current;
   if (!q) {
-    elQuestionText.textContent = "Click to start!";
+    elQuestionText.textContent = "Click to Start";
     if (elTimerBackground) elTimerBackground.textContent = "";
     return;
   }
@@ -13,6 +13,30 @@ export function renderQuestion(state, settings, elQuestionText, elTimerBackgroun
     const scaleTypeName = SCALE_TYPE_NAMES[q.scaleType] || q.scaleType;
     elQuestionText.textContent = `What ${scaleTypeName} scale is this?`;
   } 
+  // Finish scale mode
+  else if (settings.questionMode === "finishScale") {
+    const scaleTypeName = SCALE_TYPE_NAMES[q.scaleType] || q.scaleType || "Major";
+
+    if (q.finishType === "compound") {
+      if ((q.compoundStage || 1) === 1) {
+        elQuestionText.textContent = `Compound (Task 1): In ${q.sourceKeyRoot} ${scaleTypeName}, select degree ${q.compoundFirstDegree || q.pivotDegree}.`;
+      } else {
+        elQuestionText.textContent = `Compound (Task 2): Great. Using ${q.pivotNote} as the key root, select degree ${q.targetDegree}.`;
+      }
+    } else if (q.finishType === "oddOneOut") {
+      elQuestionText.textContent = `Which highlighted note does NOT belong in the ${q.keyRoot} ${scaleTypeName} scale?`;
+    } else {
+      const shownNotes = Array.isArray(q.shownNotes) ? q.shownNotes.join(" - ") : "";
+      const shownCount = Array.isArray(q.shownSteps)
+        ? q.shownSteps.length
+        : (Array.isArray(q.shownNotes) ? q.shownNotes.length : 0);
+      const totalCount = typeof q.totalSteps === "number" ? q.totalSteps : 7;
+      const hiddenCount = Math.max(0, totalCount - shownCount);
+      const hiddenPattern = Array.from({ length: hiddenCount }, () => "?").join(" - ");
+      const hintText = q.hintNote ? ` Hint: one hidden note is ${q.hintNote}.` : "";
+      elQuestionText.textContent = `Finish the ${q.keyRoot} ${scaleTypeName} scale: ${shownNotes}${hiddenPattern ? ` - ${hiddenPattern}` : ""}.${hintText} Select any missing note.`;
+    }
+  }
   // Note to Degree mode
   else if (settings.questionMode === "noteToDegree" && q.questionNote && q.scaleType) {
     const scaleTypeName = SCALE_TYPE_NAMES[q.scaleType] || q.scaleType;

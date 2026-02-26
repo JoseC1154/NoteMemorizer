@@ -8,6 +8,12 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+  <!-- Splash Screen -->
+  <div id="splashScreen" class="splashScreen">
+    <h1 class="splashTitle">KeyDrill</h1>
+    <p class="splashInstructions">Master your instrument by identifying notes and scale degrees.</p>
+  </div>
+
   <div class="triangleMenu">    <div class="menuBackdrop"></div>    <button class="triangleToggle" id="menuToggle" type="button" aria-haspopup="true" aria-expanded="false">
       <span class="plusIcon">+</span>
     </button>
@@ -22,6 +28,9 @@
       </button>
       <button class="menuItem" id="btnSettings" type="button" aria-label="Settings">
         <span class="menuItemIcon">⚙️</span>
+      </button>
+      <button class="menuItem" id="btnDonate" type="button" aria-label="Donate (coming soon)" title="GofundMe (coming soon)">
+        <span class="menuItemIcon">💚</span>
       </button>
     </div>
   </div>
@@ -42,14 +51,15 @@
 
     <main class="main" role="main">
       <div class="questionBoxWrap">
-        <div class="questionBox" id="questionBox" role="button" tabindex="0" aria-live="polite" aria-atomic="true">
+        <div class="questionBox" id="questionBox" aria-live="polite" aria-atomic="true">
           <span class="studyBackBtn" id="studyBackBtn" title="Back step study view (max 3)" aria-disabled="true">↶</span>
+          <span class="playPauseBtn" id="playPauseBtn" role="button" tabindex="0" aria-pressed="false" title="Pause game">⏸</span>
           <div class="questionStats">
             <span class="questionStat" id="lives">3 ♥</span>
             <span class="questionStat score" id="score">0</span>
           </div>
           <div class="timerBackground" id="timerBackground"></div>
-          <div class="questionText" id="questionText">Click to start!</div>
+          <div class="questionText" id="questionText">Click to Start</div>
           <div class="restartHint" id="restartHint">Press to restart</div>
           <div class="questionSuggestions" id="questionSuggestions" hidden></div>
           <button class="bonusButton" id="bonusButton" type="button" title="Use bonus to slow time (5 points)" hidden>
@@ -195,6 +205,10 @@
           <button class="segBtn" id="modeScaleRecognition" type="button" role="radio" aria-checked="false" data-gamemode="scaleRecognition">
             <div class="segBtnLabel">Scale Recognition</div>
             <div class="segBtnHint">What major scale is this?</div>
+          </button>
+          <button class="segBtn" id="modeFinishScale" type="button" role="radio" aria-checked="false" data-gamemode="finishScale">
+            <div class="segBtnLabel">Finish Scale</div>
+            <div class="segBtnHint">Complete scales from partial + compound prompts</div>
           </button>
         </div>
       </section>

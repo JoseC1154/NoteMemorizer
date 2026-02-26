@@ -193,7 +193,8 @@ export function nextQuestion(
   renderLevelInfo,
   startTimerFn,
   updatePianoVisualization,
-  highlightQuestionNote
+  highlightQuestionNote,
+  activeInstrument = "piano"
 ) {
   state.questionIndex += 1;
   
@@ -229,15 +230,151 @@ export function nextQuestion(
   // Filter by enabled degrees
   const enabledDegrees = settings.degreesEnabled.length ? settings.degreesEnabled : degreePool;
   const availableDegrees = degreePool.filter(d => enabledDegrees.includes(d));
-  const degreeLabel = pickRandom(availableDegrees.length ? availableDegrees : degreePool);
+  let degreeLabel = pickRandom(availableDegrees.length ? availableDegrees : degreePool);
   
   let correctNote, correctDegree, options, scaleType = null, questionNote = null;
+  let finishType = null;
+  let shownNotes = null;
+  let hintNote = null;
+  let sourceKeyRoot = null;
+  let targetKeyRoot = null;
+  let targetDegree = null;
+  let targetScaleType = null;
+  let pivotDegree = null;
+  let pivotNote = null;
+  let remainingNotes = null;
+  let shownSteps = null;
+  let remainingSteps = null;
+  let hintStep = null;
+  let totalSteps = 7;
+  let enforceOrder = false;
+  let correctStep = null;
+  let compoundStage = null;
+  let compoundFirstNote = null;
+  let compoundSecondNote = null;
+  let compoundFirstDegree = null;
   
   // Determine question type based on questionMode setting
   const isScaleRecognition = settings.questionMode === "scaleRecognition";
   const isNoteToDegree = settings.questionMode === "noteToDegree";
+  const isFinishScale = settings.questionMode === "finishScale";
   
-  if (isScaleRecognition) {
+  if (isFinishScale) {
+    const availableScales = settings.scaleTypesEnabled.length ? settings.scaleTypesEnabled : ["major"];
+    scaleType = pickRandom(availableScales);
+
+    const rootPc = NOTE_TO_PC.get(keyRoot);
+    const scaleOffsets = SCALE_TYPES[scaleType] || MAJOR_SCALE_OFFSETS;
+    const scaleNotes = scaleOffsets.map(offset => pcToNote(rootPc + offset));
+
+    const questionRoll = Math.random();
+    const isOddOneOut = questionRoll < 0.30;
+    const isCompound = !isOddOneOut && questionRoll < 0.55;
+
+    if (isOddOneOut) {
+      finishType = "oddOneOut";
+
+      const intruderNote = pickRandom(NOTE_LIST.filter(note => !scaleNotes.includes(note)));
+      correctNote = intruderNote;
+
+      if (activeInstrument === "piano") {
+        const inScalePool = shuffle([...scaleNotes]).slice(0, 5);
+        shownSteps = shuffle([
+          ...inScalePool.map(note => ({ note, octave: 0 })),
+          { note: intruderNote, octave: 0 }
+        ]);
+        shownNotes = shownSteps.map(step => step.note);
+        correctStep = { note: intruderNote, octave: 0 };
+      } else {
+        const inScalePool = shuffle([...scaleNotes]).slice(0, 5);
+        shownNotes = shuffle([...inScalePool, intruderNote]);
+      }
+
+      totalSteps = Array.isArray(shownNotes) ? shownNotes.length : 6;
+      correctDegree = null;
+      degreeLabel = "odd-note-out";
+
+      const distractors = NOTE_LIST.filter(n => n !== correctNote).slice(0, 5);
+      options = shuffle([correctNote, ...distractors]);
+    } else if (isCompound) {
+      finishType = "compound";
+      sourceKeyRoot = keyRoot;
+      pivotDegree = pickRandom(["2", "3", "4", "5", "6"]);
+      const pivotIndex = DIATONIC_DEGREES.indexOf(pivotDegree);
+      pivotNote = scaleNotes[pivotIndex];
+
+      compoundStage = 1;
+      compoundFirstDegree = pivotDegree;
+      compoundFirstNote = pivotNote;
+
+      targetKeyRoot = pivotNote;
+      targetScaleType = scaleType;
+      targetDegree = "6";
+      keyRoot = targetKeyRoot;
+
+      const targetRootPc = NOTE_TO_PC.get(targetKeyRoot);
+      const targetScaleOffsets = SCALE_TYPES[targetScaleType] || MAJOR_SCALE_OFFSETS;
+      const targetScaleNotes = targetScaleOffsets.map(offset => pcToNote(targetRootPc + offset));
+
+      correctDegree = targetDegree;
+      degreeLabel = targetDegree;
+  compoundSecondNote = targetScaleNotes[5];
+  correctNote = compoundFirstNote;
+
+      const inScaleDistractors = targetScaleNotes.filter(n => n !== correctNote);
+      const outOfScaleDistractors = NOTE_LIST.filter(n => !targetScaleNotes.includes(n));
+      const distractors = shuffle([...inScaleDistractors, ...outOfScaleDistractors]).slice(0, 5);
+      options = shuffle([correctNote, ...distractors]);
+    } else {
+      finishType = "partial";
+      enforceOrder = false;
+      const shownCount = Math.random() < 0.5 ? 3 : 4;
+
+      if (activeInstrument === "piano") {
+        const fullSteps = [];
+        for (let octave = 0; octave < 2; octave++) {
+          scaleNotes.forEach(note => {
+            fullSteps.push({ note, octave });
+          });
+        }
+
+        shownSteps = fullSteps.slice(0, shownCount);
+        remainingSteps = fullSteps.slice(shownCount);
+        shownNotes = shownSteps.map(step => step.note);
+        remainingNotes = remainingSteps.map(step => step.note);
+        totalSteps = fullSteps.length;
+
+        if (shownCount === 3 && remainingSteps.length > 1) {
+          hintStep = pickRandom(remainingSteps.slice(1));
+          hintNote = hintStep.note;
+          questionNote = hintNote;
+        }
+
+        correctDegree = DIATONIC_DEGREES[shownCount % 7] || "1";
+        degreeLabel = correctDegree;
+        correctNote = remainingSteps[0]?.note || scaleNotes[0];
+      } else {
+        shownNotes = scaleNotes.slice(0, shownCount);
+        const hiddenNotes = scaleNotes.slice(shownCount);
+        remainingNotes = [...hiddenNotes];
+        totalSteps = scaleNotes.length;
+
+        if (shownCount === 3 && hiddenNotes.length > 1) {
+          hintNote = pickRandom(hiddenNotes.slice(1));
+          questionNote = hintNote;
+        }
+
+        correctDegree = DIATONIC_DEGREES[shownCount];
+        degreeLabel = correctDegree;
+        correctNote = remainingNotes[0];
+      }
+
+      const inScaleDistractors = scaleNotes.filter(n => n !== correctNote);
+      const outOfScaleDistractors = NOTE_LIST.filter(n => !scaleNotes.includes(n));
+      const distractors = shuffle([...inScaleDistractors, ...outOfScaleDistractors]).slice(0, 5);
+      options = shuffle([correctNote, ...distractors]);
+    }
+  } else if (isScaleRecognition) {
     // Scale recognition mode: show piano, ask "What scale is this?"
     const availableScales = settings.scaleTypesEnabled.length ? settings.scaleTypesEnabled : Object.keys(SCALE_TYPES);
     scaleType = pickRandom(availableScales);
@@ -301,11 +438,46 @@ export function nextQuestion(
     options = buildOptionsForMode(correctNote, degreeMode, keyRoot, NOTE_TO_PC, MAJOR_SCALE_OFFSETS, NOTE_LIST, pcToNote);
   }
   
-  state.current = { keyRoot, degreeLabel, correctNote, correctDegree, options, scaleType, questionNote };
+  state.current = {
+    keyRoot,
+    degreeLabel,
+    correctNote,
+    correctDegree,
+    options,
+    scaleType,
+    questionNote,
+    finishType,
+    shownNotes,
+    hintNote,
+    sourceKeyRoot,
+    targetKeyRoot,
+    targetDegree,
+    targetScaleType,
+    pivotDegree,
+    pivotNote,
+    remainingNotes,
+    shownSteps,
+    remainingSteps,
+    hintStep,
+    totalSteps,
+    enforceOrder,
+    correctStep,
+    compoundStage,
+    compoundFirstNote,
+    compoundSecondNote,
+    compoundFirstDegree
+  };
   
   // Update piano visualization if in scale recognition mode
   if (isScaleRecognition && scaleType) {
     updatePianoVisualization(pianoKeyboard, keyRoot, scaleType, SCALE_TYPES, NOTE_TO_PC, pcToNote);
+  } else if (isFinishScale && scaleType) {
+    const visualizeKey = state.current.targetKeyRoot || keyRoot;
+    const visualizeScale = state.current.targetScaleType || scaleType;
+    updatePianoVisualization(pianoKeyboard, visualizeKey, visualizeScale, SCALE_TYPES, NOTE_TO_PC, pcToNote);
+    if (questionNote) {
+      highlightQuestionNote(pianoKeyboard, questionNote);
+    }
   } else if (isNoteToDegree && scaleType && questionNote) {
     // Show piano for note-to-degree mode and highlight the question note
     updatePianoVisualization(pianoKeyboard, keyRoot, scaleType, SCALE_TYPES, NOTE_TO_PC, pcToNote);
