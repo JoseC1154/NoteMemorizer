@@ -245,6 +245,7 @@ export function nextQuestion(
   let remainingNotes = null;
   let shownSteps = null;
   let remainingSteps = null;
+  let shownPositionTokens = null;
   let hintStep = null;
   let totalSteps = 7;
   let enforceOrder = false;
@@ -357,6 +358,7 @@ export function nextQuestion(
         shownNotes = scaleNotes.slice(0, shownCount);
         const hiddenNotes = scaleNotes.slice(shownCount);
         remainingNotes = [...hiddenNotes];
+        shownPositionTokens = [];
         totalSteps = scaleNotes.length;
 
         if (shownCount === 3 && hiddenNotes.length > 1) {
@@ -458,6 +460,7 @@ export function nextQuestion(
     remainingNotes,
     shownSteps,
     remainingSteps,
+    shownPositionTokens,
     hintStep,
     totalSteps,
     enforceOrder,

@@ -2,10 +2,68 @@
 // Piano Visualization Module
 // =========================
 
-export function generatePianoKeys(pianoKeyboard, NOTE_TO_PC, NOTE_LIST) {
+export function generatePianoKeys(pianoKeyboard, NOTE_TO_PC, NOTE_LIST, options = {}) {
   if (!pianoKeyboard) return;
+
+  const { fullRange = false } = options;
   
   pianoKeyboard.innerHTML = '';
+
+  if (fullRange) {
+    const startMidi = 21; // A0
+    const endMidi = 108; // C8
+    const isBlackPitchClass = new Set([1, 3, 6, 8, 10]);
+
+    let whiteKeyCount = 0;
+    for (let midi = startMidi; midi <= endMidi; midi++) {
+      const pitchClass = ((midi % 12) + 12) % 12;
+      if (!isBlackPitchClass.has(pitchClass)) whiteKeyCount += 1;
+    }
+
+    const whiteKeyWidth = 100 / whiteKeyCount;
+    let whiteKeyIndex = 0;
+
+    for (let midi = startMidi; midi <= endMidi; midi++) {
+      const pitchClass = ((midi % 12) + 12) % 12;
+      const noteName = NOTE_LIST[pitchClass];
+      const octave = Math.floor(midi / 12) - 1;
+      const isBlack = isBlackPitchClass.has(pitchClass);
+
+      if (!isBlack) {
+        const leftPosition = whiteKeyIndex * whiteKeyWidth;
+
+        const whiteKey = document.createElement('div');
+        whiteKey.className = 'pianoKey white';
+        whiteKey.dataset.note = noteName;
+        whiteKey.dataset.octave = String(octave);
+        whiteKey.style.position = 'absolute';
+        whiteKey.style.left = `${leftPosition}%`;
+        whiteKey.style.width = `${whiteKeyWidth}%`;
+        whiteKey.style.height = '100%';
+        whiteKey.style.top = '0';
+        whiteKey.title = `${noteName}${octave}`;
+        pianoKeyboard.appendChild(whiteKey);
+
+        whiteKeyIndex += 1;
+      } else {
+        const blackLeft = (whiteKeyIndex - 1) * whiteKeyWidth + whiteKeyWidth * 0.75;
+
+        const blackKey = document.createElement('div');
+        blackKey.className = 'pianoKey black';
+        blackKey.dataset.note = noteName;
+        blackKey.dataset.octave = String(octave);
+        blackKey.style.position = 'absolute';
+        blackKey.style.left = `${blackLeft}%`;
+        blackKey.style.width = `${whiteKeyWidth * 0.5}%`;
+        blackKey.style.height = '60%';
+        blackKey.style.top = '0';
+        blackKey.title = `${noteName}${octave}`;
+        pianoKeyboard.appendChild(blackKey);
+      }
+    }
+
+    return;
+  }
   
   // C, D, E, F, G, A, B for each octave
   const whiteNotes = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];

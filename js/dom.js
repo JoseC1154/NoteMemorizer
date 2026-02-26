@@ -3,6 +3,7 @@ export const dom = {
   // Question elements
   elQuestionText: document.getElementById("questionText"),
   elQuestionBox: document.getElementById("questionBox"),
+  elRotateHintBar: document.getElementById("rotateHintBar"),
   studyBackBtn: document.getElementById("studyBackBtn"),
   elRestartHint: document.getElementById("restartHint"),
   elTimer: document.getElementById("timer"),

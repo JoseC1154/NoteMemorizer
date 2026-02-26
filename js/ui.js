@@ -36,6 +36,7 @@ export function renderQuestion(state, settings, elQuestionText, elTimerBackgroun
       const hintText = q.hintNote ? ` Hint: one hidden note is ${q.hintNote}.` : "";
       elQuestionText.textContent = `Finish the ${q.keyRoot} ${scaleTypeName} scale: ${shownNotes}${hiddenPattern ? ` - ${hiddenPattern}` : ""}.${hintText} Select any missing note.`;
     }
+
   }
   // Note to Degree mode
   else if (settings.questionMode === "noteToDegree" && q.questionNote && q.scaleType) {

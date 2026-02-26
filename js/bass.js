@@ -3,8 +3,10 @@
 // =========================
 
 const STRING_TUNING = ["G", "D", "A", "E"]; // High G to low E (4-string bass)
-const TOTAL_FRETS = 12;
+const TOTAL_FRETS = 24;
+const VISIBLE_FRETS = 5;
 const MAX_FRET_RATIO = 1 - (1 / Math.pow(2, TOTAL_FRETS / 12));
+const VISIBLE_FRET_RATIO = 1 - (1 / Math.pow(2, VISIBLE_FRETS / 12));
 
 function fretLeftPercent(fretNumber) {
   if (fretNumber <= 0) return 0;
@@ -16,9 +18,11 @@ export function generateBassFretboard(bassFretboard, NOTE_TO_PC, pcToNote) {
   if (!bassFretboard) return;
 
   bassFretboard.innerHTML = "";
+  bassFretboard.scrollLeft = 0;
 
   const neck = document.createElement("div");
   neck.className = "bassNeck";
+  neck.style.width = `${(MAX_FRET_RATIO / VISIBLE_FRET_RATIO) * 100}%`;
   bassFretboard.appendChild(neck);
 
   const nut = document.createElement("div");
@@ -34,7 +38,7 @@ export function generateBassFretboard(bassFretboard, NOTE_TO_PC, pcToNote) {
   }
 
   // Inlays
-  const singleInlays = [3, 5, 7, 9];
+  const singleInlays = [3, 5, 7, 9, 15, 17, 19, 21];
   singleInlays.forEach(fret => {
     const fretStart = fretLeftPercent(fret - 1);
     const fretEnd = fretLeftPercent(fret);
@@ -46,10 +50,10 @@ export function generateBassFretboard(bassFretboard, NOTE_TO_PC, pcToNote) {
     neck.appendChild(inlay);
   });
 
-  // Double inlay at 12th
-  {
-    const fretStart = fretLeftPercent(11);
-    const fretEnd = fretLeftPercent(12);
+  // Double inlays at 12th and 24th
+  [12, 24].forEach(fret => {
+    const fretStart = fretLeftPercent(fret - 1);
+    const fretEnd = fretLeftPercent(fret);
     const center = (fretStart + fretEnd) / 2;
 
     const inlay1 = document.createElement("div");
@@ -61,7 +65,7 @@ export function generateBassFretboard(bassFretboard, NOTE_TO_PC, pcToNote) {
     inlay2.className = "bassInlay";
     inlay2.style.left = `calc(${center}% + 8px)`;
     neck.appendChild(inlay2);
-  }
+  });
 
   // Strings
   for (let stringIndex = 0; stringIndex < STRING_TUNING.length; stringIndex++) {

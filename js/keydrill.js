@@ -123,6 +123,7 @@ import {
 const {
   elQuestionText,
   elQuestionBox,
+  elRotateHintBar,
   studyBackBtn,
   elRestartHint,
   elTimer,
@@ -301,14 +302,38 @@ if (settings.questionMode === "finishScale" && settings.answerInputMode === "cho
 
   function syncAnswerInputAvailability() {
     const choicesEnabled = areChoiceAnswersEnabled();
+    const isFinishScaleMode = settings.questionMode === "finishScale";
+    const hideAnswerGrid = isFinishScaleMode;
+
     if (elAnswerGrid) {
-      elAnswerGrid.style.opacity = choicesEnabled ? "1" : "0.45";
-      elAnswerGrid.style.pointerEvents = choicesEnabled ? "auto" : "none";
+      if (hideAnswerGrid) {
+        elAnswerGrid.style.display = "none";
+      } else {
+        elAnswerGrid.style.removeProperty("display");
+      }
+
+      elAnswerGrid.style.opacity = choicesEnabled && !hideAnswerGrid ? "1" : "0.45";
+      elAnswerGrid.style.pointerEvents = choicesEnabled && !hideAnswerGrid ? "auto" : "none";
+    }
+
+    if (elMain) {
+      elMain.classList.toggle('no-answer-grid', hideAnswerGrid);
     }
 
     answerButtons.forEach(btn => {
-      btn.disabled = !choicesEnabled || !state.active || state.locked || !state.current;
+      btn.disabled = hideAnswerGrid || !choicesEnabled || !state.active || state.locked || !state.current;
     });
+
+    updateRotateHintVisibility();
+  }
+
+  function updateRotateHintVisibility() {
+    if (!elRotateHintBar) return;
+    const isPortrait = typeof window !== "undefined"
+      && typeof window.matchMedia === "function"
+      && window.matchMedia("(orientation: portrait)").matches;
+    const show = !!(state.active && state.current && settings.questionMode === "finishScale" && isPortrait);
+    elRotateHintBar.hidden = !show;
   }
 
   function getActiveInstrument() {
@@ -382,7 +407,7 @@ if (settings.questionMode === "finishScale" && settings.answerInputMode === "cho
     return {
       container: pianoContainer,
       surface: pianoKeyboard,
-      generate: () => generatePianoKeys(pianoKeyboard, NOTE_TO_PC, NOTE_LIST),
+      generate: () => generatePianoKeys(pianoKeyboard, NOTE_TO_PC, NOTE_LIST, { fullRange: state.instrumentExpanded }),
       update: (surface, keyRoot, scaleType, scaleTypes, noteToPc, pcToNoteFn) =>
         updatePianoVisualization(surface, keyRoot, scaleType, scaleTypes, noteToPc, pcToNoteFn),
       highlight: (surface, note) => highlightQuestionNote(surface, note),
@@ -429,6 +454,10 @@ if (settings.questionMode === "finishScale" && settings.answerInputMode === "cho
       instrumentToggleGroup.hidden = expanded;
     }
 
+    if (elMain) {
+      elMain.classList.toggle('instrument-view-expanded', expanded);
+    }
+
     applyExpandedNoteLabels();
     renderExpandedQuestionOverlay();
   }
@@ -458,7 +487,7 @@ if (settings.questionMode === "finishScale" && settings.answerInputMode === "cho
       }
     }
 
-    renderInstrumentExpandedState();
+    renderInstrumentVisualization();
   }
 
   function renderInstrumentVisualization() {
@@ -523,6 +552,7 @@ if (settings.questionMode === "finishScale" && settings.answerInputMode === "cho
 
     const mentionedNotes = new Set();
     const mentionedPianoSteps = new Set();
+    const mentionedPositionTokens = new Set();
 
     if (state.current.finishType === "partial") {
       if (Array.isArray(state.current.shownSteps)) {
@@ -534,6 +564,11 @@ if (settings.questionMode === "finishScale" && settings.answerInputMode === "cho
       }
       if (Array.isArray(state.current.shownNotes)) {
         state.current.shownNotes.forEach(note => mentionedNotes.add(note));
+      }
+      if (Array.isArray(state.current.shownPositionTokens)) {
+        state.current.shownPositionTokens.forEach(token => {
+          if (token) mentionedPositionTokens.add(token);
+        });
       }
     } else if (state.current.finishType === "compound") {
       const stage = state.current.compoundStage || 1;
@@ -571,8 +606,15 @@ if (settings.questionMode === "finishScale" && settings.answerInputMode === "cho
         } else if (mentionedNotes.has(el.dataset.note)) {
           el.classList.add("inScale");
         }
-      } else if (mentionedNotes.has(el.dataset.note)) {
-        el.classList.add("inScale");
+      } else {
+        const posToken = `${el.dataset.string}|${el.dataset.fret}`;
+        if (mentionedPositionTokens.size > 0) {
+          if (mentionedPositionTokens.has(posToken)) {
+            el.classList.add("inScale");
+          }
+        } else if (mentionedNotes.has(el.dataset.note)) {
+          el.classList.add("inScale");
+        }
       }
     });
   }
@@ -742,6 +784,8 @@ if (settings.questionMode === "finishScale" && settings.answerInputMode === "cho
     }
 
     state.finishScaleReviewMode = false;
+    setReviewNextMenuButtonVisible(false);
+    if (elQuestionBox) elQuestionBox.classList.remove("reviewVisible");
 
     const activeView = getActiveVisualization();
     const result = nextQuestion(
@@ -752,6 +796,7 @@ if (settings.questionMode === "finishScale" && settings.answerInputMode === "cho
     );
 
     applyFinishScaleMentionedHighlight(activeView.surface);
+    renderExpandedQuestionOverlay();
 
     syncAnswerInputAvailability();
     updateStudyBackButtonState();
@@ -803,10 +848,35 @@ if (settings.questionMode === "finishScale" && settings.answerInputMode === "cho
     recordQuestion, renderLives, updateRiskVisual, flashStatus, lockAnswers, nextAfterFeedbackWrapper, endGameWrapper
   );
 
+  function setReviewNextMenuButtonVisible(visible) {
+    const menuRoot = document.querySelector('.triangleMenu');
+    if (!menuRoot) return;
+
+    let reviewBtn = document.getElementById('btnNextAfterScaleReviewBar');
+    if (!reviewBtn) {
+      reviewBtn = document.createElement('button');
+      reviewBtn.type = 'button';
+      reviewBtn.id = 'btnNextAfterScaleReviewBar';
+      reviewBtn.className = 'menuReviewNext';
+      reviewBtn.textContent = 'Next';
+      reviewBtn.hidden = true;
+      reviewBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        advanceFromFinishScaleReview();
+      });
+      menuRoot.appendChild(reviewBtn);
+    }
+
+    reviewBtn.hidden = !visible;
+  }
+
   const advanceFromFinishScaleReview = () => {
     const statusOverlayEl = document.getElementById("statusOverlay");
     state.finishScaleReviewMode = false;
     state.locked = false;
+    setReviewNextMenuButtonVisible(false);
+    if (elQuestionBox) elQuestionBox.classList.remove("reviewVisible");
     if (statusOverlayEl) statusOverlayEl.hidden = true;
     elStatusPanel.hidden = true;
     elStatusPanel.classList.remove("good", "bad");
@@ -857,6 +927,7 @@ if (settings.questionMode === "finishScale" && settings.answerInputMode === "cho
     }
 
     state.finishScaleReviewMode = true;
+    setReviewNextMenuButtonVisible(true);
 
     const activeView = getActiveVisualization();
     const visualizeKey = state.current?.targetKeyRoot || state.current?.keyRoot;
@@ -874,24 +945,15 @@ if (settings.questionMode === "finishScale" && settings.answerInputMode === "cho
 
     const questionSuggestions = document.getElementById("questionSuggestions");
     if (questionSuggestions) {
+      if (elQuestionBox) elQuestionBox.classList.add("reviewVisible");
       questionSuggestions.hidden = false;
       questionSuggestions.innerHTML = `
         <div class="practiceSteps">
           <div class="practiceStep">
             <strong>Study Mode:</strong> Incorrect: ${chosenNote}. Study the full ${visualizeKey} ${scaleLabel} scale on the instrument.
           </div>
-          <button class="btn primary" id="btnNextAfterScaleReview" type="button">Next Question</button>
         </div>
       `;
-    }
-
-    const btnNextAfterScaleReview = document.getElementById("btnNextAfterScaleReview");
-    if (btnNextAfterScaleReview) {
-      btnNextAfterScaleReview.addEventListener("click", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        advanceFromFinishScaleReview();
-      }, { once: true });
     }
   };
   
@@ -906,6 +968,15 @@ if (settings.questionMode === "finishScale" && settings.answerInputMode === "cho
 
     const chosenNote = typeof chosen === "string" ? chosen : chosen?.note;
     const chosenOctave = typeof chosen === "object" ? chosen?.octave : undefined;
+    const chosenString = typeof chosen === "object"
+      ? chosen?.string
+      : (selectedElement?.dataset?.string ?? undefined);
+    const chosenFret = typeof chosen === "object"
+      ? chosen?.fret
+      : (selectedElement?.dataset?.fret ?? undefined);
+    const chosenPositionToken = (chosenString != null && chosenFret != null)
+      ? `${chosenString}|${chosenFret}`
+      : null;
 
     const markWrongWithDelay = () => {
       stopTimerWrapper();
@@ -978,6 +1049,8 @@ if (settings.questionMode === "finishScale" && settings.answerInputMode === "cho
           step && step.note === chosenNote && String(step.octave) === String(chosenOctave)
         ));
         if (alreadyShownStep) return;
+      } else if (Array.isArray(state.current.shownPositionTokens) && chosenPositionToken) {
+        if (state.current.shownPositionTokens.includes(chosenPositionToken)) return;
       } else if (Array.isArray(state.current.shownNotes) && state.current.shownNotes.includes(chosenNote)) {
         return;
       }
@@ -1007,6 +1080,8 @@ if (settings.questionMode === "finishScale" && settings.answerInputMode === "cho
       state.current.shownNotes.push(solvedNote);
       if (Array.isArray(state.current.shownSteps)) {
         state.current.shownSteps.push(solvedStep || { note: solvedNote });
+      } else if (Array.isArray(state.current.shownPositionTokens) && chosenPositionToken) {
+        state.current.shownPositionTokens.push(chosenPositionToken);
       }
 
       if (state.current.remainingNotes.length > 0) {
@@ -1262,7 +1337,11 @@ if (settings.questionMode === "finishScale" && settings.answerInputMode === "cho
     guitarFretboard.addEventListener("click", (e) => {
       const position = e.target.closest('.guitarPosition');
       if (!position?.dataset?.note) return;
-      onInstrumentAnswer(position.dataset.note, position);
+      onInstrumentAnswer({
+        note: position.dataset.note,
+        string: position.dataset.string,
+        fret: position.dataset.fret
+      }, position);
     });
   }
 
@@ -1270,7 +1349,11 @@ if (settings.questionMode === "finishScale" && settings.answerInputMode === "cho
     bassFretboard.addEventListener("click", (e) => {
       const position = e.target.closest('.bassPosition');
       if (!position?.dataset?.note) return;
-      onInstrumentAnswer(position.dataset.note, position);
+      onInstrumentAnswer({
+        note: position.dataset.note,
+        string: position.dataset.string,
+        fret: position.dataset.fret
+      }, position);
     });
   }
 
@@ -1919,6 +2002,12 @@ if (settings.questionMode === "finishScale" && settings.answerInputMode === "cho
   updatePlayPauseButtonState();
   
   initScaleToggles(scaleToggles, SCALE_TYPES, SCALE_TYPE_NAMES, settings, saveSettingsToStorage, soundDegreeToggle, getVolumeMultiplier);
+  updateRotateHintVisibility();
+
+  if (typeof window !== "undefined") {
+    window.addEventListener('resize', updateRotateHintVisibility);
+    window.addEventListener('orientationchange', updateRotateHintVisibility);
+  }
 
   // Splash Screen Logic
   const splashScreen = document.getElementById('splashScreen');
