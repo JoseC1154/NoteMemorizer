@@ -15,6 +15,7 @@
   • All game features working correctly
 -Audio volume increased 4x for better audibility
 -Note to Degree mode: Shows piano and asks "Eb is what degree in the Db major scale?"
+-add infinity for the timer.
 
 TODO:
 -awards after broken record.
@@ -31,5 +32,4 @@ TODO:
 -When starting the app I would like to start with an image, then when the image is pressed it would take you to the game start.
 -the click to start should be the only thing showing before a game start.
 -when a answer is correct could we have a the background flash an appropriate green tone to match the asthetic of the app then when wrong red.
--add infinity for the timer.
 - update statistic to include latest updates.

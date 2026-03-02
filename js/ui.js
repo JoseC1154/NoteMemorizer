@@ -173,7 +173,7 @@ export function updateRiskVisual(state) {
   const timeDen = Math.max(1, state.questionSeconds);
 
   const riskLives = Math.min(Math.max(1 - (state.lives / livesDen), 0), 1);
-  const riskTime = Math.min(Math.max(1 - (state.secondsLeft / timeDen), 0), 1);
+  const riskTime = state.questionSeconds === Infinity ? 0 : Math.min(Math.max(1 - (state.secondsLeft / timeDen), 0), 1);
 
   const risk = Math.min(Math.max(Math.max(riskLives, riskTime), 0), 1);
 

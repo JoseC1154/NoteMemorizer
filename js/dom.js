@@ -59,6 +59,16 @@ export const dom = {
   secondsValue: document.getElementById("secondsValue"),
   modalDurationSlider: document.getElementById("modalDurationSlider"),
   modalDurationValue: document.getElementById("modalDurationValue"),
+  guitarNeckSlider: document.getElementById("guitarNeckSlider"),
+  guitarNeckValue: document.getElementById("guitarNeckValue"),
+  bassNeckSlider: document.getElementById("bassNeckSlider"),
+  bassNeckValue: document.getElementById("bassNeckValue"),
+  questionHeightSlider: document.getElementById("questionHeightSlider"),
+  questionHeightValue: document.getElementById("questionHeightValue"),
+  answerHeightSlider: document.getElementById("answerHeightSlider"),
+  answerHeightValue: document.getElementById("answerHeightValue"),
+  notePositionSlider: document.getElementById("notePositionSlider"),
+  notePositionValue: document.getElementById("notePositionValue"),
 
   // Audio mixer controls
   volPadSlider: document.getElementById("volPad"),

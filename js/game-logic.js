@@ -84,6 +84,9 @@ export function stopTimer(state) {
 }
 
 export function getEffectiveSecondsPerQuestion(settings, state, clamp) {
+  if (settings.secondsPerQuestion === 21) {
+    return Infinity;
+  }
   // After 20 correct streak, drop by 1 second (persists). Every additional 20 streak drops another second.
   const baseSeconds = clamp(settings.secondsPerQuestion - state.speedLevel, 3, 20);
   // Double the time if bonus is active
@@ -96,23 +99,20 @@ export function startTimer(state, settings, elTimerBackground, updateRiskVisual,
   state.questionSeconds = getEffectiveSecondsPerQuestion(settings, state, clamp);
   state.secondsLeft = state.questionSeconds;
   state.questionStartTime = Date.now(); // Start timing response
-  if (elTimerBackground) elTimerBackground.textContent = String(state.secondsLeft);
+  if (elTimerBackground) elTimerBackground.textContent = state.secondsLeft === Infinity ? "∞" : String(state.secondsLeft);
   updateRiskVisual(state);
   
-  // Fade out header when timer starts
-  const elHeader = document.getElementById("header");
-  if (elHeader && state.active) {
-    elHeader.classList.add("faded");
-  }
 
   state.timerId = setInterval(() => {
     if (!state.active || state.locked) return;
 
-    state.secondsLeft -= 1;
-    if (elTimerBackground) elTimerBackground.textContent = String(state.secondsLeft);
+    if (state.secondsLeft !== Infinity) {
+      state.secondsLeft -= 1;
+    }
+    if (elTimerBackground) elTimerBackground.textContent = state.secondsLeft === Infinity ? "∞" : String(state.secondsLeft);
     updateRiskVisual(state);
 
-    if (state.secondsLeft > 0) soundTick(settings, getVolumeMultiplier, state);
+    if (state.secondsLeft > 0 && state.secondsLeft !== Infinity) soundTick(settings, getVolumeMultiplier, state);
 
     if (state.secondsLeft <= 0) {
       stopTimer(state);
@@ -745,12 +745,6 @@ export function endGame(state, settings, message, answerButtons, elTimerBackgrou
     saveStats(stats);
   }
   
-  // Restore header visibility
-  const elHeader = document.getElementById("header");
-  if (elHeader) {
-    elHeader.classList.remove("faded");
-  }
-  
   // Hide everything except question box
   const elAnswerGrid = document.getElementById("answerGrid");
   const pianoContainer = document.getElementById("pianoContainer");
@@ -845,7 +839,7 @@ export function handleCorrect(
   // Calculate score: base points + streak bonus + speed bonus
   const basePoints = 100;
   const streakBonus = state.streak * 10;
-  const speedBonus = Math.max(0, (state.questionSeconds - state.secondsLeft) * 5);
+  const speedBonus = state.questionSeconds === Infinity ? 0 : Math.max(0, (state.questionSeconds - state.secondsLeft) * 5);
   const pointsEarned = basePoints + streakBonus + speedBonus;
   
   state.score += pointsEarned;

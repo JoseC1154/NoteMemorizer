@@ -169,6 +169,16 @@ const {
   secondsValue,
   modalDurationSlider,
   modalDurationValue,
+  guitarNeckSlider,
+  guitarNeckValue,
+  bassNeckSlider,
+  bassNeckValue,
+  questionHeightSlider,
+  questionHeightValue,
+  answerHeightSlider,
+  answerHeightValue,
+  notePositionSlider,
+  notePositionValue,
   volPadSlider,
   volPadValue,
   volArpeggioSlider,
@@ -228,6 +238,120 @@ if (settings.questionMode === "degreeToNote" && settings.answerInputMode === "ch
 if (settings.questionMode === "finishScale" && settings.answerInputMode === "choices") {
   settings.answerInputMode = "instrument";
 }
+
+function applyLayoutTestingVars() {
+  const instrumentPct = settings.instrument === "bass"
+    ? settings.bassNeckThicknessPercent
+    : settings.guitarNeckThicknessPercent;
+  document.documentElement.style.setProperty("--layout-instrument-pct", String(instrumentPct));
+  document.documentElement.style.setProperty("--layout-question-pct", String(settings.questionBoxHeightPercent));
+  document.documentElement.style.setProperty("--layout-answer-pct", String(settings.answerButtonHeightPercent));
+  document.documentElement.style.setProperty("--note-position-scale", String(settings.notePositionSizePercent / 100));
+}
+
+function normalizeLayoutPercents(changedKey = null) {
+  const allKeys = ["guitarNeckThicknessPercent", "bassNeckThicknessPercent", "questionBoxHeightPercent", "answerButtonHeightPercent"];
+  for (const key of allKeys) {
+    settings[key] = clamp(Math.round(Number(settings[key]) || 0), 5, 90);
+  }
+
+  const instrumentKey = (changedKey === "guitarNeckThicknessPercent" || changedKey === "bassNeckThicknessPercent")
+    ? changedKey
+    : (settings.instrument === "bass" ? "bassNeckThicknessPercent" : "guitarNeckThicknessPercent");
+  const keys = [instrumentKey, "questionBoxHeightPercent", "answerButtonHeightPercent"];
+
+  const sum = keys.reduce((acc, key) => acc + settings[key], 0);
+  if (sum === 100) return;
+
+  if (!changedKey) {
+    let first = Math.round((settings[keys[0]] / sum) * 100);
+    let second = Math.round((settings[keys[1]] / sum) * 100);
+    let third = 100 - first - second;
+
+    if (first < 5) first = 5;
+    if (second < 5) second = 5;
+    third = 100 - first - second;
+    if (third < 5) {
+      third = 5;
+      const remainder = 95;
+      const pair = settings[keys[0]] + settings[keys[1]];
+      first = pair > 0 ? Math.round((settings[keys[0]] / pair) * remainder) : Math.floor(remainder / 2);
+      second = remainder - first;
+    }
+
+    settings[keys[0]] = first;
+    settings[keys[1]] = second;
+    settings[keys[2]] = third;
+    return;
+  }
+
+  const primaryKey = changedKey && keys.includes(changedKey) ? changedKey : "guitarNeckThicknessPercent";
+  settings[primaryKey] = clamp(settings[primaryKey], 5, 90);
+
+  const others = keys.filter(key => key !== primaryKey);
+  const targetOthers = 100 - settings[primaryKey];
+  const currentOthers = settings[others[0]] + settings[others[1]];
+
+  let first = currentOthers > 0
+    ? Math.round((settings[others[0]] / currentOthers) * targetOthers)
+    : Math.floor(targetOthers / 2);
+  let second = targetOthers - first;
+
+  if (first < 5) {
+    first = 5;
+    second = targetOthers - first;
+  }
+  if (second < 5) {
+    second = 5;
+    first = targetOthers - second;
+  }
+
+  settings[others[0]] = first;
+  settings[others[1]] = second;
+}
+
+function updateLayoutTestingUI() {
+  if (guitarNeckSlider && guitarNeckValue) {
+    guitarNeckSlider.value = String(settings.guitarNeckThicknessPercent);
+    guitarNeckValue.textContent = `${settings.guitarNeckThicknessPercent}%`;
+  }
+  if (bassNeckSlider && bassNeckValue) {
+    bassNeckSlider.value = String(settings.bassNeckThicknessPercent);
+    bassNeckValue.textContent = `${settings.bassNeckThicknessPercent}%`;
+  }
+  if (questionHeightSlider && questionHeightValue) {
+    questionHeightSlider.value = String(settings.questionBoxHeightPercent);
+    questionHeightValue.textContent = `${settings.questionBoxHeightPercent}%`;
+  }
+  if (answerHeightSlider && answerHeightValue) {
+    answerHeightSlider.value = String(settings.answerButtonHeightPercent);
+    answerHeightValue.textContent = `${settings.answerButtonHeightPercent}%`;
+  }
+  if (notePositionSlider && notePositionValue) {
+    notePositionSlider.value = String(settings.notePositionSizePercent);
+    notePositionValue.textContent = `${settings.notePositionSizePercent}%`;
+  }
+}
+
+function updateResponsiveNoteBaseSizes() {
+  const guitarHeight = guitarFretboard?.getBoundingClientRect?.().height || 0;
+  const bassHeight = bassFretboard?.getBoundingClientRect?.().height || 0;
+
+  const guitarBase = guitarHeight > 0
+    ? clamp(Math.round(guitarHeight * 0.064), 14, 56)
+    : 28;
+  const bassBase = bassHeight > 0
+    ? clamp(Math.round(bassHeight * 0.077), 14, 56)
+    : 28;
+
+  document.documentElement.style.setProperty("--guitar-note-base-size", `${guitarBase}px`);
+  document.documentElement.style.setProperty("--bass-note-base-size", `${bassBase}px`);
+}
+
+normalizeLayoutPercents();
+
+applyLayoutTestingVars();
+updateResponsiveNoteBaseSizes();
   // =========================
   // Game state
   // =========================
@@ -545,6 +669,7 @@ if (settings.questionMode === "finishScale" && settings.answerInputMode === "cho
     renderInstrumentExpandedState();
     renderExpandedQuestionOverlay();
     syncAnswerInputAvailability();
+    updateResponsiveNoteBaseSizes();
   }
 
   function applyFinishScaleMentionedHighlight(surface) {
@@ -1119,6 +1244,7 @@ if (settings.questionMode === "finishScale" && settings.answerInputMode === "cho
     statsOverlay.hidden = true;
     
     overlay.hidden = false;
+    document.body.classList.add("settingsOpen");
 
     // Pause the game if it's active
     if (state.active && !state.locked) {
@@ -1130,10 +1256,12 @@ if (settings.questionMode === "finishScale" && settings.answerInputMode === "cho
     }
 
     secondsSlider.value = String(settings.secondsPerQuestion);
-    secondsValue.textContent = `${settings.secondsPerQuestion}s`;
+    secondsValue.textContent = settings.secondsPerQuestion === 21 ? `∞` : `${settings.secondsPerQuestion}s`;
 
     modalDurationSlider.value = String(settings.modalDuration);
     modalDurationValue.textContent = `${(settings.modalDuration / 1000).toFixed(1)}s`;
+
+    updateLayoutTestingUI();
 
     // Initialize mixer values
     if (volPadSlider && volPadValue) {
@@ -1226,6 +1354,7 @@ if (settings.questionMode === "finishScale" && settings.answerInputMode === "cho
 
   function closeSettings() {
     overlay.hidden = true;
+    document.body.classList.remove("settingsOpen");
     btnSettings.focus();
 
     // Resume the game if it was paused
@@ -1473,6 +1602,7 @@ if (settings.questionMode === "finishScale" && settings.answerInputMode === "cho
     triangleMenu.classList.remove('active');
     // Close settings modal if open
     overlay.hidden = true;
+    document.body.classList.remove("settingsOpen");
     // Slow down music when opening stats
     if (state.active) slowDownAmbientMusic();
     renderStats(getStats);
@@ -1601,14 +1731,58 @@ if (settings.questionMode === "finishScale" && settings.answerInputMode === "cho
   });
 
   secondsSlider.addEventListener("input", () => {
-    settings.secondsPerQuestion = clamp(Number(secondsSlider.value), 3, 20);
-    secondsValue.textContent = `${settings.secondsPerQuestion}s`;
+    settings.secondsPerQuestion = clamp(Number(secondsSlider.value), 3, 21);
+    secondsValue.textContent = settings.secondsPerQuestion === 21 ? `∞` : `${settings.secondsPerQuestion}s`;
   });
 
   modalDurationSlider.addEventListener("input", () => {
     settings.modalDuration = clamp(Number(modalDurationSlider.value), 500, 5000);
     modalDurationValue.textContent = `${(settings.modalDuration / 1000).toFixed(1)}s`;
   });
+
+  if (guitarNeckSlider) {
+    guitarNeckSlider.addEventListener("input", () => {
+      settings.guitarNeckThicknessPercent = clamp(Number(guitarNeckSlider.value), 5, 90);
+      normalizeLayoutPercents("guitarNeckThicknessPercent");
+      updateLayoutTestingUI();
+      applyLayoutTestingVars();
+    });
+  }
+
+  if (bassNeckSlider) {
+    bassNeckSlider.addEventListener("input", () => {
+      settings.bassNeckThicknessPercent = clamp(Number(bassNeckSlider.value), 5, 90);
+      normalizeLayoutPercents("bassNeckThicknessPercent");
+      updateLayoutTestingUI();
+      applyLayoutTestingVars();
+    });
+  }
+
+  if (questionHeightSlider) {
+    questionHeightSlider.addEventListener("input", () => {
+      settings.questionBoxHeightPercent = clamp(Number(questionHeightSlider.value), 5, 90);
+      normalizeLayoutPercents("questionBoxHeightPercent");
+      updateLayoutTestingUI();
+      applyLayoutTestingVars();
+    });
+  }
+
+  if (answerHeightSlider) {
+    answerHeightSlider.addEventListener("input", () => {
+      settings.answerButtonHeightPercent = clamp(Number(answerHeightSlider.value), 5, 90);
+      normalizeLayoutPercents("answerButtonHeightPercent");
+      updateLayoutTestingUI();
+      applyLayoutTestingVars();
+    });
+  }
+
+  if (notePositionSlider) {
+    notePositionSlider.addEventListener("input", () => {
+      settings.notePositionSizePercent = clamp(Number(notePositionSlider.value), 50, 200);
+      if (notePositionValue) notePositionValue.textContent = `${settings.notePositionSizePercent}%`;
+      applyLayoutTestingVars();
+    });
+  }
 
   // Audio mixer sliders
   if (volPadSlider) {
@@ -1725,6 +1899,9 @@ if (settings.questionMode === "finishScale" && settings.answerInputMode === "cho
     if (["piano", "guitar", "bass"].includes(instrument)) {
       settings.instrument = instrument;
     }
+    normalizeLayoutPercents();
+    updateLayoutTestingUI();
+    applyLayoutTestingVars();
     renderInstrumentButtons();
     renderInstrumentVisualization();
     saveSettingsToStorage(settings);
@@ -2005,8 +2182,15 @@ if (settings.questionMode === "finishScale" && settings.answerInputMode === "cho
   updateRotateHintVisibility();
 
   if (typeof window !== "undefined") {
-    window.addEventListener('resize', updateRotateHintVisibility);
-    window.addEventListener('orientationchange', updateRotateHintVisibility);
+    window.addEventListener('resize', () => {
+      updateRotateHintVisibility();
+      updateResponsiveNoteBaseSizes();
+    });
+    window.addEventListener('orientationchange', () => {
+      updateRotateHintVisibility();
+      updateResponsiveNoteBaseSizes();
+      setTimeout(updateResponsiveNoteBaseSizes, 120);
+    });
   }
 
   // Splash Screen Logic

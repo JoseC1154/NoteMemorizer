@@ -20,6 +20,11 @@ export const defaultSettings = {
   tickOn: true,
   ambientOn: true,
   modalDuration: 2000, // milliseconds
+  guitarNeckThicknessPercent: 34,
+  bassNeckThicknessPercent: 34,
+  questionBoxHeightPercent: 33,
+  answerButtonHeightPercent: 33,
+  notePositionSizePercent: 100,
   scaleTypesEnabled: ["major"], // Enabled scale types
   // Audio mixer volumes (0-100)
   volumes: {
@@ -50,6 +55,11 @@ export function loadSettings() {
     const parsed = JSON.parse(raw);
 
     const s = structuredClone(baseSettings);
+    if (typeof s.guitarNeckThicknessPercent !== "number") s.guitarNeckThicknessPercent = 100;
+    if (typeof s.bassNeckThicknessPercent !== "number") s.bassNeckThicknessPercent = 100;
+    if (typeof s.questionBoxHeightPercent !== "number") s.questionBoxHeightPercent = 100;
+    if (typeof s.answerButtonHeightPercent !== "number") s.answerButtonHeightPercent = 100;
+    if (typeof s.notePositionSizePercent !== "number") s.notePositionSizePercent = 100;
 
     if (Array.isArray(parsed.keysEnabled)) {
       s.keysEnabled = parsed.keysEnabled.filter(k => ALL_KEYS.includes(k));
@@ -60,7 +70,7 @@ export function loadSettings() {
       );
     }
     if (typeof parsed.secondsPerQuestion === "number") {
-      s.secondsPerQuestion = clamp(Math.round(parsed.secondsPerQuestion), 3, 20);
+      s.secondsPerQuestion = clamp(Math.round(parsed.secondsPerQuestion), 3, 21);
     }
     if (parsed.degreeMode === "diatonic" || parsed.degreeMode === "chromatic") {
       s.degreeMode = parsed.degreeMode;
@@ -88,6 +98,27 @@ export function loadSettings() {
     }
     if (typeof parsed.modalDuration === "number") {
       s.modalDuration = clamp(Math.round(parsed.modalDuration), 500, 5000);
+    }
+    if (typeof parsed.guitarNeckThicknessPercent === "number") {
+      s.guitarNeckThicknessPercent = clamp(Math.round(parsed.guitarNeckThicknessPercent), 5, 90);
+    } else if (typeof parsed.guitarNeckThickness === "number") {
+      s.guitarNeckThicknessPercent = clamp(Math.round(parsed.guitarNeckThickness), 5, 90);
+    }
+    if (typeof parsed.bassNeckThicknessPercent === "number") {
+      s.bassNeckThicknessPercent = clamp(Math.round(parsed.bassNeckThicknessPercent), 5, 90);
+    }
+    if (typeof parsed.questionBoxHeightPercent === "number") {
+      s.questionBoxHeightPercent = clamp(Math.round(parsed.questionBoxHeightPercent), 5, 90);
+    } else if (typeof parsed.questionBoxHeight === "number") {
+      s.questionBoxHeightPercent = clamp(Math.round((parsed.questionBoxHeight / 220) * 100), 5, 90);
+    }
+    if (typeof parsed.answerButtonHeightPercent === "number") {
+      s.answerButtonHeightPercent = clamp(Math.round(parsed.answerButtonHeightPercent), 5, 90);
+    } else if (typeof parsed.answerButtonHeight === "number") {
+      s.answerButtonHeightPercent = clamp(Math.round((parsed.answerButtonHeight / 75) * 100), 5, 90);
+    }
+    if (typeof parsed.notePositionSizePercent === "number") {
+      s.notePositionSizePercent = clamp(Math.round(parsed.notePositionSizePercent), 50, 200);
     }
     
     // Load volumes
