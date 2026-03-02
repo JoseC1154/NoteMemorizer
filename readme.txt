@@ -30,4 +30,5 @@ TODO:
 -when in landscape mode the and there is a game over the only thing on screen should be the questionBox and the menueToggle. the questionBox should be centered on screen.
 -When starting the app I would like to start with an image, then when the image is pressed it would take you to the game start.
 -the click to start should be the only thing showing before a game start.
--when a answer is correct could we have a the background flash an appropriate green tone to match the asthetic of the app then when wrong red .
+-when a answer is correct could we have a the background flash an appropriate green tone to match the asthetic of the app then when wrong red.
+-add infinity for the timer.
