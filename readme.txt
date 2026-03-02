@@ -32,3 +32,4 @@ TODO:
 -the click to start should be the only thing showing before a game start.
 -when a answer is correct could we have a the background flash an appropriate green tone to match the asthetic of the app then when wrong red.
 -add infinity for the timer.
+- update statistic to include latest updates.
