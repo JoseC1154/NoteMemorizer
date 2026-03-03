@@ -1,4 +1,4 @@
-import { ALL_KEYS, DIATONIC_DEGREES, CHROMATIC_DEGREES, SCALE_TYPES } from './constants.js';
+import { ALL_KEYS, DIATONIC_DEGREES, CHROMATIC_DEGREES, SCALE_TYPES, CHORD_TYPES } from './constants.js';
 
 // =========================
 // Settings (localStorage)
@@ -15,6 +15,7 @@ export const defaultSettings = {
   degreeMode: "diatonic", // "diatonic" | "chromatic"
   gameMode: "practice", // "practice" | "progression"
   questionMode: "degreeToNote", // "degreeToNote" | "noteToDegree" | "scaleRecognition" | "finishScale"
+  chordTypesEnabled: ["majorTriad", "minorTriad"],
   progressionDifficulty: "moderate", // "easy" | "moderate" | "hard"
   audioOn: true,
   tickOn: true,
@@ -55,6 +56,7 @@ export function loadSettings() {
     const parsed = JSON.parse(raw);
 
     const s = structuredClone(baseSettings);
+    if (!Array.isArray(s.chordTypesEnabled)) s.chordTypesEnabled = [...defaultSettings.chordTypesEnabled];
     if (typeof s.guitarNeckThicknessPercent !== "number") s.guitarNeckThicknessPercent = 100;
     if (typeof s.bassNeckThicknessPercent !== "number") s.bassNeckThicknessPercent = 100;
     if (typeof s.questionBoxHeightPercent !== "number") s.questionBoxHeightPercent = 100;
@@ -81,7 +83,7 @@ export function loadSettings() {
     if (parsed.answerInputMode === "choices" || parsed.answerInputMode === "instrument" || parsed.answerInputMode === "both") {
       s.answerInputMode = parsed.answerInputMode;
     }
-    if (parsed.questionMode === "degreeToNote" || parsed.questionMode === "noteToDegree" || parsed.questionMode === "scaleRecognition" || parsed.questionMode === "finishScale") {
+    if (parsed.questionMode === "degreeToNote" || parsed.questionMode === "noteToDegree" || parsed.questionMode === "scaleRecognition" || parsed.questionMode === "finishScale" || parsed.questionMode === "chordBuilder") {
       s.questionMode = parsed.questionMode;
     }
     if (parsed.gameMode === "practice" || parsed.gameMode === "progression") {
@@ -95,6 +97,9 @@ export function loadSettings() {
     if (typeof parsed.ambientOn === "boolean") s.ambientOn = parsed.ambientOn;
     if (Array.isArray(parsed.scaleTypesEnabled)) {
       s.scaleTypesEnabled = parsed.scaleTypesEnabled.filter(st => SCALE_TYPES[st]);
+    }
+    if (Array.isArray(parsed.chordTypesEnabled)) {
+      s.chordTypesEnabled = parsed.chordTypesEnabled.filter(ct => CHORD_TYPES[ct]);
     }
     if (typeof parsed.modalDuration === "number") {
       s.modalDuration = clamp(Math.round(parsed.modalDuration), 500, 5000);
@@ -133,6 +138,7 @@ export function loadSettings() {
     // Cannot allow zero keys (fallback to all)
     if (!s.keysEnabled.length) s.keysEnabled = [...ALL_KEYS];
     if (!s.degreesEnabled.length) s.degreesEnabled = [...DIATONIC_DEGREES, ...CHROMATIC_DEGREES];
+    if (!Array.isArray(s.chordTypesEnabled) || !s.chordTypesEnabled.length) s.chordTypesEnabled = ["majorTriad"];
 
     return s;
   } catch {
@@ -144,6 +150,9 @@ export function saveSettings(settings) {
   // Cannot allow zero keys (fallback to all)
   if (!settings.keysEnabled.length) settings.keysEnabled = [...ALL_KEYS];
   if (!settings.degreesEnabled.length) settings.degreesEnabled = [...DIATONIC_DEGREES, ...CHROMATIC_DEGREES];
+  if (!Array.isArray(settings.chordTypesEnabled) || !settings.chordTypesEnabled.length) {
+    settings.chordTypesEnabled = ["majorTriad"];
+  }
   localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
 }
 

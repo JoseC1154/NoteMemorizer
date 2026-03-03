@@ -16,10 +16,10 @@
 -Audio volume increased 4x for better audibility
 -Note to Degree mode: Shows piano and asks "Eb is what degree in the Db major scale?"
 -add infinity for the timer.
+-create timed chord builder.
 
 TODO:
 -awards after broken record.
--create timed chord builder.
 -As the streaks build the seconds get shorter but if the user continue to answer incorrectly additional seconds should be added. (or not)
 -quiz to test if user is ready for chord mode.
 -multi language.

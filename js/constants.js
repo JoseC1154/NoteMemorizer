@@ -39,6 +39,26 @@ export const SCALE_TYPE_NAMES = {
   melodicMinor: "Melodic Minor"
 };
 
+export const CHORD_TYPES = {
+  majorTriad: [0, 4, 7],
+  minorTriad: [0, 3, 7],
+  diminishedTriad: [0, 3, 6],
+  augmentedTriad: [0, 4, 8],
+  dominant7: [0, 4, 7, 10],
+  major7: [0, 4, 7, 11],
+  minor7: [0, 3, 7, 10]
+};
+
+export const CHORD_TYPE_NAMES = {
+  majorTriad: "Major Triad",
+  minorTriad: "Minor Triad",
+  diminishedTriad: "Diminished Triad",
+  augmentedTriad: "Augmented Triad",
+  dominant7: "Dominant 7",
+  major7: "Major 7",
+  minor7: "Minor 7"
+};
+
 // Degree modes
 export const DIATONIC_DEGREES = ["1","2","3","4","5","6","7"];
 export const CHROMATIC_DEGREES = ["1","b2","2","#2","b3","3","4","#4","b5","5","#5","b6","6","b7","7"];

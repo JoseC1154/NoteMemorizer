@@ -4,9 +4,21 @@
 
 const STRING_TUNING = ["G", "D", "A", "E"]; // High G to low E (4-string bass)
 const TOTAL_FRETS = 24;
-const VISIBLE_FRETS = 5;
+const DEFAULT_VISIBLE_FRETS = 5;
 const MAX_FRET_RATIO = 1 - (1 / Math.pow(2, TOTAL_FRETS / 12));
-const VISIBLE_FRET_RATIO = 1 - (1 / Math.pow(2, VISIBLE_FRETS / 12));
+
+function fretRatioForCount(fretCount) {
+  return 1 - (1 / Math.pow(2, fretCount / 12));
+}
+
+function getVisibleFretCount(bassFretboard) {
+  const rect = bassFretboard.getBoundingClientRect();
+  if (!rect.width || !rect.height) return DEFAULT_VISIBLE_FRETS;
+
+  const targetPxPerFret = Math.max(72, rect.height * 0.44);
+  const approx = Math.round(rect.width / targetPxPerFret);
+  return Math.max(DEFAULT_VISIBLE_FRETS, Math.min(TOTAL_FRETS, approx));
+}
 
 function fretLeftPercent(fretNumber) {
   if (fretNumber <= 0) return 0;
@@ -22,7 +34,9 @@ export function generateBassFretboard(bassFretboard, NOTE_TO_PC, pcToNote) {
 
   const neck = document.createElement("div");
   neck.className = "bassNeck";
-  neck.style.width = `${(MAX_FRET_RATIO / VISIBLE_FRET_RATIO) * 100}%`;
+  const visibleFrets = getVisibleFretCount(bassFretboard);
+  const visibleFretRatio = fretRatioForCount(visibleFrets);
+  neck.style.width = `${(MAX_FRET_RATIO / visibleFretRatio) * 100}%`;
   bassFretboard.appendChild(neck);
 
   const nut = document.createElement("div");
@@ -78,7 +92,15 @@ export function generateBassFretboard(bassFretboard, NOTE_TO_PC, pcToNote) {
     for (let fret = 0; fret <= TOTAL_FRETS; fret++) {
       const position = document.createElement("div");
       position.className = "bassPosition";
-      position.style.left = `${fretLeftPercent(fret)}%`;
+
+      let xPercent = 0;
+      if (fret > 0) {
+        const fretStart = fretLeftPercent(fret);
+        const fretEnd = fret < TOTAL_FRETS ? fretLeftPercent(fret + 1) : fretLeftPercent(fret);
+        xPercent = fret < TOTAL_FRETS ? (fretStart + fretEnd) / 2 : fretStart;
+      }
+
+      position.style.left = `${xPercent}%`;
       position.style.top = (stringIndex / (STRING_TUNING.length - 1)) * 80 + 10 + "%";
 
       // Calculate note at this position

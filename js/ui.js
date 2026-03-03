@@ -1,6 +1,6 @@
 // UI rendering functions
 
-export function renderQuestion(state, settings, elQuestionText, elTimerBackground, SCALE_TYPE_NAMES) {
+export function renderQuestion(state, settings, elQuestionText, elTimerBackground, SCALE_TYPE_NAMES, CHORD_TYPE_NAMES = {}) {
   const q = state.current;
   if (!q) {
     elQuestionText.textContent = "Click to Start";
@@ -37,6 +37,16 @@ export function renderQuestion(state, settings, elQuestionText, elTimerBackgroun
       elQuestionText.textContent = `Finish the ${q.keyRoot} ${scaleTypeName} scale: ${shownNotes}${hiddenPattern ? ` - ${hiddenPattern}` : ""}.${hintText} Select any missing note.`;
     }
 
+  }
+  else if (settings.questionMode === "chordBuilder" && q.keyRoot && q.chordType) {
+    const chordTypeName = CHORD_TYPE_NAMES[q.chordType] || q.chordType;
+    const selected = Array.isArray(q.selectedNotes) ? q.selectedNotes : [];
+    const remaining = Array.isArray(q.remainingNotes) ? q.remainingNotes : [];
+    const solvedText = selected.length ? `Built: ${selected.join(" - ")}. ` : "";
+    const remainingText = remaining.length
+      ? `Find ${remaining.length} more note${remaining.length === 1 ? "" : "s"}.`
+      : "Chord complete!";
+    elQuestionText.textContent = `Build ${q.keyRoot} ${chordTypeName}. ${solvedText}${remainingText}`;
   }
   // Note to Degree mode
   else if (settings.questionMode === "noteToDegree" && q.questionNote && q.scaleType) {
@@ -505,5 +515,44 @@ export function initScaleToggles(scaleToggles, SCALE_TYPES, SCALE_TYPE_NAMES, se
     });
     
     scaleToggles.appendChild(toggle);
+  });
+}
+
+export function initChordToggles(chordToggles, CHORD_TYPES, CHORD_TYPE_NAMES, settings, saveSettingsToStorage, soundDegreeToggle, getVolumeMultiplier) {
+  if (!chordToggles) return;
+
+  chordToggles.innerHTML = '';
+
+  Object.keys(CHORD_TYPES).forEach(chordKey => {
+    const toggle = document.createElement('button');
+    toggle.className = 'scaleToggle';
+    toggle.textContent = CHORD_TYPE_NAMES[chordKey] || chordKey;
+    toggle.dataset.chord = chordKey;
+
+    if (settings.chordTypesEnabled.includes(chordKey)) {
+      toggle.classList.add('active');
+    }
+
+    toggle.addEventListener('click', () => {
+      soundDegreeToggle(settings, getVolumeMultiplier);
+      const isActive = toggle.classList.contains('active');
+
+      if (isActive) {
+        toggle.classList.remove('active');
+        settings.chordTypesEnabled = settings.chordTypesEnabled.filter(c => c !== chordKey);
+      } else {
+        toggle.classList.add('active');
+        settings.chordTypesEnabled.push(chordKey);
+      }
+
+      if (settings.chordTypesEnabled.length === 0) {
+        toggle.classList.add('active');
+        settings.chordTypesEnabled = [chordKey];
+      }
+
+      saveSettingsToStorage(settings);
+    });
+
+    chordToggles.appendChild(toggle);
   });
 }

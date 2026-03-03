@@ -231,6 +231,10 @@
             <div class="segBtnLabel">Finish Scale</div>
             <div class="segBtnHint">Complete scales from partial + compound prompts</div>
           </button>
+          <button class="segBtn" id="modeChordBuilder" type="button" role="radio" aria-checked="false" data-gamemode="chordBuilder">
+            <div class="segBtnLabel">Chord Builder</div>
+            <div class="segBtnHint">Timed chord construction by note selection</div>
+          </button>
         </div>
       </section>
 
@@ -257,6 +261,12 @@
         <h3 class="settingLabel">Scale Types</h3>
         <p class="settingHint">Select which scale types to practice (for Note → Degree and Scale Recognition modes).</p>
         <div class="scaleToggles" id="scaleToggles" aria-label="Scale types to practice"></div>
+      </section>
+
+      <section class="settingGroup" id="chordTypeSection">
+        <h3 class="settingLabel">Chord Types</h3>
+        <p class="settingHint">Select which chord types to include in Chord Builder mode.</p>
+        <div class="scaleToggles" id="chordToggles" aria-label="Chord types to practice"></div>
       </section>
 
       <section class="settingGroup">

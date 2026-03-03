@@ -4,9 +4,21 @@
 
 const STRING_TUNING = ["E", "B", "G", "D", "A", "E"]; // High E to low E
 const TOTAL_FRETS = 24;
-const VISIBLE_FRETS = 5;
+const DEFAULT_VISIBLE_FRETS = 5;
 const MAX_FRET_RATIO = 1 - (1 / Math.pow(2, TOTAL_FRETS / 12));
-const VISIBLE_FRET_RATIO = 1 - (1 / Math.pow(2, VISIBLE_FRETS / 12));
+
+function fretRatioForCount(fretCount) {
+  return 1 - (1 / Math.pow(2, fretCount / 12));
+}
+
+function getVisibleFretCount(guitarFretboard) {
+  const rect = guitarFretboard.getBoundingClientRect();
+  if (!rect.width || !rect.height) return DEFAULT_VISIBLE_FRETS;
+
+  const targetPxPerFret = Math.max(72, rect.height * 0.44);
+  const approx = Math.round(rect.width / targetPxPerFret);
+  return Math.max(DEFAULT_VISIBLE_FRETS, Math.min(TOTAL_FRETS, approx));
+}
 
 function fretLeftPercent(fretNumber) {
   if (fretNumber <= 0) return 0;
@@ -22,7 +34,9 @@ export function generateGuitarFretboard(guitarFretboard, NOTE_TO_PC, pcToNote) {
 
   const neck = document.createElement("div");
   neck.className = "guitarNeck";
-  neck.style.width = `${(MAX_FRET_RATIO / VISIBLE_FRET_RATIO) * 100}%`;
+  const visibleFrets = getVisibleFretCount(guitarFretboard);
+  const visibleFretRatio = fretRatioForCount(visibleFrets);
+  neck.style.width = `${(MAX_FRET_RATIO / visibleFretRatio) * 100}%`;
   guitarFretboard.appendChild(neck);
 
   const nut = document.createElement("div");
@@ -56,15 +70,15 @@ export function generateGuitarFretboard(guitarFretboard, NOTE_TO_PC, pcToNote) {
     const fretEnd = fretLeftPercent(fret);
     const center = (fretStart + fretEnd) / 2;
 
-    const inlayTop = document.createElement("div");
-    inlayTop.className = "guitarInlay double top";
-    inlayTop.style.left = `${center}%`;
-    neck.appendChild(inlayTop);
+    const inlay1 = document.createElement("div");
+    inlay1.className = "guitarInlay";
+    inlay1.style.left = `calc(${center}% - 8px)`;
+    neck.appendChild(inlay1);
 
-    const inlayBottom = document.createElement("div");
-    inlayBottom.className = "guitarInlay double bottom";
-    inlayBottom.style.left = `${center}%`;
-    neck.appendChild(inlayBottom);
+    const inlay2 = document.createElement("div");
+    inlay2.className = "guitarInlay";
+    inlay2.style.left = `calc(${center}% + 8px)`;
+    neck.appendChild(inlay2);
   });
 
   // Strings and note positions
@@ -82,9 +96,12 @@ export function generateGuitarFretboard(guitarFretboard, NOTE_TO_PC, pcToNote) {
       const notePc = (openPc + fret) % 12;
       const noteName = pcToNote(notePc);
 
-      const fretStart = fret === 0 ? 0 : fretLeftPercent(fret - 1);
-      const fretEnd = fretLeftPercent(fret);
-      const xPercent = fret === 0 ? 0.8 : (fretStart + fretEnd) / 2;
+      let xPercent = 0;
+      if (fret > 0) {
+        const fretStart = fretLeftPercent(fret);
+        const fretEnd = fret < TOTAL_FRETS ? fretLeftPercent(fret + 1) : fretLeftPercent(fret);
+        xPercent = fret < TOTAL_FRETS ? (fretStart + fretEnd) / 2 : fretStart;
+      }
 
       const position = document.createElement("div");
       position.className = "guitarPosition";

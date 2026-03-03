@@ -7,6 +7,8 @@ import {
   MAJOR_SCALE_OFFSETS,
   SCALE_TYPES,
   SCALE_TYPE_NAMES,
+  CHORD_TYPES,
+  CHORD_TYPE_NAMES,
   DIATONIC_DEGREES,
   CHROMATIC_DEGREES,
   CHROMATIC_TO_OFFSET,
@@ -88,7 +90,8 @@ import {
   renderKeyToggles,
   renderDegreeToggles,
   renderStats,
-  initScaleToggles
+  initScaleToggles,
+  initChordToggles
 } from './ui.js';
 
 import {
@@ -208,6 +211,7 @@ const {
   inputChoices,
   inputInstrument,
   inputBoth,
+  modeChordBuilder,
   toggleSound,
   toggleTick,
   toggleAmbient,
@@ -227,7 +231,9 @@ const {
   bassNotesBtn,
   bassQuestionOverlay,
   scaleToggles,
-  scaleTypeSection
+  scaleTypeSection,
+  chordToggles,
+  chordTypeSection
 } = dom;
 
 // Load settings from storage
@@ -399,10 +405,10 @@ updateResponsiveNoteBaseSizes();
     }
   };
 
-  const canInstrumentAnswerCurrentMode = () => settings.questionMode === "degreeToNote" || settings.questionMode === "finishScale";
+  const canInstrumentAnswerCurrentMode = () => settings.questionMode === "degreeToNote" || settings.questionMode === "finishScale" || settings.questionMode === "chordBuilder";
 
   const shouldShowInstrument = () => {
-    if (settings.questionMode === "degreeToNote" || settings.questionMode === "noteToDegree" || settings.questionMode === "scaleRecognition" || settings.questionMode === "finishScale") return true;
+    if (settings.questionMode === "degreeToNote" || settings.questionMode === "noteToDegree" || settings.questionMode === "scaleRecognition" || settings.questionMode === "finishScale" || settings.questionMode === "chordBuilder") return true;
     if (canInstrumentAnswerCurrentMode() && settings.answerInputMode !== "choices") return true;
     return false;
   };
@@ -666,6 +672,8 @@ updateResponsiveNoteBaseSizes();
       active.clear(active.surface);
     }
 
+    applyChordBuilderSelectionHighlight(active.surface);
+
     renderInstrumentExpandedState();
     renderExpandedQuestionOverlay();
     syncAnswerInputAvailability();
@@ -744,9 +752,42 @@ updateResponsiveNoteBaseSizes();
     });
   }
 
+  function applyChordBuilderSelectionHighlight(surface) {
+    if (settings.questionMode !== "chordBuilder" || !state.active || !state.current || !surface) return;
+    if (!Array.isArray(state.current.selectedNotes)) return;
+
+    const selectedNotes = new Set(state.current.selectedNotes);
+
+    let noteSelector = ".pianoKey";
+    if (surface === guitarFretboard) noteSelector = ".guitarPosition";
+    if (surface === bassFretboard) noteSelector = ".bassPosition";
+
+    const noteElements = surface.querySelectorAll(noteSelector);
+    noteElements.forEach(el => {
+      el.classList.remove("chordSelected");
+      const note = el.dataset.note;
+      if (!note) return;
+
+      if (selectedNotes.has(note)) {
+        el.classList.add("chordSelected");
+      }
+    });
+  }
+
   function getCorrectValueForQuestion(question, questionMode) {
     if (!question) return "";
     return questionMode === "noteToDegree" ? question.correctDegree : question.correctNote;
+  }
+
+  function syncChordChoiceProgress() {
+    if (settings.questionMode !== "chordBuilder" || !state.current || !Array.isArray(state.current.selectedNotes)) return;
+    const selected = new Set(state.current.selectedNotes);
+    answerButtons.forEach(btn => {
+      const note = btn.dataset.note;
+      if (!note || !selected.has(note)) return;
+      btn.classList.add('correctAnswer');
+      btn.disabled = true;
+    });
   }
 
   function updateStudyBackButtonState() {
@@ -808,7 +849,7 @@ updateResponsiveNoteBaseSizes();
       questionMode: snapshot.questionMode
     };
 
-    renderQuestion(state, settingsForSnapshot, elQuestionText, elTimerBackground, SCALE_TYPE_NAMES);
+    renderQuestion(state, settingsForSnapshot, elQuestionText, elTimerBackground, SCALE_TYPE_NAMES, CHORD_TYPE_NAMES);
     renderAnswers(state, answerButtons);
 
     const correctValue = getCorrectValueForQuestion(state.current, snapshot.questionMode);
@@ -837,7 +878,7 @@ updateResponsiveNoteBaseSizes();
     state.pausedByStudyBack = false;
     state.paused = false;
 
-    renderQuestion(state, settings, elQuestionText, elTimerBackground, SCALE_TYPE_NAMES);
+    renderQuestion(state, settings, elQuestionText, elTimerBackground, SCALE_TYPE_NAMES, CHORD_TYPE_NAMES);
     renderAnswers(state, answerButtons);
     lockAnswers(state, answerButtons, false);
     syncAnswerInputAvailability();
@@ -915,7 +956,7 @@ updateResponsiveNoteBaseSizes();
     const activeView = getActiveVisualization();
     const result = nextQuestion(
       state, settings, ALL_KEYS, DIATONIC_DEGREES, CHROMATIC_DEGREES, NOTE_TO_PC, MAJOR_SCALE_OFFSETS,
-      CHROMATIC_TO_OFFSET, NOTE_LIST, SCALE_TYPES, SCALE_TYPE_NAMES, pcToNote, elQuestionText, elTimerBackground,
+      CHROMATIC_TO_OFFSET, NOTE_LIST, SCALE_TYPES, CHORD_TYPES, SCALE_TYPE_NAMES, CHORD_TYPE_NAMES, pcToNote, elQuestionText, elTimerBackground,
       answerButtons, elLevelInfo, activeView.surface, renderQuestion, renderAnswers, renderLevelInfo, startTimerWrapper,
       activeView.update, activeView.highlight, getActiveInstrument()
     );
@@ -924,6 +965,7 @@ updateResponsiveNoteBaseSizes();
     renderExpandedQuestionOverlay();
 
     syncAnswerInputAvailability();
+    syncChordChoiceProgress();
     updateStudyBackButtonState();
     return result;
   };
@@ -1082,7 +1124,50 @@ updateResponsiveNoteBaseSizes();
     }
   };
   
-  const onAnswerClickWrapper = (btn) => onAnswerClick(state, btn, handleCorrectWrapper, handleWrongWrapper, settings);
+  const handleChordBuilderAnswer = (chosenNote, selectedElement = null) => {
+    if (!state.active || state.locked || !state.current || settings.questionMode !== "chordBuilder") return;
+    if (!Array.isArray(state.current.remainingNotes) || !Array.isArray(state.current.selectedNotes)) return;
+
+    if (state.current.selectedNotes.includes(chosenNote)) return;
+
+    const remainingIndex = state.current.remainingNotes.indexOf(chosenNote);
+    if (remainingIndex < 0) {
+      state.locked = true;
+      if (selectedElement) selectedElement.classList.add("wrongSelection");
+      setTimeout(() => {
+        if (selectedElement) selectedElement.classList.remove("wrongSelection");
+        state.locked = false;
+        handleWrongWrapper(chosenNote);
+      }, 320);
+      return;
+    }
+
+    state.current.remainingNotes.splice(remainingIndex, 1);
+    state.current.selectedNotes.push(chosenNote);
+
+    if (state.current.remainingNotes.length === 0) {
+      state.current.correctNote = chosenNote;
+      state.locked = true;
+      handleCorrectWrapper(chosenNote);
+      return;
+    }
+
+    state.current.correctNote = state.current.remainingNotes[0];
+    renderQuestion(state, settings, elQuestionText, elTimerBackground, SCALE_TYPE_NAMES, CHORD_TYPE_NAMES);
+    renderAnswers(state, answerButtons);
+    syncAnswerInputAvailability();
+    syncChordChoiceProgress();
+    renderInstrumentVisualization();
+    setStatusNeutral(elStatusPanel, elStatusText, `Good! ${state.current.remainingNotes.length} note${state.current.remainingNotes.length === 1 ? "" : "s"} left.`);
+  };
+
+  const onAnswerClickWrapper = (btn) => {
+    if (settings.questionMode === "chordBuilder") {
+      handleChordBuilderAnswer(btn.dataset.note, btn);
+      return;
+    }
+    onAnswerClick(state, btn, handleCorrectWrapper, handleWrongWrapper, settings);
+  };
 
   const onInstrumentAnswer = (chosen, selectedElement = null) => {
     if (!state.active || state.locked || !state.current || !areInstrumentAnswersEnabled()) return;
@@ -1102,6 +1187,11 @@ updateResponsiveNoteBaseSizes();
     const chosenPositionToken = (chosenString != null && chosenFret != null)
       ? `${chosenString}|${chosenFret}`
       : null;
+
+    if (settings.questionMode === "chordBuilder") {
+      handleChordBuilderAnswer(chosenNote, selectedElement);
+      return;
+    }
 
     const markWrongWithDelay = () => {
       stopTimerWrapper();
@@ -1157,7 +1247,7 @@ updateResponsiveNoteBaseSizes();
         state.current.correctDegree = state.current.targetDegree || state.current.correctDegree;
         state.current.degreeLabel = state.current.targetDegree || state.current.degreeLabel;
 
-        renderQuestion(state, settings, elQuestionText, elTimerBackground, SCALE_TYPE_NAMES);
+        renderQuestion(state, settings, elQuestionText, elTimerBackground, SCALE_TYPE_NAMES, CHORD_TYPE_NAMES);
         renderInstrumentVisualization();
         setStatusNeutral(elStatusPanel, elStatusText, "Good! Task 1 complete. Now finish task 2.");
         return;
@@ -1218,7 +1308,7 @@ updateResponsiveNoteBaseSizes();
         state.current.correctDegree = nextDegree;
         state.current.degreeLabel = nextDegree;
 
-        renderQuestion(state, settings, elQuestionText, elTimerBackground, SCALE_TYPE_NAMES);
+        renderQuestion(state, settings, elQuestionText, elTimerBackground, SCALE_TYPE_NAMES, CHORD_TYPE_NAMES);
         renderInstrumentVisualization();
         setStatusNeutral(elStatusPanel, elStatusText, `Good! ${state.current.remainingNotes.length} note${state.current.remainingNotes.length === 1 ? '' : 's'} left.`);
         return;
@@ -1329,6 +1419,9 @@ updateResponsiveNoteBaseSizes();
       modeNoteToDegree.setAttribute("aria-checked", settings.questionMode === "noteToDegree" ? "true" : "false");
       modeScaleRecognition.setAttribute("aria-checked", settings.questionMode === "scaleRecognition" ? "true" : "false");
       modeFinishScale.setAttribute("aria-checked", settings.questionMode === "finishScale" ? "true" : "false");
+      if (modeChordBuilder) {
+        modeChordBuilder.setAttribute("aria-checked", settings.questionMode === "chordBuilder" ? "true" : "false");
+      }
     }
 
     renderAnswerInputModeButtons();
@@ -1349,7 +1442,32 @@ updateResponsiveNoteBaseSizes();
     const degreePool = settings.degreeMode === "diatonic" ? DIATONIC_DEGREES : CHROMATIC_DEGREES;
     renderDegreeToggles(degreeToggles, degreePool, settings, getVolumeMultiplier, soundDegreeToggle);
     initScaleToggles(scaleToggles, SCALE_TYPES, SCALE_TYPE_NAMES, settings, saveSettingsToStorage, soundDegreeToggle, getVolumeMultiplier);
+    initChordToggles(chordToggles, CHORD_TYPES, CHORD_TYPE_NAMES, settings, saveSettingsToStorage, soundDegreeToggle, getVolumeMultiplier);
+    syncQuestionModeSections();
     btnCloseSettings.focus();
+  }
+
+  function syncQuestionModeSections() {
+    const degreesToPracticeSection = document.getElementById("degreesToPracticeSection");
+    const answerInputSection = document.getElementById("answerInputSection");
+    const isChordBuilder = settings.questionMode === "chordBuilder";
+    const isPractice = settings.gameMode === "practice";
+
+    if (degreesToPracticeSection) {
+      degreesToPracticeSection.style.display = isChordBuilder ? "none" : "block";
+    }
+    if (degreeModeSection) {
+      degreeModeSection.style.display = isPractice && !isChordBuilder ? "block" : "none";
+    }
+    if (scaleTypeSection) {
+      scaleTypeSection.style.display = isChordBuilder ? "none" : "block";
+    }
+    if (chordTypeSection) {
+      chordTypeSection.style.display = isChordBuilder ? "block" : "none";
+    }
+    if (answerInputSection) {
+      answerInputSection.style.display = "block";
+    }
   }
 
   function closeSettings() {
@@ -1423,6 +1541,7 @@ updateResponsiveNoteBaseSizes();
     if (degreeModeSection) {
       degreeModeSection.style.display = isPractice ? "block" : "none";
     }
+    syncQuestionModeSections();
   }
 
   function setProgressionDifficulty(difficulty) {
@@ -1746,6 +1865,7 @@ updateResponsiveNoteBaseSizes();
       normalizeLayoutPercents("guitarNeckThicknessPercent");
       updateLayoutTestingUI();
       applyLayoutTestingVars();
+      renderInstrumentVisualization();
     });
   }
 
@@ -1755,6 +1875,7 @@ updateResponsiveNoteBaseSizes();
       normalizeLayoutPercents("bassNeckThicknessPercent");
       updateLayoutTestingUI();
       applyLayoutTestingVars();
+      renderInstrumentVisualization();
     });
   }
 
@@ -1764,6 +1885,7 @@ updateResponsiveNoteBaseSizes();
       normalizeLayoutPercents("questionBoxHeightPercent");
       updateLayoutTestingUI();
       applyLayoutTestingVars();
+      renderInstrumentVisualization();
     });
   }
 
@@ -1773,6 +1895,7 @@ updateResponsiveNoteBaseSizes();
       normalizeLayoutPercents("answerButtonHeightPercent");
       updateLayoutTestingUI();
       applyLayoutTestingVars();
+      renderInstrumentVisualization();
     });
   }
 
@@ -1889,8 +2012,12 @@ updateResponsiveNoteBaseSizes();
     if (modeFinishScale) {
       modeFinishScale.setAttribute("aria-checked", mode === "finishScale" ? "true" : "false");
     }
+    if (modeChordBuilder) {
+      modeChordBuilder.setAttribute("aria-checked", mode === "chordBuilder" ? "true" : "false");
+    }
     renderInstrumentVisualization();
     syncAnswerInputAvailability();
+    syncQuestionModeSections();
     
     saveSettingsToStorage(settings);
   }
@@ -1999,6 +2126,12 @@ updateResponsiveNoteBaseSizes();
     modeFinishScale.addEventListener("click", () => {
       soundDegreeToggle(settings, getVolumeMultiplier);
       setQuestionMode("finishScale");
+    });
+  }
+  if (modeChordBuilder) {
+    modeChordBuilder.addEventListener("click", () => {
+      soundDegreeToggle(settings, getVolumeMultiplier);
+      setQuestionMode("chordBuilder");
     });
   }
 
@@ -2179,17 +2312,24 @@ updateResponsiveNoteBaseSizes();
   updatePlayPauseButtonState();
   
   initScaleToggles(scaleToggles, SCALE_TYPES, SCALE_TYPE_NAMES, settings, saveSettingsToStorage, soundDegreeToggle, getVolumeMultiplier);
+  initChordToggles(chordToggles, CHORD_TYPES, CHORD_TYPE_NAMES, settings, saveSettingsToStorage, soundDegreeToggle, getVolumeMultiplier);
+  syncQuestionModeSections();
   updateRotateHintVisibility();
 
   if (typeof window !== "undefined") {
     window.addEventListener('resize', () => {
       updateRotateHintVisibility();
+      renderInstrumentVisualization();
       updateResponsiveNoteBaseSizes();
     });
     window.addEventListener('orientationchange', () => {
       updateRotateHintVisibility();
+      renderInstrumentVisualization();
       updateResponsiveNoteBaseSizes();
-      setTimeout(updateResponsiveNoteBaseSizes, 120);
+      setTimeout(() => {
+        renderInstrumentVisualization();
+        updateResponsiveNoteBaseSizes();
+      }, 120);
     });
   }
 

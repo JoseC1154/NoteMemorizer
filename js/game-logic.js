@@ -181,7 +181,9 @@ export function nextQuestion(
   CHROMATIC_TO_OFFSET,
   NOTE_LIST,
   SCALE_TYPES,
+  CHORD_TYPES,
   SCALE_TYPE_NAMES,
+  CHORD_TYPE_NAMES,
   pcToNote,
   elQuestionText,
   elTimerBackground,
@@ -259,7 +261,68 @@ export function nextQuestion(
   const isScaleRecognition = settings.questionMode === "scaleRecognition";
   const isNoteToDegree = settings.questionMode === "noteToDegree";
   const isFinishScale = settings.questionMode === "finishScale";
+  const isChordBuilder = settings.questionMode === "chordBuilder";
   
+  if (isChordBuilder) {
+    const availableChordTypes = settings.chordTypesEnabled?.length
+      ? settings.chordTypesEnabled.filter(chordType => CHORD_TYPES[chordType])
+      : ["majorTriad"];
+    const chordType = pickRandom(availableChordTypes.length ? availableChordTypes : ["majorTriad"]);
+    const chordOffsets = CHORD_TYPES[chordType] || [0, 4, 7];
+    const rootPc = NOTE_TO_PC.get(keyRoot);
+    const chordNotes = Array.from(new Set(chordOffsets.map(offset => pcToNote(rootPc + offset))));
+
+    const remainingNotesForQuestion = [...chordNotes];
+    const selectedNotes = [];
+    correctNote = remainingNotesForQuestion[0];
+    correctDegree = chordType;
+    degreeLabel = `chord:${chordType}`;
+
+    const distractors = NOTE_LIST.filter(note => !chordNotes.includes(note));
+    shuffle(distractors);
+    options = shuffle([...chordNotes, ...distractors.slice(0, Math.max(0, 6 - chordNotes.length))]).slice(0, 6);
+
+    state.current = {
+      keyRoot,
+      degreeLabel,
+      correctNote,
+      correctDegree,
+      options,
+      scaleType: null,
+      questionNote: null,
+      finishType: null,
+      shownNotes: null,
+      hintNote: null,
+      sourceKeyRoot: null,
+      targetKeyRoot: null,
+      targetDegree: null,
+      targetScaleType: null,
+      pivotDegree: null,
+      pivotNote: null,
+      remainingNotes: remainingNotesForQuestion,
+      shownSteps: null,
+      remainingSteps: null,
+      shownPositionTokens: null,
+      hintStep: null,
+      totalSteps: chordNotes.length,
+      enforceOrder: false,
+      correctStep: null,
+      compoundStage: null,
+      compoundFirstNote: null,
+      compoundSecondNote: null,
+      compoundFirstDegree: null,
+      chordType,
+      chordNotes,
+      selectedNotes
+    };
+
+    renderQuestion(state, settings, elQuestionText, elTimerBackground, SCALE_TYPE_NAMES, CHORD_TYPE_NAMES);
+    renderAnswers(state, answerButtons);
+    renderLevelInfo(state, settings, elLevelInfo);
+    startTimerFn();
+    return;
+  }
+
   if (isFinishScale) {
     const availableScales = settings.scaleTypesEnabled.length ? settings.scaleTypesEnabled : ["major"];
     scaleType = pickRandom(availableScales);
@@ -487,7 +550,7 @@ export function nextQuestion(
     highlightQuestionNote(pianoKeyboard, questionNote);
   }
   
-  renderQuestion(state, settings, elQuestionText, elTimerBackground, SCALE_TYPE_NAMES);
+  renderQuestion(state, settings, elQuestionText, elTimerBackground, SCALE_TYPE_NAMES, CHORD_TYPE_NAMES);
   renderAnswers(state, answerButtons);
   renderLevelInfo(state, settings, elLevelInfo);
   startTimerFn();
@@ -1034,6 +1097,8 @@ export function onAnswerClick(state, btn, handleCorrectFn, handleWrongFn, settin
   if (settings.questionMode === "noteToDegree") {
     // In note-to-degree mode, check against correctDegree
     correct = state.current.correctDegree;
+  } else if (settings.questionMode === "chordBuilder") {
+    correct = state.current.correctNote;
   } else {
     // In all other modes, check against correctNote
     correct = state.current.correctNote;

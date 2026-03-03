@@ -102,6 +102,7 @@ export const dom = {
   inputChoices: document.getElementById("inputChoices"),
   inputInstrument: document.getElementById("inputInstrument"),
   inputBoth: document.getElementById("inputBoth"),
+  modeChordBuilder: document.getElementById("modeChordBuilder"),
 
   // Audio toggles
   toggleSound: document.getElementById("toggleSound"),
@@ -125,5 +126,7 @@ export const dom = {
   bassNotesBtn: document.getElementById("bassNotesBtn"),
   bassQuestionOverlay: document.getElementById("bassQuestionOverlay"),
   scaleToggles: document.getElementById("scaleToggles"),
-  scaleTypeSection: document.getElementById("scaleTypeSection")
+  scaleTypeSection: document.getElementById("scaleTypeSection"),
+  chordToggles: document.getElementById("chordToggles"),
+  chordTypeSection: document.getElementById("chordTypeSection")
 };
