@@ -1,4 +1,4 @@
- https://josec1154.github.io/NoteMemorizer/
+https://josec1154.github.io/NoteMemorizer/
 
 ✅ COMPLETED:
 -Piano visualization mode with keyboard display
@@ -34,3 +34,15 @@ TODO:
 -when a answer is correct could we have a the background flash an appropriate green tone to match the asthetic of the app then when wrong red.
 - update statistic to include latest updates.
 - in scale recognition mode, the user should be able to select the note on the instrument ui.
+
+/* Show feedback in landscape when instrument is expanded */
+body.gameActive .statusPanel:not([hidden]) {
+  display: block !important;
+  z-index: 10001;
+}
+
+body.gameActive .statusOverlay:not([hidden]) {
+  z-index: 10000;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: none;
+}

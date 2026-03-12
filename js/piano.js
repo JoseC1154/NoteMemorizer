@@ -5,7 +5,7 @@
 export function generatePianoKeys(pianoKeyboard, NOTE_TO_PC, NOTE_LIST, options = {}) {
   if (!pianoKeyboard) return;
 
-  const { fullRange = false } = options;
+  const { fullRange = false, octaveCount } = options;
   
   pianoKeyboard.innerHTML = '';
 
@@ -69,7 +69,7 @@ export function generatePianoKeys(pianoKeyboard, NOTE_TO_PC, NOTE_LIST, options 
   const whiteNotes = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
   // Black keys after: C, D, _, F, G, A, _
   const hasBlackAfter = [true, true, false, true, true, true, false];
-  const totalOctaves = 2;
+  const totalOctaves = octaveCount ?? 2;
   const whiteKeyCount = whiteNotes.length * totalOctaves; // 14 white keys
   const whiteKeyWidth = 100 / whiteKeyCount; // Percentage width per white key
   

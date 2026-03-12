@@ -417,7 +417,9 @@ updateResponsiveNoteBaseSizes();
       countdownValue: 0,
       timedSecondsLeft: 20,
       readyTimerId: null,
-      timedTimerId: null
+      timedTimerId: null,
+      dialogIndex: 0,
+      lastDialogStepLabel: -1
     }
   };
 
@@ -509,6 +511,8 @@ updateResponsiveNoteBaseSizes();
     state.teachMode.testAttempts = 0;
     state.teachMode.countdownValue = 0;
     state.teachMode.timedSecondsLeft = 20;
+    state.teachMode.dialogIndex = 0;
+    state.teachMode.lastDialogStepLabel = -1;
   }
 
   function startTeachTimedTest() {
@@ -603,85 +607,163 @@ updateResponsiveNoteBaseSizes();
     const stepLabel = typeof q.teachStepIndex === "number" ? q.teachStepIndex + 1 : 1;
     const keyNumber = (state.teachMode.keyIndex || 0) + 1;
     const activeKeyCount = Math.max(1, state.teachMode.keyQueue.length || 1);
-    const isFirstLesson = phase === "teach" && state.teachMode.keyIndex === 0 && stepLabel === 1;
-    const keyContext = `There are 12 major keys in music. You are on key ${keyNumber}/${activeKeyCount}: ${q.keyRoot} major.`;
-    let summaryText = "";
-    if (phase === "teach") {
-      summaryText = `${keyContext} Lesson step ${stepLabel}/8. Everything here is intervals and spacing between notes.`;
-    } else if (phase === "ready") {
+
+    const applyTeachVisible = () => {
+      if (elQuestionBox) {
+        elQuestionBox.classList.remove("reviewVisible");
+        elQuestionBox.classList.add("teachVisible");
+      }
+    };
+
+    if (phase === "ready") {
       const countdownWord = state.teachMode.countdownValue >= 3 ? "Ready" : (state.teachMode.countdownValue === 2 ? "Set" : "Go");
-      summaryText = `${keyContext} ${countdownWord}! Timed test is about to start. Complete the scale in order within 20 seconds.`;
-    } else {
-      summaryText = `${keyContext} Timed Test step ${stepLabel}/8. Time left: ${state.teachMode.timedSecondsLeft}s.`;
+      questionSuggestions.hidden = false;
+      questionSuggestions.innerHTML = `
+        <div class="teachModePanel">
+          <p class="teachSummary">${countdownWord}! Timed test is about to start. Build ${q.keyRoot} major in order within 20 seconds.</p>
+        </div>
+      `;
+      applyTeachVisible();
+      return;
     }
 
-    let teachButtons = "";
-    if (phase === "teach") {
-      teachButtons = `<button class="btn secondary" id="teachNextBtn" type="button">${stepLabel === 8 ? "Ready For Timed Test" : "Next Note"}</button>`;
-    } else if (phase === "timed") {
-      teachButtons = `<button class="btn secondary" id="teachNextBtn" type="button">Restart Timed Test</button>`;
+    if (phase === "timed") {
+      questionSuggestions.hidden = false;
+      questionSuggestions.innerHTML = `
+        <div class="teachModePanel">
+          <p class="teachSummary">Timed Test – ${q.keyRoot} major. Step ${stepLabel}/8. ${state.teachMode.timedSecondsLeft}s left.</p>
+          <div class="teachControls">
+            <button class="btn secondary" id="teachNextBtn" type="button">Restart Timed Test</button>
+            <button class="btn" id="teachReplayBtn" type="button">Replay</button>
+          </div>
+        </div>
+      `;
+      applyTeachVisible();
+
+      const timedNextBtn = document.getElementById("teachNextBtn");
+      if (timedNextBtn) {
+        timedNextBtn.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          soundButtonClick(settings, getVolumeMultiplier);
+          state.teachMode.stepIndex = 0;
+          state.teachMode.testAttempts += 1;
+          state.teachMode.timedSecondsLeft = 20;
+          nextQuestionWrapper();
+        });
+      }
+
+      const timedReplayBtn = document.getElementById("teachReplayBtn");
+      if (timedReplayBtn) {
+        timedReplayBtn.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          soundButtonClick(settings, getVolumeMultiplier);
+          state.teachMode.stepIndex = 0;
+          state.teachMode.testAttempts += 1;
+          state.teachMode.timedSecondsLeft = 20;
+          nextQuestionWrapper();
+        });
+      }
+      return;
     }
+
+    const isFirstLesson = state.teachMode.keyIndex === 0 && stepLabel === 1;
+    const sentences = [];
+    if (isFirstLesson) {
+      sentences.push(`Welcome! There are 12 keys in music. You are on key ${keyNumber}/${activeKeyCount}: <strong>${q.keyRoot} major</strong>.`);
+      sentences.push(`Watch the highlighted key on the instrument and read its note name.`);
+      sentences.push(`Press <em>Next Note</em> to hear and advance to the next step.`);
+      sentences.push(`After all 8 steps, beat the 20-second timed test to unlock the next key.`);
+    }
+    sentences.push(`Key ${keyNumber}/${activeKeyCount}: <strong>${q.keyRoot} major</strong> — Lesson step ${stepLabel}/8.`);
+    sentences.push(`Everything here is about intervals — the spacing between notes.`);
+
+    if (state.teachMode.lastDialogStepLabel !== stepLabel) {
+      state.teachMode.dialogIndex = 0;
+      state.teachMode.lastDialogStepLabel = stepLabel;
+    }
+
+    const total = sentences.length;
+    const idx = Math.max(0, Math.min(state.teachMode.dialogIndex, total - 1));
+    const isLast = idx >= total - 1;
+    const hasPrev = idx > 0;
+    const actionLabel = stepLabel === 8 ? "Ready For Timed Test" : "Next Note";
 
     questionSuggestions.hidden = false;
     questionSuggestions.innerHTML = `
       <div class="teachModePanel">
-        ${isFirstLesson ? `
-          <div class="teachTutorial">
-            <strong>Quick Tutorial</strong>
-            <p>1. Watch the highlighted key and read its note name.</p>
-            <p>2. Press <em>Next Note</em> to hear and see the next interval step.</p>
-            <p>3. After the lesson, beat the 20-second timed test to unlock the next key.</p>
+        <p class="teachSummary">${sentences[idx]}</p>
+        <div class="teachDialogNav">
+          <button class="btn teachNavBtn" id="teachPrevBtn" type="button" ${!hasPrev ? "disabled" : ""}>&#8249; Back</button>
+          <span class="teachDialogCount">${idx + 1} / ${total}</span>
+          ${!isLast
+            ? `<button class="btn teachNavBtn" id="teachFwdBtn" type="button">Next &#8250;</button>`
+            : `<button class="btn teachNavBtn" id="teachFwdBtn" type="button" style="visibility:hidden" aria-hidden="true">Next &#8250;</button>`
+          }
+        </div>
+        ${isLast ? `
+          <div class="teachControls">
+            <button class="btn secondary" id="teachNextBtn" type="button">${actionLabel}</button>
+            <button class="btn" id="teachReplayBtn" type="button">Replay</button>
           </div>
         ` : ""}
-        <p class="teachSummary">${summaryText}</p>
-        <div class="teachControls">
-          ${teachButtons}
-          <button class="btn" id="teachReplayBtn" type="button">Replay</button>
-        </div>
       </div>
     `;
-    if (elQuestionBox) {
-      elQuestionBox.classList.remove("reviewVisible");
-      elQuestionBox.classList.add("teachVisible");
-    }
+    applyTeachVisible();
 
-    const teachNextBtn = document.getElementById("teachNextBtn");
-    if (teachNextBtn) {
-      teachNextBtn.addEventListener("click", (e) => {
+    const prevBtn = document.getElementById("teachPrevBtn");
+    const fwdBtn = document.getElementById("teachFwdBtn");
+
+    if (prevBtn) {
+      prevBtn.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
         soundButtonClick(settings, getVolumeMultiplier);
-        if (phase === "teach") {
+        if (state.teachMode.dialogIndex > 0) {
+          state.teachMode.dialogIndex -= 1;
+          renderTeachMajorScaleControls();
+        }
+      });
+    }
+
+    if (fwdBtn && !isLast) {
+      fwdBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        soundButtonClick(settings, getVolumeMultiplier);
+        if (state.teachMode.dialogIndex < total - 1) {
+          state.teachMode.dialogIndex += 1;
+          renderTeachMajorScaleControls();
+        }
+      });
+    }
+
+    if (isLast) {
+      const teachNextBtn = document.getElementById("teachNextBtn");
+      if (teachNextBtn) {
+        teachNextBtn.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          soundButtonClick(settings, getVolumeMultiplier);
           if (state.teachMode.stepIndex < 7) {
             state.teachMode.stepIndex += 1;
             nextQuestionWrapper();
           } else {
             startTeachReadySetGo();
-            return;
           }
-        } else if (phase === "timed") {
-          state.teachMode.stepIndex = 0;
-          state.teachMode.testAttempts += 1;
-          state.teachMode.timedSecondsLeft = 20;
-          nextQuestionWrapper();
-          return;
-        }
-      });
-    }
+        });
+      }
 
-    const teachReplayBtn = document.getElementById("teachReplayBtn");
-    if (teachReplayBtn) {
-      teachReplayBtn.addEventListener("click", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        soundButtonClick(settings, getVolumeMultiplier);
-        if (phase === "timed") {
-          state.teachMode.stepIndex = 0;
-          state.teachMode.testAttempts += 1;
-          state.teachMode.timedSecondsLeft = 20;
-        }
-        nextQuestionWrapper();
-      });
+      const teachReplayBtn = document.getElementById("teachReplayBtn");
+      if (teachReplayBtn) {
+        teachReplayBtn.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          soundButtonClick(settings, getVolumeMultiplier);
+          nextQuestionWrapper();
+        });
+      }
     }
   }
 
@@ -804,7 +886,7 @@ updateResponsiveNoteBaseSizes();
     return {
       container: pianoContainer,
       surface: pianoKeyboard,
-      generate: () => generatePianoKeys(pianoKeyboard, NOTE_TO_PC, NOTE_LIST, { fullRange: state.instrumentExpanded }),
+      generate: () => generatePianoKeys(pianoKeyboard, NOTE_TO_PC, NOTE_LIST, { octaveCount: 2 }),
       update: (surface, keyRoot, scaleType, scaleTypes, noteToPc, pcToNoteFn) =>
         updatePianoVisualization(surface, keyRoot, scaleType, scaleTypes, noteToPc, pcToNoteFn),
       highlight: (surface, note) => highlightQuestionNote(surface, note),
@@ -857,6 +939,15 @@ updateResponsiveNoteBaseSizes();
       elMain.classList.toggle('instrument-view-expanded', expanded);
     }
 
+    // Move answer grid into expanded container so they share the same z-level
+    if (elAnswerGrid) {
+      if (expanded && active.container) {
+        active.container.appendChild(elAnswerGrid);
+      } else if (!expanded && elMain && elAnswerGrid.parentElement !== elMain) {
+        elMain.appendChild(elAnswerGrid);
+      }
+    }
+
     applyExpandedNoteLabels();
     renderExpandedQuestionOverlay();
   }
@@ -866,25 +957,7 @@ updateResponsiveNoteBaseSizes();
     if (state.instrumentExpanded === shouldExpand) return;
 
     state.instrumentExpanded = shouldExpand;
-
-    if (shouldExpand) {
-      if (state.active && !state.paused) {
-        state.paused = true;
-        state.pausedByInstrumentExpand = true;
-        stopTimerWrapper();
-        lockAnswers(state, answerButtons, true);
-      }
-    } else if (state.pausedByInstrumentExpand && state.active) {
-      state.pausedByInstrumentExpand = false;
-      if (state.pausedByUser || state.pausedByStudyBack) {
-        state.paused = true;
-        lockAnswers(state, answerButtons, true);
-      } else {
-        state.paused = false;
-        lockAnswers(state, answerButtons, false);
-        startTimerWrapper();
-      }
-    }
+    state.pausedByInstrumentExpand = false;
 
     renderInstrumentVisualization();
   }
@@ -1250,6 +1323,10 @@ updateResponsiveNoteBaseSizes();
       activeView.update, activeView.highlight, getActiveInstrument()
     );
 
+    // Re-render instrument visualization to update scale shading and highlights
+    // on the active surface (especially needed for expanded view and guitar/bass)
+    renderInstrumentVisualization();
+
     applyFinishScaleMentionedHighlight(activeView.surface);
     renderExpandedQuestionOverlay();
 
@@ -1269,6 +1346,10 @@ updateResponsiveNoteBaseSizes();
   
   const endGameWrapper = (message) => {
     clearTeachModeTimers();
+    // Collapse expanded view before ending so answer grid returns to .main
+    if (state.instrumentExpanded) {
+      setInstrumentExpanded(false);
+    }
     endGame(
       state, settings, message, answerButtons, elTimerBackground, elQuestionText, lockAnswers, updateRiskVisual,
       getStats, saveStats, flashStatus, elStatusPanel, elStatusText, soundGameOver, getVolumeMultiplier,
@@ -1460,7 +1541,25 @@ updateResponsiveNoteBaseSizes();
   };
 
   const onInstrumentAnswer = (chosen, selectedElement = null) => {
-    if (!state.active || state.locked || !state.current || !areInstrumentAnswersEnabled()) return;
+    if (!state.active || state.locked || !state.current) return;
+
+    if (settings.questionMode === "scaleRecognition") {
+      const chosenNote = typeof chosen === "string" ? chosen : chosen?.note;
+      if (!chosenNote) return;
+
+      if (chosenNote === state.current.correctNote) {
+        handleCorrectWrapper(chosenNote);
+      } else {
+        if (selectedElement) {
+          selectedElement.classList.add("wrongSelection");
+          setTimeout(() => selectedElement.classList.remove("wrongSelection"), 600);
+        }
+        handleWrongWrapper(chosenNote);
+      }
+      return;
+    }
+
+    if (!areInstrumentAnswersEnabled()) return;
 
     if (settings.questionMode === "teachMajorScale") {
       const chosenNote = typeof chosen === "string" ? chosen : chosen?.note;
