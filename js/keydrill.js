@@ -244,6 +244,9 @@ if (settings.questionMode === "degreeToNote" && settings.answerInputMode === "ch
 if (settings.questionMode === "finishScale" && settings.answerInputMode === "choices") {
   settings.answerInputMode = "instrument";
 }
+if (settings.questionMode === "teachMajorScale") {
+  settings.answerInputMode = "instrument";
+}
 
 function applyLayoutTestingVars() {
   const instrumentPct = settings.instrument === "bass"
@@ -402,13 +405,26 @@ updateResponsiveNoteBaseSizes();
       currentMode: "diatonic", // "diatonic" | "chromatic"
       remainingKeys: [],
       levelStreak: 0 // streak for current level (needs 30 to advance)
+    },
+
+    // Teach Major Scale mode state
+    teachMode: {
+      keyQueue: [],
+      keyIndex: 0,
+      phase: "teach", // "teach" | "ready" | "timed"
+      stepIndex: 0,
+      testAttempts: 0,
+      countdownValue: 0,
+      timedSecondsLeft: 20,
+      readyTimerId: null,
+      timedTimerId: null
     }
   };
 
-  const canInstrumentAnswerCurrentMode = () => settings.questionMode === "degreeToNote" || settings.questionMode === "finishScale" || settings.questionMode === "chordBuilder";
+  const canInstrumentAnswerCurrentMode = () => settings.questionMode === "degreeToNote" || settings.questionMode === "finishScale" || settings.questionMode === "chordBuilder" || settings.questionMode === "teachMajorScale";
 
   const shouldShowInstrument = () => {
-    if (settings.questionMode === "degreeToNote" || settings.questionMode === "noteToDegree" || settings.questionMode === "scaleRecognition" || settings.questionMode === "finishScale" || settings.questionMode === "chordBuilder") return true;
+    if (settings.questionMode === "degreeToNote" || settings.questionMode === "noteToDegree" || settings.questionMode === "scaleRecognition" || settings.questionMode === "finishScale" || settings.questionMode === "chordBuilder" || settings.questionMode === "teachMajorScale") return true;
     if (canInstrumentAnswerCurrentMode() && settings.answerInputMode !== "choices") return true;
     return false;
   };
@@ -433,7 +449,8 @@ updateResponsiveNoteBaseSizes();
   function syncAnswerInputAvailability() {
     const choicesEnabled = areChoiceAnswersEnabled();
     const isFinishScaleMode = settings.questionMode === "finishScale";
-    const hideAnswerGrid = isFinishScaleMode;
+    const isTeachMajorScaleMode = settings.questionMode === "teachMajorScale";
+    const hideAnswerGrid = isFinishScaleMode || isTeachMajorScaleMode;
 
     if (elAnswerGrid) {
       if (hideAnswerGrid) {
@@ -462,8 +479,257 @@ updateResponsiveNoteBaseSizes();
     const isPortrait = typeof window !== "undefined"
       && typeof window.matchMedia === "function"
       && window.matchMedia("(orientation: portrait)").matches;
-    const show = !!(state.active && state.current && settings.questionMode === "finishScale" && isPortrait);
+    const show = !!(
+      state.active
+      && state.current
+      && (settings.questionMode === "finishScale" || settings.questionMode === "teachMajorScale")
+      && isPortrait
+    );
     elRotateHintBar.hidden = !show;
+  }
+
+  function clearTeachModeTimers() {
+    if (state.teachMode.readyTimerId) {
+      clearInterval(state.teachMode.readyTimerId);
+      state.teachMode.readyTimerId = null;
+    }
+    if (state.teachMode.timedTimerId) {
+      clearInterval(state.teachMode.timedTimerId);
+      state.teachMode.timedTimerId = null;
+    }
+  }
+
+  function initTeachModeState() {
+    clearTeachModeTimers();
+    const enabledKeys = settings.keysEnabled.length ? [...settings.keysEnabled] : [...ALL_KEYS];
+    state.teachMode.keyQueue = [...enabledKeys];
+    state.teachMode.keyIndex = 0;
+    state.teachMode.phase = "teach";
+    state.teachMode.stepIndex = 0;
+    state.teachMode.testAttempts = 0;
+    state.teachMode.countdownValue = 0;
+    state.teachMode.timedSecondsLeft = 20;
+  }
+
+  function startTeachTimedTest() {
+    clearTeachModeTimers();
+    state.teachMode.phase = "timed";
+    state.teachMode.stepIndex = 0;
+    state.teachMode.timedSecondsLeft = 20;
+    nextQuestionWrapper();
+
+    state.teachMode.timedTimerId = setInterval(() => {
+      if (!state.active || settings.questionMode !== "teachMajorScale" || state.teachMode.phase !== "timed") {
+        clearTeachModeTimers();
+        return;
+      }
+
+      state.teachMode.timedSecondsLeft -= 1;
+      if (state.teachMode.timedSecondsLeft <= 0) {
+        state.teachMode.timedSecondsLeft = 0;
+        clearTeachModeTimers();
+        state.teachMode.testAttempts += 1;
+        state.teachMode.phase = "teach";
+        state.teachMode.stepIndex = 0;
+        flashStatus(settings, elStatusPanel, elStatusText, false, "Time up. Quick review starts again for this key.");
+        nextQuestionWrapper();
+        return;
+      }
+
+      nextQuestionWrapper();
+    }, 1000);
+  }
+
+  function startTeachReadySetGo() {
+    clearTeachModeTimers();
+    state.teachMode.phase = "ready";
+    state.teachMode.stepIndex = 0;
+    state.teachMode.countdownValue = 3;
+    nextQuestionWrapper();
+
+    state.teachMode.readyTimerId = setInterval(() => {
+      if (!state.active || settings.questionMode !== "teachMajorScale" || state.teachMode.phase !== "ready") {
+        clearTeachModeTimers();
+        return;
+      }
+
+      state.teachMode.countdownValue -= 1;
+      if (state.teachMode.countdownValue <= 0) {
+        clearTeachModeTimers();
+        startTeachTimedTest();
+        return;
+      }
+
+      nextQuestionWrapper();
+    }, 1000);
+  }
+
+  function getTeachScaleNotesForKey(keyRoot) {
+    const rootPc = NOTE_TO_PC.get(keyRoot);
+    if (rootPc == null) return [];
+    return MAJOR_SCALE_OFFSETS.map(offset => pcToNote(rootPc + offset));
+  }
+
+  function getTeachCurrentNote(scaleNotes, stepIndex) {
+    if (!Array.isArray(scaleNotes) || !scaleNotes.length) return null;
+    if (stepIndex >= 7) return scaleNotes[0];
+    return scaleNotes[stepIndex];
+  }
+
+  function getTeachSemitoneSkip(stepIndex) {
+    if (stepIndex <= 0) return 0;
+    if (stepIndex >= MAJOR_SCALE_OFFSETS.length) {
+      return 12 - MAJOR_SCALE_OFFSETS[MAJOR_SCALE_OFFSETS.length - 1];
+    }
+    return MAJOR_SCALE_OFFSETS[stepIndex] - MAJOR_SCALE_OFFSETS[stepIndex - 1];
+  }
+
+  function renderTeachMajorScaleControls() {
+    const questionSuggestions = document.getElementById("questionSuggestions");
+    if (!questionSuggestions) return;
+
+    if (!state.active || settings.questionMode !== "teachMajorScale" || !state.current) {
+      questionSuggestions.hidden = true;
+      questionSuggestions.innerHTML = "";
+      if (elQuestionBox) {
+        elQuestionBox.classList.remove("reviewVisible");
+        elQuestionBox.classList.remove("teachVisible");
+      }
+      return;
+    }
+
+    const q = state.current;
+    const phase = q.teachPhase || "teach";
+    const stepLabel = typeof q.teachStepIndex === "number" ? q.teachStepIndex + 1 : 1;
+    const keyNumber = (state.teachMode.keyIndex || 0) + 1;
+    const activeKeyCount = Math.max(1, state.teachMode.keyQueue.length || 1);
+    const isFirstLesson = phase === "teach" && state.teachMode.keyIndex === 0 && stepLabel === 1;
+    const keyContext = `There are 12 major keys in music. You are on key ${keyNumber}/${activeKeyCount}: ${q.keyRoot} major.`;
+    let summaryText = "";
+    if (phase === "teach") {
+      summaryText = `${keyContext} Lesson step ${stepLabel}/8. Everything here is intervals and spacing between notes.`;
+    } else if (phase === "ready") {
+      const countdownWord = state.teachMode.countdownValue >= 3 ? "Ready" : (state.teachMode.countdownValue === 2 ? "Set" : "Go");
+      summaryText = `${keyContext} ${countdownWord}! Timed test is about to start. Complete the scale in order within 20 seconds.`;
+    } else {
+      summaryText = `${keyContext} Timed Test step ${stepLabel}/8. Time left: ${state.teachMode.timedSecondsLeft}s.`;
+    }
+
+    let teachButtons = "";
+    if (phase === "teach") {
+      teachButtons = `<button class="btn secondary" id="teachNextBtn" type="button">${stepLabel === 8 ? "Ready For Timed Test" : "Next Note"}</button>`;
+    } else if (phase === "timed") {
+      teachButtons = `<button class="btn secondary" id="teachNextBtn" type="button">Restart Timed Test</button>`;
+    }
+
+    questionSuggestions.hidden = false;
+    questionSuggestions.innerHTML = `
+      <div class="teachModePanel">
+        ${isFirstLesson ? `
+          <div class="teachTutorial">
+            <strong>Quick Tutorial</strong>
+            <p>1. Watch the highlighted key and read its note name.</p>
+            <p>2. Press <em>Next Note</em> to hear and see the next interval step.</p>
+            <p>3. After the lesson, beat the 20-second timed test to unlock the next key.</p>
+          </div>
+        ` : ""}
+        <p class="teachSummary">${summaryText}</p>
+        <div class="teachControls">
+          ${teachButtons}
+          <button class="btn" id="teachReplayBtn" type="button">Replay</button>
+        </div>
+      </div>
+    `;
+    if (elQuestionBox) {
+      elQuestionBox.classList.remove("reviewVisible");
+      elQuestionBox.classList.add("teachVisible");
+    }
+
+    const teachNextBtn = document.getElementById("teachNextBtn");
+    if (teachNextBtn) {
+      teachNextBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        soundButtonClick(settings, getVolumeMultiplier);
+        if (phase === "teach") {
+          if (state.teachMode.stepIndex < 7) {
+            state.teachMode.stepIndex += 1;
+            nextQuestionWrapper();
+          } else {
+            startTeachReadySetGo();
+            return;
+          }
+        } else if (phase === "timed") {
+          state.teachMode.stepIndex = 0;
+          state.teachMode.testAttempts += 1;
+          state.teachMode.timedSecondsLeft = 20;
+          nextQuestionWrapper();
+          return;
+        }
+      });
+    }
+
+    const teachReplayBtn = document.getElementById("teachReplayBtn");
+    if (teachReplayBtn) {
+      teachReplayBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        soundButtonClick(settings, getVolumeMultiplier);
+        if (phase === "timed") {
+          state.teachMode.stepIndex = 0;
+          state.teachMode.testAttempts += 1;
+          state.teachMode.timedSecondsLeft = 20;
+        }
+        nextQuestionWrapper();
+      });
+    }
+  }
+
+  function renderTeachMajorScaleQuestion() {
+    const keyRoot = state.teachMode.keyQueue[state.teachMode.keyIndex];
+    if (!keyRoot) {
+      endGameWrapper("Teach mode complete: all selected keys passed.");
+      return;
+    }
+
+    const scaleNotes = getTeachScaleNotesForKey(keyRoot);
+    const stepIndex = state.teachMode.stepIndex;
+    const phase = state.teachMode.phase;
+    const currentNote = getTeachCurrentNote(scaleNotes, stepIndex);
+    const skipSemitones = getTeachSemitoneSkip(stepIndex);
+
+    state.current = {
+      keyRoot,
+      degreeLabel: String(Math.min(stepIndex + 1, 8)),
+      correctNote: currentNote,
+      correctDegree: String(Math.min(stepIndex + 1, 8)),
+      options: [],
+      scaleType: "major",
+      questionNote: currentNote,
+      teachMode: true,
+      teachPhase: phase,
+      teachStepIndex: stepIndex,
+      teachSkipSemitones: skipSemitones,
+      teachScaleNotes: scaleNotes,
+      teachCurrentNote: currentNote,
+      teachTimedSecondsLeft: state.teachMode.timedSecondsLeft,
+      teachCountdownValue: state.teachMode.countdownValue
+    };
+
+    // Keep note labels visible for beginners in this mode.
+    state.expandedNotesVisible = true;
+
+    stopTimerWrapper();
+    state.questionSeconds = Infinity;
+    state.secondsLeft = Infinity;
+    if (elTimerBackground) elTimerBackground.textContent = "";
+
+    renderQuestion(state, settings, elQuestionText, elTimerBackground, SCALE_TYPE_NAMES, CHORD_TYPE_NAMES);
+    renderAnswers(state, answerButtons);
+    renderLevelInfo(state, settings, elLevelInfo);
+    renderInstrumentVisualization();
+    syncAnswerInputAvailability();
+    renderTeachMajorScaleControls();
   }
 
   function getActiveInstrument() {
@@ -474,7 +740,8 @@ updateResponsiveNoteBaseSizes();
   }
 
   function applyExpandedNoteLabels() {
-    const showLabels = state.instrumentExpanded && state.expandedNotesVisible;
+    const teachModeForcesLabels = settings.questionMode === "teachMajorScale" && state.active;
+    const showLabels = (state.instrumentExpanded && state.expandedNotesVisible) || teachModeForcesLabels;
     if (pianoKeyboard) pianoKeyboard.classList.toggle('showNoteLabels', showLabels);
     if (guitarFretboard) guitarFretboard.classList.toggle('showNoteLabels', showLabels);
     if (bassFretboard) bassFretboard.classList.toggle('showNoteLabels', showLabels);
@@ -573,9 +840,11 @@ updateResponsiveNoteBaseSizes();
       btn.title = expanded ? 'Collapse instrument view' : 'Expand instrument view';
     });
 
+    const forceShowNotesBtn = settings.questionMode === "teachMajorScale" && state.active;
+
     [pianoNotesBtn, guitarNotesBtn, bassNotesBtn].forEach(btn => {
       if (!btn) return;
-      btn.hidden = !expanded;
+      btn.hidden = !(expanded || forceShowNotesBtn);
       btn.setAttribute('aria-pressed', state.expandedNotesVisible ? 'true' : 'false');
       btn.title = state.expandedNotesVisible ? 'Hide note labels' : 'Show note labels';
     });
@@ -668,6 +937,8 @@ updateResponsiveNoteBaseSizes();
 
     if (settings.questionMode === "noteToDegree" && state.current?.questionNote) {
       active.highlight(active.surface, state.current.questionNote);
+    } else if (settings.questionMode === "teachMajorScale" && state.current?.teachCurrentNote && (state.current.teachPhase || "teach") !== "timed") {
+      active.highlight(active.surface, state.current.teachCurrentNote);
     } else {
       active.clear(active.surface);
     }
@@ -919,6 +1190,9 @@ updateResponsiveNoteBaseSizes();
   // =========================
   
   const startGameWrapper = () => {
+    if (settings.questionMode === "teachMajorScale") {
+      initTeachModeState();
+    }
     startGame(
       state, settings, elStatusPanel, elLives, elScore, elBonusCount, elBonusButton, elLevelInfo, elStatusText, answerButtons,
       ensureAudio, startAmbientMusic, getVolumeMultiplier, renderLives, renderScore, renderBonus, renderLevelInfo,
@@ -938,7 +1212,7 @@ updateResponsiveNoteBaseSizes();
   };
   
   const nextQuestionWrapper = () => {
-    if (state.active && state.current && !state.pausedByStudyBack) {
+    if (state.active && state.current && !state.pausedByStudyBack && settings.questionMode !== "teachMajorScale") {
       pushStudyHistory(state.current, settings.questionMode);
     }
 
@@ -951,7 +1225,22 @@ updateResponsiveNoteBaseSizes();
 
     state.finishScaleReviewMode = false;
     setReviewNextMenuButtonVisible(false);
-    if (elQuestionBox) elQuestionBox.classList.remove("reviewVisible");
+    if (elQuestionBox) {
+      elQuestionBox.classList.remove("reviewVisible");
+      elQuestionBox.classList.remove("teachVisible");
+    }
+    const questionSuggestions = document.getElementById("questionSuggestions");
+    if (questionSuggestions && settings.questionMode !== "teachMajorScale") {
+      questionSuggestions.hidden = true;
+      questionSuggestions.innerHTML = "";
+    }
+
+    if (settings.questionMode === "teachMajorScale") {
+      renderTeachMajorScaleQuestion();
+      return true;
+    }
+
+    clearTeachModeTimers();
 
     const activeView = getActiveVisualization();
     const result = nextQuestion(
@@ -979,6 +1268,7 @@ updateResponsiveNoteBaseSizes();
   const initProgressionModeWrapper = () => initProgressionMode(state, settings, ALL_KEYS);
   
   const endGameWrapper = (message) => {
+    clearTeachModeTimers();
     endGame(
       state, settings, message, answerButtons, elTimerBackground, elQuestionText, lockAnswers, updateRiskVisual,
       getStats, saveStats, flashStatus, elStatusPanel, elStatusText, soundGameOver, getVolumeMultiplier,
@@ -1171,6 +1461,62 @@ updateResponsiveNoteBaseSizes();
 
   const onInstrumentAnswer = (chosen, selectedElement = null) => {
     if (!state.active || state.locked || !state.current || !areInstrumentAnswersEnabled()) return;
+
+    if (settings.questionMode === "teachMajorScale") {
+      const chosenNote = typeof chosen === "string" ? chosen : chosen?.note;
+      const expectedNote = state.current.correctNote;
+      if (!chosenNote || !expectedNote) return;
+
+      const teachPhase = state.current.teachPhase || "teach";
+
+      if (teachPhase === "teach") {
+        setStatusNeutral(elStatusPanel, elStatusText, "Use Next Note to continue the lesson.");
+        return;
+      }
+
+      if (teachPhase === "ready") {
+        setStatusNeutral(elStatusPanel, elStatusText, "Get ready. Timed test starts after the countdown.");
+        return;
+      }
+
+      if (chosenNote === expectedNote) {
+        state.teachMode.stepIndex += 1;
+        if (state.teachMode.stepIndex >= 8) {
+          clearTeachModeTimers();
+          const passedKey = state.current.keyRoot;
+          state.teachMode.keyIndex += 1;
+          state.teachMode.phase = "teach";
+          state.teachMode.stepIndex = 0;
+          state.teachMode.testAttempts = 0;
+          state.teachMode.timedSecondsLeft = 20;
+
+          if (state.teachMode.keyIndex >= state.teachMode.keyQueue.length) {
+            flashStatus(settings, elStatusPanel, elStatusText, true, `Excellent! ${passedKey} major passed. All selected keys complete.`);
+            endGameWrapper("Teach mode complete: all selected keys passed.");
+            return;
+          }
+
+          flashStatus(settings, elStatusPanel, elStatusText, true, `Passed ${passedKey} major. Moving to the next key.`);
+          nextQuestionWrapper();
+          return;
+        }
+
+        nextQuestionWrapper();
+        return;
+      }
+
+      if (selectedElement) {
+        selectedElement.classList.add("wrongSelection");
+      }
+      setTimeout(() => {
+        if (selectedElement) selectedElement.classList.remove("wrongSelection");
+      }, 250);
+
+      state.teachMode.stepIndex = 0;
+      setStatusNeutral(elStatusPanel, elStatusText, "Wrong note. Restart from step 1 while the timer keeps running.");
+      nextQuestionWrapper();
+      return;
+    }
 
     if (settings.questionMode === "finishScale" && state.current.finishType === "partial" && Array.isArray(state.current.remainingNotes) && state.current.remainingNotes.length === 0) {
       return;
@@ -1422,6 +1768,9 @@ updateResponsiveNoteBaseSizes();
       if (modeChordBuilder) {
         modeChordBuilder.setAttribute("aria-checked", settings.questionMode === "chordBuilder" ? "true" : "false");
       }
+      if (modeTeachMajorScale) {
+        modeTeachMajorScale.setAttribute("aria-checked", settings.questionMode === "teachMajorScale" ? "true" : "false");
+      }
     }
 
     renderAnswerInputModeButtons();
@@ -1451,22 +1800,23 @@ updateResponsiveNoteBaseSizes();
     const degreesToPracticeSection = document.getElementById("degreesToPracticeSection");
     const answerInputSection = document.getElementById("answerInputSection");
     const isChordBuilder = settings.questionMode === "chordBuilder";
+    const isTeachMajorScale = settings.questionMode === "teachMajorScale";
     const isPractice = settings.gameMode === "practice";
 
     if (degreesToPracticeSection) {
-      degreesToPracticeSection.style.display = isChordBuilder ? "none" : "block";
+      degreesToPracticeSection.style.display = (isChordBuilder || isTeachMajorScale) ? "none" : "block";
     }
     if (degreeModeSection) {
-      degreeModeSection.style.display = isPractice && !isChordBuilder ? "block" : "none";
+      degreeModeSection.style.display = isPractice && !isChordBuilder && !isTeachMajorScale ? "block" : "none";
     }
     if (scaleTypeSection) {
-      scaleTypeSection.style.display = isChordBuilder ? "none" : "block";
+      scaleTypeSection.style.display = (isChordBuilder || isTeachMajorScale) ? "none" : "block";
     }
     if (chordTypeSection) {
       chordTypeSection.style.display = isChordBuilder ? "block" : "none";
     }
     if (answerInputSection) {
-      answerInputSection.style.display = "block";
+      answerInputSection.style.display = isTeachMajorScale ? "none" : "block";
     }
   }
 
@@ -1552,7 +1902,7 @@ updateResponsiveNoteBaseSizes();
   }
 
   function setAnswerInputMode(mode) {
-    if (settings.questionMode === "finishScale") {
+    if (settings.questionMode === "finishScale" || settings.questionMode === "teachMajorScale") {
       settings.answerInputMode = "instrument";
     } else {
       settings.answerInputMode = mode === "instrument" || mode === "both" ? mode : "choices";
@@ -1995,14 +2345,23 @@ updateResponsiveNoteBaseSizes();
   const modeNoteToDegree = document.getElementById("modeNoteToDegree");
   const modeScaleRecognition = document.getElementById("modeScaleRecognition");
   const modeFinishScale = document.getElementById("modeFinishScale");
+  const modeTeachMajorScale = document.getElementById("modeTeachMajorScale");
   
   function setQuestionMode(mode) {
+    if (settings.questionMode === "teachMajorScale" && mode !== "teachMajorScale") {
+      clearTeachModeTimers();
+      if (elQuestionBox) elQuestionBox.classList.remove("teachVisible");
+    }
     settings.questionMode = mode;
     if (mode === "degreeToNote" && settings.answerInputMode === "choices") {
       settings.answerInputMode = "both";
       renderAnswerInputModeButtons();
     }
     if (mode === "finishScale") {
+      settings.answerInputMode = "instrument";
+      renderAnswerInputModeButtons();
+    }
+    if (mode === "teachMajorScale") {
       settings.answerInputMode = "instrument";
       renderAnswerInputModeButtons();
     }
@@ -2014,6 +2373,9 @@ updateResponsiveNoteBaseSizes();
     }
     if (modeChordBuilder) {
       modeChordBuilder.setAttribute("aria-checked", mode === "chordBuilder" ? "true" : "false");
+    }
+    if (modeTeachMajorScale) {
+      modeTeachMajorScale.setAttribute("aria-checked", mode === "teachMajorScale" ? "true" : "false");
     }
     renderInstrumentVisualization();
     syncAnswerInputAvailability();
@@ -2132,6 +2494,12 @@ updateResponsiveNoteBaseSizes();
     modeChordBuilder.addEventListener("click", () => {
       soundDegreeToggle(settings, getVolumeMultiplier);
       setQuestionMode("chordBuilder");
+    });
+  }
+  if (modeTeachMajorScale) {
+    modeTeachMajorScale.addEventListener("click", () => {
+      soundDegreeToggle(settings, getVolumeMultiplier);
+      setQuestionMode("teachMajorScale");
     });
   }
 

@@ -14,7 +14,7 @@ export const defaultSettings = {
   secondsPerQuestion: 8,
   degreeMode: "diatonic", // "diatonic" | "chromatic"
   gameMode: "practice", // "practice" | "progression"
-  questionMode: "degreeToNote", // "degreeToNote" | "noteToDegree" | "scaleRecognition" | "finishScale"
+  questionMode: "degreeToNote", // "degreeToNote" | "noteToDegree" | "scaleRecognition" | "finishScale" | "chordBuilder" | "teachMajorScale"
   chordTypesEnabled: ["majorTriad", "minorTriad"],
   progressionDifficulty: "moderate", // "easy" | "moderate" | "hard"
   audioOn: true,
@@ -83,7 +83,7 @@ export function loadSettings() {
     if (parsed.answerInputMode === "choices" || parsed.answerInputMode === "instrument" || parsed.answerInputMode === "both") {
       s.answerInputMode = parsed.answerInputMode;
     }
-    if (parsed.questionMode === "degreeToNote" || parsed.questionMode === "noteToDegree" || parsed.questionMode === "scaleRecognition" || parsed.questionMode === "finishScale" || parsed.questionMode === "chordBuilder") {
+    if (parsed.questionMode === "degreeToNote" || parsed.questionMode === "noteToDegree" || parsed.questionMode === "scaleRecognition" || parsed.questionMode === "finishScale" || parsed.questionMode === "chordBuilder" || parsed.questionMode === "teachMajorScale") {
       s.questionMode = parsed.questionMode;
     }
     if (parsed.gameMode === "practice" || parsed.gameMode === "progression") {
