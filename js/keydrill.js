@@ -418,8 +418,8 @@ updateResponsiveNoteBaseSizes();
       timedSecondsLeft: 20,
       readyTimerId: null,
       timedTimerId: null,
-      dialogIndex: 0,
-      lastDialogStepLabel: -1
+      timedCorrectSelections: [],
+      feedbackMessage: ""
     }
   };
 
@@ -511,8 +511,8 @@ updateResponsiveNoteBaseSizes();
     state.teachMode.testAttempts = 0;
     state.teachMode.countdownValue = 0;
     state.teachMode.timedSecondsLeft = 20;
-    state.teachMode.dialogIndex = 0;
-    state.teachMode.lastDialogStepLabel = -1;
+    state.teachMode.timedCorrectSelections = [];
+    state.teachMode.feedbackMessage = "";
   }
 
   function startTeachTimedTest() {
@@ -520,6 +520,7 @@ updateResponsiveNoteBaseSizes();
     state.teachMode.phase = "timed";
     state.teachMode.stepIndex = 0;
     state.teachMode.timedSecondsLeft = 20;
+    state.teachMode.timedCorrectSelections = [];
     nextQuestionWrapper();
 
     state.teachMode.timedTimerId = setInterval(() => {
@@ -588,6 +589,32 @@ updateResponsiveNoteBaseSizes();
     return MAJOR_SCALE_OFFSETS[stepIndex] - MAJOR_SCALE_OFFSETS[stepIndex - 1];
   }
 
+  function getTeachMistakeMessage(chosenNote, expectedNote, stepIndex, scaleNotes, expectedSkip) {
+    if (!chosenNote || !expectedNote) return "Incorrect. Try again from step 1.";
+    if (stepIndex <= 0 || !Array.isArray(scaleNotes) || !scaleNotes.length) {
+      return `Incorrect. Start on ${expectedNote}.`;
+    }
+
+    const previousNote = scaleNotes[Math.max(0, stepIndex - 1)];
+    const previousPc = NOTE_TO_PC.get(previousNote);
+    const chosenPc = NOTE_TO_PC.get(chosenNote);
+    if (previousPc == null || chosenPc == null) {
+      return `Incorrect. This step was ${expectedNote}. Try again from step 1.`;
+    }
+
+    const actualSkip = ((chosenPc - previousPc) + 12) % 12;
+    if (actualSkip === expectedSkip) {
+      return `Incorrect. This step was ${expectedNote}. Try again from step 1.`;
+    }
+
+    const diff = Math.abs(actualSkip - expectedSkip);
+    if (diff > 0) {
+      return `Incorrect. You jumped ${actualSkip} semitone${actualSkip === 1 ? "" : "s"}; it should have been ${expectedSkip}. Try again from step 1.`;
+    }
+
+    return `Incorrect. This step was ${expectedNote}. Try again from step 1.`;
+  }
+
   function renderTeachMajorScaleControls() {
     const questionSuggestions = document.getElementById("questionSuggestions");
     if (!questionSuggestions) return;
@@ -607,6 +634,16 @@ updateResponsiveNoteBaseSizes();
     const stepLabel = typeof q.teachStepIndex === "number" ? q.teachStepIndex + 1 : 1;
     const keyNumber = (state.teachMode.keyIndex || 0) + 1;
     const activeKeyCount = Math.max(1, state.teachMode.keyQueue.length || 1);
+    const intervalLabel = stepLabel === 1
+      ? "Root"
+      : (q.teachSkipSemitones === 1
+        ? "Half step"
+        : (q.teachSkipSemitones === 2 ? "Whole step" : `${q.teachSkipSemitones} semitones`));
+    const degreeLabel = stepLabel === 8 ? "Octave" : `Degree ${stepLabel}`;
+    const learnedNotes = Array.isArray(q.teachScaleNotes)
+      ? q.teachScaleNotes.slice(0, Math.min(stepLabel, 7)).concat(stepLabel >= 8 ? [q.teachScaleNotes[0]] : [])
+      : [];
+    const feedbackMessage = state.teachMode.feedbackMessage || "";
 
     const applyTeachVisible = () => {
       if (elQuestionBox) {
@@ -620,10 +657,28 @@ updateResponsiveNoteBaseSizes();
       questionSuggestions.hidden = false;
       questionSuggestions.innerHTML = `
         <div class="teachModePanel">
-          <p class="teachSummary">${countdownWord}! Timed test is about to start. Build ${q.keyRoot} major in order within 20 seconds.</p>
+          <p class="teachSummary">${countdownWord}. Build <strong>${q.keyRoot} major</strong> in order.</p>
+          ${feedbackMessage ? `<p class="teachRule">${feedbackMessage}</p>` : ""}
+          <div class="teachControls">
+            <button class="btn" id="teachReplayBtn" type="button">Replay Lesson</button>
+          </div>
         </div>
       `;
       applyTeachVisible();
+
+      const readyReplayBtn = document.getElementById("teachReplayBtn");
+      if (readyReplayBtn) {
+        readyReplayBtn.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          soundButtonClick(settings, getVolumeMultiplier);
+          clearTeachModeTimers();
+          state.teachMode.phase = "teach";
+          state.teachMode.stepIndex = 0;
+          state.teachMode.feedbackMessage = "";
+          nextQuestionWrapper();
+        });
+      }
       return;
     }
 
@@ -631,7 +686,22 @@ updateResponsiveNoteBaseSizes();
       questionSuggestions.hidden = false;
       questionSuggestions.innerHTML = `
         <div class="teachModePanel">
-          <p class="teachSummary">Timed Test – ${q.keyRoot} major. Step ${stepLabel}/8. ${state.teachMode.timedSecondsLeft}s left.</p>
+          <p class="teachSummary">${q.keyRoot} major · Step ${stepLabel}/8 · ${state.teachMode.timedSecondsLeft}s left. Tap <strong>${q.teachCurrentNote}</strong> now.</p>
+          <p class="teachRule">Wrong note: restart from step 1.</p>
+          <div class="teachLessonGrid">
+            <div class="teachLessonCard">
+              <span class="teachLessonLabel">Key</span>
+              <strong>${q.keyRoot} major</strong>
+            </div>
+            <div class="teachLessonCard">
+              <span class="teachLessonLabel">Target</span>
+              <strong>${q.teachCurrentNote}</strong>
+            </div>
+            <div class="teachLessonCard">
+              <span class="teachLessonLabel">Function</span>
+              <strong>${degreeLabel}</strong>
+            </div>
+          </div>
           <div class="teachControls">
             <button class="btn secondary" id="teachNextBtn" type="button">Restart Timed Test</button>
             <button class="btn" id="teachReplayBtn" type="button">Replay</button>
@@ -668,102 +738,49 @@ updateResponsiveNoteBaseSizes();
       return;
     }
 
-    const isFirstLesson = state.teachMode.keyIndex === 0 && stepLabel === 1;
-    const sentences = [];
-    if (isFirstLesson) {
-      sentences.push(`Welcome! There are 12 keys in music. You are on key ${keyNumber}/${activeKeyCount}: <strong>${q.keyRoot} major</strong>.`);
-      sentences.push(`Watch the highlighted key on the instrument and read its note name.`);
-      sentences.push(`Press <em>Next Note</em> to hear and advance to the next step.`);
-      sentences.push(`After all 8 steps, beat the 20-second timed test to unlock the next key.`);
-    }
-    sentences.push(`Key ${keyNumber}/${activeKeyCount}: <strong>${q.keyRoot} major</strong> — Lesson step ${stepLabel}/8.`);
-    sentences.push(`Everything here is about intervals — the spacing between notes.`);
-
-    if (state.teachMode.lastDialogStepLabel !== stepLabel) {
-      state.teachMode.dialogIndex = 0;
-      state.teachMode.lastDialogStepLabel = stepLabel;
-    }
-
-    const total = sentences.length;
-    const idx = Math.max(0, Math.min(state.teachMode.dialogIndex, total - 1));
-    const isLast = idx >= total - 1;
-    const hasPrev = idx > 0;
-    const actionLabel = stepLabel === 8 ? "Ready For Timed Test" : "Next Note";
+    const summaryText = stepLabel === 1
+      ? `Tap the highlighted <strong>${q.teachCurrentNote}</strong>.`
+      : `Tap the highlighted <strong>${q.teachCurrentNote}</strong> after a ${intervalLabel.toLowerCase()}.`;
+    const learnedText = learnedNotes.length ? learnedNotes.join(" - ") : q.teachCurrentNote;
 
     questionSuggestions.hidden = false;
     questionSuggestions.innerHTML = `
       <div class="teachModePanel">
-        <p class="teachSummary">${sentences[idx]}</p>
-        <div class="teachDialogNav">
-          <button class="btn teachNavBtn" id="teachPrevBtn" type="button" ${!hasPrev ? "disabled" : ""}>&#8249; Back</button>
-          <span class="teachDialogCount">${idx + 1} / ${total}</span>
-          ${!isLast
-            ? `<button class="btn teachNavBtn" id="teachFwdBtn" type="button">Next &#8250;</button>`
-            : `<button class="btn teachNavBtn" id="teachFwdBtn" type="button" style="visibility:hidden" aria-hidden="true">Next &#8250;</button>`
-          }
-        </div>
-        ${isLast ? `
-          <div class="teachControls">
-            <button class="btn secondary" id="teachNextBtn" type="button">${actionLabel}</button>
-            <button class="btn" id="teachReplayBtn" type="button">Replay</button>
+        <p class="teachSummary">Key ${keyNumber}/${activeKeyCount} · Step ${stepLabel}/8. ${summaryText}</p>
+        ${feedbackMessage ? `<p class="teachRule">${feedbackMessage}</p>` : ""}
+        <div class="teachLessonGrid">
+          <div class="teachLessonCard teachLessonCardPrimary">
+            <span class="teachLessonLabel">Target note</span>
+            <strong>${q.teachCurrentNote}</strong>
           </div>
-        ` : ""}
+          <div class="teachLessonCard">
+            <span class="teachLessonLabel">Function</span>
+            <strong>${degreeLabel}</strong>
+          </div>
+          <div class="teachLessonCard">
+            <span class="teachLessonLabel">Movement</span>
+            <strong>${intervalLabel}</strong>
+          </div>
+          <div class="teachLessonCard">
+            <span class="teachLessonLabel">Learned</span>
+            <strong>${learnedText}</strong>
+          </div>
+        </div>
+        <div class="teachControls">
+          <button class="btn" id="teachReplayBtn" type="button">Replay</button>
+        </div>
       </div>
     `;
     applyTeachVisible();
 
-    const prevBtn = document.getElementById("teachPrevBtn");
-    const fwdBtn = document.getElementById("teachFwdBtn");
-
-    if (prevBtn) {
-      prevBtn.addEventListener("click", (e) => {
+    const teachReplayBtn = document.getElementById("teachReplayBtn");
+    if (teachReplayBtn) {
+      teachReplayBtn.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
         soundButtonClick(settings, getVolumeMultiplier);
-        if (state.teachMode.dialogIndex > 0) {
-          state.teachMode.dialogIndex -= 1;
-          renderTeachMajorScaleControls();
-        }
+        nextQuestionWrapper();
       });
-    }
-
-    if (fwdBtn && !isLast) {
-      fwdBtn.addEventListener("click", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        soundButtonClick(settings, getVolumeMultiplier);
-        if (state.teachMode.dialogIndex < total - 1) {
-          state.teachMode.dialogIndex += 1;
-          renderTeachMajorScaleControls();
-        }
-      });
-    }
-
-    if (isLast) {
-      const teachNextBtn = document.getElementById("teachNextBtn");
-      if (teachNextBtn) {
-        teachNextBtn.addEventListener("click", (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          soundButtonClick(settings, getVolumeMultiplier);
-          if (state.teachMode.stepIndex < 7) {
-            state.teachMode.stepIndex += 1;
-            nextQuestionWrapper();
-          } else {
-            startTeachReadySetGo();
-          }
-        });
-      }
-
-      const teachReplayBtn = document.getElementById("teachReplayBtn");
-      if (teachReplayBtn) {
-        teachReplayBtn.addEventListener("click", (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          soundButtonClick(settings, getVolumeMultiplier);
-          nextQuestionWrapper();
-        });
-      }
     }
   }
 
@@ -1017,6 +1034,7 @@ updateResponsiveNoteBaseSizes();
       active.clear(active.surface);
     }
 
+    applyTeachTimedSelections(active.surface);
     applyChordBuilderSelectionHighlight(active.surface);
 
     renderInstrumentExpandedState();
@@ -1129,6 +1147,76 @@ updateResponsiveNoteBaseSizes();
     const noteElements = surface.querySelectorAll(noteSelector);
     noteElements.forEach(el => {
       el.classList.remove("correctSelection", "wrongSelection");
+    });
+  }
+
+  function getInstrumentSelectionToken(surface, element) {
+    if (!surface || !element) return null;
+
+    if (surface === pianoKeyboard) {
+      const note = element.dataset.note;
+      const octave = element.dataset.octave;
+      return note != null && octave != null ? `piano:${note}|${octave}` : null;
+    }
+
+    const stringVal = element.dataset.string;
+    const fretVal = element.dataset.fret;
+    if (stringVal == null || fretVal == null) return null;
+
+    const prefix = surface === guitarFretboard ? "guitar" : "bass";
+    return `${prefix}:${stringVal}|${fretVal}`;
+  }
+
+  function markInstrumentCorrectSelection(question = state.current) {
+    const active = getActiveVisualization();
+    const surface = active?.surface;
+    if (!surface || !question) return;
+
+    let noteSelector = ".pianoKey";
+    if (surface === guitarFretboard) noteSelector = ".guitarPosition";
+    if (surface === bassFretboard) noteSelector = ".bassPosition";
+
+    const noteElements = surface.querySelectorAll(noteSelector);
+    const correctNote = question.correctNote;
+    const correctStep = question.correctStep;
+
+    noteElements.forEach(el => {
+      if (!correctNote || el.dataset.note !== correctNote) return;
+      if (surface === pianoKeyboard && correctStep?.octave != null && String(el.dataset.octave) !== String(correctStep.octave)) return;
+      el.classList.add("correctSelection");
+    });
+  }
+
+  function addTeachTimedCorrectSelection(selectedElement) {
+    const active = getActiveVisualization();
+    const token = getInstrumentSelectionToken(active?.surface, selectedElement);
+    if (!token) return;
+    if (!Array.isArray(state.teachMode.timedCorrectSelections)) {
+      state.teachMode.timedCorrectSelections = [];
+    }
+    if (!state.teachMode.timedCorrectSelections.includes(token)) {
+      state.teachMode.timedCorrectSelections.push(token);
+    }
+  }
+
+  function applyTeachTimedSelections(surface) {
+    if (settings.questionMode !== "teachMajorScale" || state.teachMode.phase !== "timed" || !surface) return;
+
+    const selections = Array.isArray(state.teachMode.timedCorrectSelections)
+      ? state.teachMode.timedCorrectSelections
+      : [];
+    if (!selections.length) return;
+
+    let noteSelector = ".pianoKey";
+    if (surface === guitarFretboard) noteSelector = ".guitarPosition";
+    if (surface === bassFretboard) noteSelector = ".bassPosition";
+
+    const noteElements = surface.querySelectorAll(noteSelector);
+    noteElements.forEach(el => {
+      const token = getInstrumentSelectionToken(surface, el);
+      if (token && selections.includes(token)) {
+        el.classList.add("correctSelection");
+      }
     });
   }
 
@@ -1396,10 +1484,15 @@ updateResponsiveNoteBaseSizes();
     endGameWrapper
   );
   
-  const handleTimeoutWrapper = () => handleTimeout(
-    state, settings, answerButtons, elLives, elStatusPanel, elStatusText, soundWrong, getVolumeMultiplier,
-    recordQuestion, renderLives, updateRiskVisual, flashStatus, lockAnswers, nextAfterFeedbackWrapper, endGameWrapper
-  );
+  const handleTimeoutWrapper = () => {
+    if (areInstrumentAnswersEnabled()) {
+      markInstrumentCorrectSelection();
+    }
+    return handleTimeout(
+      state, settings, answerButtons, elLives, elStatusPanel, elStatusText, soundWrong, getVolumeMultiplier,
+      recordQuestion, renderLives, updateRiskVisual, flashStatus, lockAnswers, nextAfterFeedbackWrapper, endGameWrapper
+    );
+  };
 
   function setReviewNextMenuButtonVisible(visible) {
     const menuRoot = document.querySelector('.triangleMenu');
@@ -1569,6 +1662,7 @@ updateResponsiveNoteBaseSizes();
           selectedElement.classList.add("wrongSelection");
           setTimeout(() => selectedElement.classList.remove("wrongSelection"), 600);
         }
+        markInstrumentCorrectSelection();
         handleWrongWrapper(chosenNote, selectedElement);
       }
       return;
@@ -1584,7 +1678,28 @@ updateResponsiveNoteBaseSizes();
       const teachPhase = state.current.teachPhase || "teach";
 
       if (teachPhase === "teach") {
-        setStatusNeutral(elStatusPanel, elStatusText, "Use Next Note to continue the lesson.");
+        if (chosenNote === expectedNote) {
+          if (selectedElement) selectedElement.classList.add("correctSelection");
+          state.teachMode.feedbackMessage = "";
+          state.teachMode.stepIndex += 1;
+          if (state.teachMode.stepIndex >= 8) {
+            setStatusNeutral(elStatusPanel, elStatusText, `${state.current.keyRoot} major lesson complete. Timed test starts now.`);
+            startTeachReadySetGo();
+          } else {
+            nextQuestionWrapper();
+          }
+          return;
+        }
+
+        if (selectedElement) {
+          selectedElement.classList.add("wrongSelection");
+        }
+        markInstrumentCorrectSelection();
+        setTimeout(() => {
+          if (selectedElement) selectedElement.classList.remove("wrongSelection");
+        }, 250);
+        state.teachMode.feedbackMessage = `Not yet. Find ${expectedNote} first.`;
+        setStatusNeutral(elStatusPanel, elStatusText, state.teachMode.feedbackMessage);
         return;
       }
 
@@ -1594,6 +1709,8 @@ updateResponsiveNoteBaseSizes();
       }
 
       if (chosenNote === expectedNote) {
+        addTeachTimedCorrectSelection(selectedElement);
+        state.teachMode.feedbackMessage = "";
         state.teachMode.stepIndex += 1;
         if (state.teachMode.stepIndex >= 8) {
           clearTeachModeTimers();
@@ -1603,6 +1720,10 @@ updateResponsiveNoteBaseSizes();
           state.teachMode.stepIndex = 0;
           state.teachMode.testAttempts = 0;
           state.teachMode.timedSecondsLeft = 20;
+          state.teachMode.timedCorrectSelections = [];
+          state.teachMode.feedbackMessage = state.teachMode.keyIndex < state.teachMode.keyQueue.length
+            ? `Passed ${passedKey} major. Now starting ${state.teachMode.keyQueue[state.teachMode.keyIndex]} major.`
+            : "";
 
           if (state.teachMode.keyIndex >= state.teachMode.keyQueue.length) {
             flashStatus(settings, elStatusPanel, elStatusText, true, `Excellent! ${passedKey} major passed. All selected keys complete.`);
@@ -1610,7 +1731,7 @@ updateResponsiveNoteBaseSizes();
             return;
           }
 
-          flashStatus(settings, elStatusPanel, elStatusText, true, `Passed ${passedKey} major. Moving to the next key.`);
+          setStatusNeutral(elStatusPanel, elStatusText, `Passed ${passedKey} major. Moving to the next key.`);
           nextQuestionWrapper();
           return;
         }
@@ -1622,12 +1743,25 @@ updateResponsiveNoteBaseSizes();
       if (selectedElement) {
         selectedElement.classList.add("wrongSelection");
       }
+      markInstrumentCorrectSelection();
       setTimeout(() => {
         if (selectedElement) selectedElement.classList.remove("wrongSelection");
       }, 250);
 
       state.teachMode.stepIndex = 0;
-      setStatusNeutral(elStatusPanel, elStatusText, "Wrong note. Restart from step 1 while the timer keeps running.");
+      state.teachMode.timedCorrectSelections = [];
+      state.teachMode.feedbackMessage = getTeachMistakeMessage(
+        chosenNote,
+        expectedNote,
+        state.current.teachStepIndex ?? 0,
+        state.current.teachScaleNotes,
+        state.current.teachSkipSemitones
+      );
+      setStatusNeutral(
+        elStatusPanel,
+        elStatusText,
+        state.teachMode.feedbackMessage
+      );
       nextQuestionWrapper();
       return;
     }
@@ -1659,6 +1793,7 @@ updateResponsiveNoteBaseSizes();
       if (selectedElement) {
         selectedElement.classList.add("wrongSelection");
       }
+      markInstrumentCorrectSelection();
       setTimeout(() => {
         if (selectedElement) {
           selectedElement.classList.remove("wrongSelection");
@@ -1783,7 +1918,10 @@ updateResponsiveNoteBaseSizes();
     const correct = state.current.correctNote;
     if (chosenNote === correct) handleCorrectWrapper(chosenNote, selectedElement);
     else if (settings.questionMode === "finishScale") markWrongWithDelay();
-    else handleWrongWrapper(chosenNote, selectedElement);
+    else {
+      markInstrumentCorrectSelection();
+      handleWrongWrapper(chosenNote, selectedElement);
+    }
   };
 
   // =========================

@@ -19,18 +19,15 @@ export function renderQuestion(state, settings, elQuestionText, elTimerBackgroun
     const skip = typeof q.teachSkipSemitones === "number" ? q.teachSkipSemitones : 0;
     const phase = q.teachPhase || "teach";
     if (phase === "teach") {
-      if (step === 1) {
-        elQuestionText.textContent = `${q.keyRoot} Major Lesson 1/8: Start on ${note}. This is your home note (root).`;
-      } else {
-        elQuestionText.textContent = `${q.keyRoot} Major Lesson ${step}/8: ${note}. Interval spacing from the last note is ${skip} semitone${skip === 1 ? "" : "s"}.`;
-      }
+      const intervalText = step === 1 ? "Start on the root" : `Move ${skip} semitone${skip === 1 ? "" : "s"}`;
+      elQuestionText.textContent = `${q.keyRoot} major · Step ${step}/8 · ${note} · ${intervalText}`;
     } else if (phase === "ready") {
       const countdownValue = Number(q.teachCountdownValue ?? 0);
       const countdownWord = countdownValue >= 3 ? "Ready" : (countdownValue === 2 ? "Set" : "Go");
-      elQuestionText.textContent = `${countdownWord}! Timed Test starts now. Build ${q.keyRoot} major in order.`;
+      elQuestionText.textContent = `${countdownWord} · ${q.keyRoot} major timed test`;
     } else {
       const secondsLeft = Number(q.teachTimedSecondsLeft ?? 20);
-      elQuestionText.textContent = `Timed Test ${q.keyRoot} Major: Step ${step}/8. ${secondsLeft}s left.`;
+      elQuestionText.textContent = `${q.keyRoot} major timed test · Step ${step}/8 · ${secondsLeft}s left`;
     }
   }
   // Finish scale mode
