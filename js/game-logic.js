@@ -582,6 +582,7 @@ export function startGame(
 ) {
   ensureAudio();
   startAmbientMusic(settings, getVolumeMultiplier);
+  const elQuestionBox = document.getElementById("questionBox");
 
   // Close game over modal if it's showing
   const elStatusOverlay = document.getElementById("statusOverlay");
@@ -591,6 +592,9 @@ export function startGame(
     elStatusPanel.classList.remove("good", "bad", "gameOver");
   }
   document.body.classList.remove("gameOverVisible");
+  if (elQuestionBox) {
+    elQuestionBox.classList.remove("gameOverLayout");
+  }
   
   // Hide suggestions in question box
   const questionSuggestions = document.getElementById("questionSuggestions");
@@ -823,6 +827,10 @@ export function endGame(state, settings, message, answerButtons, elTimerBackgrou
     elStatusPanel.classList.add("gameOver");
   }
   document.body.classList.add("gameOverVisible");
+  const elQuestionBox = document.getElementById("questionBox");
+  if (elQuestionBox) {
+    elQuestionBox.classList.add("gameOverLayout");
+  }
   flashStatus(settings, elStatusPanel, elStatusText, false, `${message} — Final Score: ${state.score}`);
   
   // Show suggestions in question box

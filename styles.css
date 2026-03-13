@@ -35,6 +35,8 @@ body {
   --note-position-scale: 1;
   --guitar-note-base-size: 28px;
   --bass-note-base-size: 28px;
+  --landscape-rail-offset: 56px;
+  --instrument-expanded-left: 0px;
 }
 
 body{
@@ -999,6 +1001,53 @@ body.gameActive .answerGrid {
   overflow: hidden;
 }
 
+.questionBox.gameOverLayout {
+  justify-content: flex-start;
+  align-items: center;
+  gap: clamp(0.9rem, 2vh, 1.4rem);
+  padding: clamp(4.25rem, 8vh, 5.5rem) clamp(1rem, 3vw, 2rem) clamp(1rem, 3vh, 1.5rem);
+  min-height: min(78vh, 760px);
+  cursor: default;
+  overflow: hidden;
+}
+
+.questionBox.gameOverLayout:hover,
+.questionBox.gameOverLayout:active {
+  transform: none;
+}
+
+.questionBox.gameOverLayout .questionText {
+  max-width: min(100%, 16ch);
+  font-size: clamp(1.5rem, 4.4vw, 3.4rem);
+  line-height: 1.08;
+  text-wrap: balance;
+}
+
+.questionBox.gameOverLayout .restartHint {
+  display: none;
+}
+
+.questionBox.gameOverLayout .questionSuggestions {
+  width: min(100%, 820px);
+  margin-top: 0;
+  padding: 0 0.15rem 0.15rem;
+  max-height: min(48vh, 420px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.questionBox.gameOverLayout .questionSuggestions .practiceSteps {
+  gap: 0.85rem;
+}
+
+.questionBox.gameOverLayout .questionSuggestions .practiceStep {
+  padding: 0.9rem;
+}
+
+.questionBox.gameOverLayout .questionSuggestions .stepContent {
+  text-align: left;
+}
+
 .questionBox.reviewVisible .questionSuggestions {
   margin-top: 0.75rem;
   padding: 0;
@@ -1240,9 +1289,35 @@ body.gameActive .answerGrid {
 }
 
 body.gameOverVisible .questionStats,
-body.gameOverVisible .timerBackground {
+body.gameOverVisible .timerBackground,
+body.gameOverVisible .studyBackBtn,
+body.gameOverVisible .playPauseBtn,
+body.gameOverVisible .bonusButton,
+body.gameOverVisible .instrumentToggleGroup,
+body.gameOverVisible .rotateHintBar {
   opacity: 0;
   visibility: hidden;
+  pointer-events: none;
+}
+
+body.gameOverVisible .main {
+  justify-content: center;
+}
+
+body.gameOverVisible .questionBoxWrap {
+  max-width: min(94vw, 920px);
+  margin: 0 auto;
+}
+
+body.gameOverVisible .questionBox {
+  min-height: min(78vh, 760px);
+}
+
+body.gameOverVisible .answerGrid,
+body.gameOverVisible .pianoContainer,
+body.gameOverVisible .guitarContainer,
+body.gameOverVisible .bassContainer {
+  display: none !important;
 }
 
 @keyframes modalSlideIn {
@@ -1535,6 +1610,10 @@ body.gameOverVisible .timerBackground {
 
 /* Responsive: landscape mobile hides non-essential UI (CSS only) */
 @media (orientation: landscape) {
+  :root {
+    --instrument-expanded-left: var(--landscape-rail-offset);
+  }
+
   .rotateHintBar {
     display: none !important;
   }
@@ -1572,7 +1651,7 @@ body.gameOverVisible .timerBackground {
     width: 100%;
     max-width: none;
     margin: 0;
-    padding: 10px 10px 10px 56px;
+    padding: 10px 10px 10px var(--landscape-rail-offset);
     gap: 10px;
   }
   .questionBox{ padding: 12px; }
@@ -1685,7 +1764,7 @@ body.gameOverVisible .timerBackground {
   .bassContainer.instrumentExpanded,
   .pianoContainer.instrumentExpanded {
     top: 0;
-    left: 48px;
+    left: var(--landscape-rail-offset);
     right: 0;
     bottom: 0;
     padding: 6px;
@@ -1775,7 +1854,7 @@ body.gameOverVisible .timerBackground {
     margin: 0;
     min-height: 0;
     height: 100%;
-    width: 100%;
+    width: 95%;
     max-width: 100%;
     padding: 8px;
     display: flex;
@@ -1981,6 +2060,36 @@ body.gameOverVisible .timerBackground {
   .pianoKeyboard.showNoteLabels .pianoKey.black::before {
     font-size: 8px;
   }
+
+  body.gameOverVisible .app {
+    padding: 10px 10px 10px var(--landscape-rail-offset);
+  }
+
+  body.gameOverVisible .main {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: visible;
+  }
+
+  body.gameOverVisible .main .questionBoxWrap {
+    width: min(100%, 960px);
+    min-height: 0;
+  }
+
+  body.gameOverVisible .main .questionBox {
+    min-height: min(78vh, 680px);
+    padding: 3.8rem 1rem 1rem;
+  }
+
+  body.gameOverVisible .main .questionText {
+    font-size: clamp(1.25rem, 3vw, 2.4rem);
+  }
+
+  body.gameOverVisible .main .questionSuggestions {
+    max-height: min(42vh, 300px);
+    padding-inline: 0;
+  }
 }
 
 @keyframes answerSlideLandscape {
@@ -1998,6 +2107,40 @@ body.gameOverVisible .timerBackground {
 @media (max-width: 420px){
   .keyToggles{ grid-template-columns: repeat(3, 1fr); }
   .btn{ padding: 10px 10px; }
+}
+
+@media (max-width: 700px) {
+  .questionBox.gameOverLayout {
+    padding-top: 4rem;
+    min-height: min(76vh, 720px);
+  }
+
+  .questionBox.gameOverLayout .questionText {
+    max-width: 100%;
+    font-size: clamp(1.35rem, 7vw, 2.35rem);
+  }
+
+  .questionBox.gameOverLayout .questionSuggestions {
+    max-height: min(52vh, 420px);
+  }
+
+  .questionBox.gameOverLayout .questionSuggestions .practiceStep {
+    gap: 0.75rem;
+    padding: 0.8rem;
+  }
+
+  .questionBox.gameOverLayout .questionSuggestions .stepContent h4 {
+    font-size: 0.92rem;
+  }
+
+  .questionBox.gameOverLayout .questionSuggestions .stepContent p {
+    font-size: 0.82rem;
+    line-height: 1.4;
+  }
+
+  .questionBox.gameOverLayout .questionSuggestions .btnApply {
+    width: 100%;
+  }
 }
 
 /* ========== Settings Modal ========== */
@@ -2723,7 +2866,7 @@ body.gameOverVisible .timerBackground {
 .bassContainer.instrumentExpanded {
   position: fixed;
   top: 0;
-  left: 0;
+  left: var(--instrument-expanded-left);
   right: 0;
   bottom: 0;
   width: auto;
@@ -2744,7 +2887,7 @@ body.gameOverVisible .timerBackground {
 .pianoContainer.instrumentExpanded {
   position: fixed;
   top: 0;
-  left: 0;
+  left: var(--instrument-expanded-left);
   right: 0;
   bottom: 0;
   width: auto;
@@ -3335,7 +3478,7 @@ body.gameOverVisible .timerBackground {
   .bassContainer.instrumentExpanded,
   .pianoContainer.instrumentExpanded {
     top: 0;
-    left: 48px;
+    left: var(--landscape-rail-offset);
     right: 0;
     bottom: 0;
     padding: 6px;

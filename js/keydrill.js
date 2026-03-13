@@ -1301,6 +1301,7 @@ updateResponsiveNoteBaseSizes();
     if (elQuestionBox) {
       elQuestionBox.classList.remove("reviewVisible");
       elQuestionBox.classList.remove("teachVisible");
+      elQuestionBox.classList.remove("gameOverLayout");
     }
     const questionSuggestions = document.getElementById("questionSuggestions");
     if (questionSuggestions && settings.questionMode !== "teachMajorScale") {
