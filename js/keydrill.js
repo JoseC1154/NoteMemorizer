@@ -903,7 +903,14 @@ updateResponsiveNoteBaseSizes();
     return {
       container: pianoContainer,
       surface: pianoKeyboard,
-      generate: () => generatePianoKeys(pianoKeyboard, NOTE_TO_PC, NOTE_LIST, { octaveCount: 2 }),
+      generate: () => generatePianoKeys(
+        pianoKeyboard,
+        NOTE_TO_PC,
+        NOTE_LIST,
+        state.instrumentExpanded
+          ? { octaveCount: 4, whiteKeyPixelWidth: 56 }
+          : { octaveCount: 2 }
+      ),
       update: (surface, keyRoot, scaleType, scaleTypes, noteToPc, pcToNoteFn) =>
         updatePianoVisualization(surface, keyRoot, scaleType, scaleTypes, noteToPc, pcToNoteFn),
       highlight: (surface, note) => highlightQuestionNote(surface, note),

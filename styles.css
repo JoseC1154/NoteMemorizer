@@ -1880,9 +1880,15 @@ body.gameOverVisible .bassContainer {
   }
 
   .pianoContainer.instrumentExpanded .pianoKeyboardWrap {
-    flex: 1 1 0;
-    overflow-x: auto;
+    flex: 1 1 auto;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: scroll;
     overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    touch-action: pan-x;
     margin-top: 44px;
     min-height: 80px;
     display: flex;
@@ -1890,7 +1896,8 @@ body.gameOverVisible .bassContainer {
   }
 
   .pianoContainer.instrumentExpanded .pianoKeyboard {
-    width: max(200%, 800px);
+    width: max(280vw, 2400px);
+    min-width: max(280vw, 2400px);
     height: clamp(100px, 30vmin, 160px);
     min-height: 100px;
     max-height: unset;
@@ -1954,12 +1961,11 @@ body.gameOverVisible .bassContainer {
     grid-area: instrument;
     min-height: 0;
     height: 100%;
-    width: 95%;
     max-width: 100%;
     padding: 8px;
     display: flex;
     align-items: center;
-    justify-content: stretch;
+    justify-content: space-between;
     justify-self: stretch;
     overflow: hidden;
   }
@@ -1967,16 +1973,21 @@ body.gameOverVisible .bassContainer {
   body.gameActive .main .pianoContainer .pianoKeyboardWrap {
     width: 100%;
     height: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-x;
   }
 
   body.gameActive .main .pianoContainer .pianoKeyboard {
     height: 100%;
     min-height: 100%;
     max-height: none;
-    width: min(100%, calc(100vw - 56px - 20px));
+    width: max(100%, 820px);
+    min-width: 820px;
     aspect-ratio: auto;
-    flex-shrink: 1;
-    margin-left: auto;
+    flex-shrink: 0;
+    margin-left: 0;
     margin-right: 0;
   }
 
@@ -1995,7 +2006,6 @@ body.gameOverVisible .bassContainer {
     margin-right: 0;
   }
   body.gameActive .main .guitarContainer {
-    height: 80%;
     max-width: none;
     aspect-ratio: 4 / 1;
   }
@@ -2012,7 +2022,6 @@ body.gameOverVisible .bassContainer {
   }
 
   body.gameActive .main .bassContainer {
-    height: auto;
     max-width: none;
     aspect-ratio: 18 / 5;
   }
@@ -2952,6 +2961,16 @@ body.gameOverVisible .bassContainer {
   pointer-events: auto !important;
 }
 
+.guitarContainer.instrumentExpanded .answerGrid,
+.bassContainer.instrumentExpanded .answerGrid {
+  position: absolute !important;
+  left: 6px !important;
+  right: 6px !important;
+  bottom: 6px !important;
+  width: auto !important;
+  margin-top: 0 !important;
+}
+
 .pianoContainer.instrumentExpanded .answerBtn,
 .guitarContainer.instrumentExpanded .answerBtn,
 .bassContainer.instrumentExpanded .answerBtn {
@@ -3030,9 +3049,15 @@ body.gameOverVisible .bassContainer {
 }
 
 .pianoContainer.instrumentExpanded .pianoKeyboardWrap {
-  flex: 1 1 0;
-  overflow-x: auto;
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: scroll;
   overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x;
   margin-top: 44px;
   min-height: 80px;
   display: flex;
@@ -3040,7 +3065,8 @@ body.gameOverVisible .bassContainer {
 }
 
 .pianoContainer.instrumentExpanded .pianoKeyboard {
-  width: max(200%, 800px);
+  width: max(280vw, 2400px);
+  min-width: max(280vw, 2400px);
   height: clamp(100px, 30vmin, 160px);
   min-height: 100px;
   max-height: unset;
@@ -3049,6 +3075,11 @@ body.gameOverVisible .bassContainer {
   margin-right: 8px;
   overflow: visible;
   flex: 0 0 auto;
+}
+
+.pianoContainer.instrumentExpanded .pianoKeyboard,
+.pianoContainer.instrumentExpanded .pianoKey {
+  touch-action: pan-x;
 }
 
 .guitarContainer.instrumentExpanded .guitarFretboard {
@@ -3269,11 +3300,42 @@ body.gameOverVisible .bassContainer {
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.1em;
+  height: 2.1em;
   font-size: clamp(10px, 1.5vw, 18px);
   font-weight: 800;
   color: rgba(255,255,255,0.95);
+  line-height: 1;
+  white-space: nowrap;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.72);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.28);
   text-shadow: 0 1px 3px rgba(0,0,0,0.75);
   pointer-events: none;
+  z-index: 130;
+}
+
+.guitarPosition[data-fret="0"] {
+  left: 14px !important;
+  transform: translate(0, -50%);
+}
+
+.guitarFretboard.showNoteLabels .guitarPosition[data-fret="0"]::before {
+  content: "";
+  position: absolute;
+  left: -7px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-right: 7px solid rgba(0, 0, 0, 0.72);
+  pointer-events: none;
+  z-index: 129;
 }
 
 .bassContainer {
@@ -3411,11 +3473,42 @@ body.gameOverVisible .bassContainer {
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.1em;
+  height: 2.1em;
   font-size: clamp(10px, 1.5vw, 18px);
   font-weight: 800;
   color: rgba(255,255,255,0.95);
+  line-height: 1;
+  white-space: nowrap;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.72);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.28);
   text-shadow: 0 1px 3px rgba(0,0,0,0.75);
   pointer-events: none;
+  z-index: 130;
+}
+
+.bassPosition[data-fret="0"] {
+  left: 14px !important;
+  transform: translate(0, -50%);
+}
+
+.bassFretboard.showNoteLabels .bassPosition[data-fret="0"]::before {
+  content: "";
+  position: absolute;
+  left: -7px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-right: 7px solid rgba(0, 0, 0, 0.72);
+  pointer-events: none;
+  z-index: 129;
 }
 
 .pianoContainer[hidden] {
@@ -3424,13 +3517,17 @@ body.gameOverVisible .bassContainer {
 
 .pianoKeyboardWrap {
   width: 100%;
-  overflow: visible;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x;
 }
 
 .pianoKeyboard {
   position: relative;
   height: 140px;
-  width: 100%;
+  width: max(100%, 820px);
+  min-width: 820px;
   aspect-ratio: 7 / 1;
   margin: 0 auto;
   background: linear-gradient(180deg, rgba(10,10,15,0.8), rgba(5,5,10,0.9));
@@ -3651,5 +3748,24 @@ body.gameOverVisible .bassContainer {
 
   .pianoContainer.instrumentExpanded {
     right: 12px;
+  }
+}
+
+@media (min-width: 768px) and (orientation: landscape) {
+  .guitarContainer.instrumentExpanded .guitarFretboard {
+    flex: 0 0 auto;
+    height: min(430px, calc(100vh - 150px));
+  }
+
+  .bassContainer.instrumentExpanded .bassFretboard {
+    flex: 0 0 auto;
+    height: min(430px, calc(100vh - 150px));
+  }
+}
+
+@media (max-width: 767px) and (orientation: landscape) {
+  .bassContainer.instrumentExpanded .bassFretboard {
+    flex: 1 1 auto;
+    min-height: calc(100vh - 150px);
   }
 }

@@ -72,7 +72,8 @@ export function renderQuestion(state, settings, elQuestionText, elTimerBackgroun
   }
   // Normal degree to note mode
   else {
-    elQuestionText.textContent = `What is the ${q.degreeLabel} in the key of ${q.keyRoot} major?`;
+    const scaleTypeName = SCALE_TYPE_NAMES[q.scaleType] || q.scaleType || "major";
+    elQuestionText.textContent = `What is the ${q.degreeLabel} in the key of ${q.keyRoot} ${scaleTypeName}?`;
   }
 }
 

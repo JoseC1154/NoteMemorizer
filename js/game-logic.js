@@ -1,14 +1,28 @@
 // Game logic and question generation
 // Cache buster: v1.1.2
 
-export function degreeToNote(keyRoot, degreeLabel, degreeMode, NOTE_TO_PC, MAJOR_SCALE_OFFSETS, DIATONIC_DEGREES, CHROMATIC_TO_OFFSET, pcToNote) {
+export function degreeToNote(
+  keyRoot,
+  degreeLabel,
+  degreeMode,
+  scaleType,
+  NOTE_TO_PC,
+  MAJOR_SCALE_OFFSETS,
+  SCALE_TYPES,
+  DIATONIC_DEGREES,
+  CHROMATIC_TO_OFFSET,
+  pcToNote
+) {
   const rootPc = NOTE_TO_PC.get(keyRoot);
   if (rootPc == null) throw new Error("Unknown key root");
 
   if (degreeMode === "diatonic") {
     const idx = DIATONIC_DEGREES.indexOf(degreeLabel);
     if (idx < 0) throw new Error("Unknown diatonic degree");
-    return pcToNote(rootPc + MAJOR_SCALE_OFFSETS[idx]);
+    const scaleOffsets = SCALE_TYPES[scaleType] || MAJOR_SCALE_OFFSETS;
+    const degreeOffset = scaleOffsets[idx];
+    if (typeof degreeOffset !== "number") throw new Error("Unknown diatonic degree offset");
+    return pcToNote(rootPc + degreeOffset);
   }
 
   const off = CHROMATIC_TO_OFFSET[degreeLabel];
@@ -60,11 +74,22 @@ export function buildOptions(correct, NOTE_LIST) {
   return shuffle([correct, ...pool.slice(0, 5)]);
 }
 
-export function buildOptionsForMode(correct, degreeMode, keyRoot, NOTE_TO_PC, MAJOR_SCALE_OFFSETS, NOTE_LIST, pcToNote) {
+export function buildOptionsForMode(
+  correct,
+  degreeMode,
+  keyRoot,
+  scaleType,
+  NOTE_TO_PC,
+  MAJOR_SCALE_OFFSETS,
+  SCALE_TYPES,
+  NOTE_LIST,
+  pcToNote
+) {
   if (degreeMode === "diatonic") {
     // For diatonic: use 6 notes from the scale, ensuring correct note is included
     const rootPc = NOTE_TO_PC.get(keyRoot);
-    const scaleNotes = MAJOR_SCALE_OFFSETS.map(offset => pcToNote(rootPc + offset));
+    const scaleOffsets = SCALE_TYPES[scaleType] || MAJOR_SCALE_OFFSETS;
+    const scaleNotes = scaleOffsets.map(offset => pcToNote(rootPc + offset));
     
     // Remove correct from scale notes, shuffle remaining, take 5, then add correct back
     const otherNotes = scaleNotes.filter(n => n !== correct);
@@ -498,9 +523,32 @@ export function nextQuestion(
     }
   } else {
     // Normal degree to note mode: "What is the 3 in the key of C major?"
-    correctNote = degreeToNote(keyRoot, degreeLabel, degreeMode, NOTE_TO_PC, MAJOR_SCALE_OFFSETS, DIATONIC_DEGREES, CHROMATIC_TO_OFFSET, pcToNote);
+    const availableScales = settings.scaleTypesEnabled.length ? settings.scaleTypesEnabled : ["major"];
+    scaleType = pickRandom(availableScales);
+    correctNote = degreeToNote(
+      keyRoot,
+      degreeLabel,
+      degreeMode,
+      scaleType,
+      NOTE_TO_PC,
+      MAJOR_SCALE_OFFSETS,
+      SCALE_TYPES,
+      DIATONIC_DEGREES,
+      CHROMATIC_TO_OFFSET,
+      pcToNote
+    );
     correctDegree = degreeLabel;
-    options = buildOptionsForMode(correctNote, degreeMode, keyRoot, NOTE_TO_PC, MAJOR_SCALE_OFFSETS, NOTE_LIST, pcToNote);
+    options = buildOptionsForMode(
+      correctNote,
+      degreeMode,
+      keyRoot,
+      scaleType,
+      NOTE_TO_PC,
+      MAJOR_SCALE_OFFSETS,
+      SCALE_TYPES,
+      NOTE_LIST,
+      pcToNote
+    );
   }
   
   state.current = {

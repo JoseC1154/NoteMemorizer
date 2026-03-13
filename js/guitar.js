@@ -34,9 +34,7 @@ export function generateGuitarFretboard(guitarFretboard, NOTE_TO_PC, pcToNote) {
 
   const neck = document.createElement("div");
   neck.className = "guitarNeck";
-  const visibleFrets = getVisibleFretCount(guitarFretboard);
-  const visibleFretRatio = fretRatioForCount(visibleFrets);
-  neck.style.width = `${(MAX_FRET_RATIO / visibleFretRatio) * 100}%`;
+  neck.style.width = "250.483%";
   guitarFretboard.appendChild(neck);
 
   const nut = document.createElement("div");
@@ -98,8 +96,8 @@ export function generateGuitarFretboard(guitarFretboard, NOTE_TO_PC, pcToNote) {
 
       let xPercent = 0;
       if (fret > 0) {
-        const fretStart = fretLeftPercent(fret);
-        const fretEnd = fret < TOTAL_FRETS ? fretLeftPercent(fret + 1) : fretLeftPercent(fret);
+        const fretStart = fretLeftPercent(fret - 1);
+        const fretEnd = fretLeftPercent(fret);
         xPercent = fret < TOTAL_FRETS ? (fretStart + fretEnd) / 2 : fretStart;
       }
 

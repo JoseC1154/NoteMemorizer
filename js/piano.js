@@ -5,9 +5,11 @@
 export function generatePianoKeys(pianoKeyboard, NOTE_TO_PC, NOTE_LIST, options = {}) {
   if (!pianoKeyboard) return;
 
-  const { fullRange = false, octaveCount } = options;
+  const { fullRange = false, octaveCount, whiteKeyPixelWidth = null } = options;
   
   pianoKeyboard.innerHTML = '';
+  pianoKeyboard.style.width = '';
+  pianoKeyboard.style.minWidth = '';
 
   if (fullRange) {
     const startMidi = 21; // A0
@@ -72,6 +74,12 @@ export function generatePianoKeys(pianoKeyboard, NOTE_TO_PC, NOTE_LIST, options 
   const totalOctaves = octaveCount ?? 2;
   const whiteKeyCount = whiteNotes.length * totalOctaves; // 14 white keys
   const whiteKeyWidth = 100 / whiteKeyCount; // Percentage width per white key
+
+  if (whiteKeyPixelWidth) {
+    const keyboardWidthPx = whiteKeyCount * whiteKeyPixelWidth;
+    pianoKeyboard.style.width = `${keyboardWidthPx}px`;
+    pianoKeyboard.style.minWidth = `${keyboardWidthPx}px`;
+  }
   
   let whiteKeyIndex = 0;
   
