@@ -1877,10 +1877,9 @@ body.gameOverVisible .bassContainer {
   body.gameActive .main .guitarContainer,
   body.gameActive .main .bassContainer {
     grid-area: instrument;
-    margin: 6px;
     min-height: 0;
     height: 100%;
-    width: 95%;
+    width: 100%;
     max-width: 100%;
     padding: 8px;
     display: flex;
