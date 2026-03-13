@@ -285,34 +285,38 @@ body{
   position: fixed;
   top: 0;
   left: 0;
+  right: 0;
   z-index: 9999;
   pointer-events: none;
   transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.triangleMenu::after {
-  content: "";
+.menuBar {
   position: fixed;
   top: 0;
   left: 0;
-  width: 100vw;
-  height: 48px;
-  border-radius: 0;
-  background: rgba(6, 12, 28, 0.72);
-  border: none;
-  box-shadow: none;
+  width: 56px;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 8px;
+  background: linear-gradient(180deg, rgba(10, 18, 36, 0.96), rgba(3, 10, 24, 0.92));
+  border-right: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 6px 0 20px rgba(0,0,0,0.24);
   backdrop-filter: blur(8px);
   z-index: 10000;
-  pointer-events: none;
+  pointer-events: auto;
   transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
 .menuReviewNext {
-  position: fixed;
-  top: 10px;
-  left: 170px;
-  width: 34px;
-  height: 34px;
+  position: relative;
+  top: auto;
+  left: auto;
+  width: 40px;
+  height: 40px;
   border-radius: 10px;
   border: 1px solid rgba(64,230,160,0.45);
   background: linear-gradient(180deg, rgba(64,230,160,0.28), rgba(64,230,160,0.12));
@@ -321,10 +325,11 @@ body{
   font-weight: 800;
   cursor: pointer;
   pointer-events: auto;
-  z-index: 10001;
+  z-index: 10002;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex: 0 0 auto;
 }
 
 .menuReviewNext:hover {
@@ -342,48 +347,37 @@ body{
   background: transparent;
   border: none;
   cursor: pointer;
-  position: fixed;
-  top: 10px;
-  left: 10px;
+  position: relative;
+  top: auto;
+  left: auto;
   transition: none;
   padding: 0;
   width: 34px;
   height: 34px;
   pointer-events: auto;
-  z-index: 10001;
+  z-index: 10002;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.instrumentToggleGroup {
-  position: fixed;
-  top: 10px;
-  left: 52px;
-  display: flex;
-  gap: 6px;
-  pointer-events: auto;
-  z-index: 10001;
-}
-
-.instrumentToggleGroup[hidden] {
-  display: none !important;
-}
-
 .instrumentToggle {
   appearance: none;
-  width: 34px;
-  height: 34px;
+  width: 40px;
+  height: 40px;
   border-radius: 10px;
   border: 1px solid rgba(255,255,255,0.16);
   background: rgba(0,0,0,0.35);
   color: var(--text);
-  font-size: 18px;
+  font-size: 20px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.2s ease;
+  position: relative;
+  z-index: 10004;
+  flex: 0 0 auto;
 }
 
 .instrumentToggle:hover {
@@ -473,18 +467,21 @@ body{
 
 .menuDropdown {
   position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background: transparent;
-  border: none;
-  border-radius: 0;
-  padding: 0;
-  display: flex;
-  gap: 2rem;
-  box-shadow: none;
-  backdrop-filter: none;
-  z-index: 10000;
+  top: 10px;
+  left: 64px;
+  transform: none;
+  background: rgba(5, 10, 22, 0.88);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 18px;
+  padding: 12px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(72px, 80px));
+  gap: 12px;
+  width: fit-content;
+  max-width: calc(100vw - 74px);
+  box-shadow: 0 18px 48px rgba(0,0,0,0.4);
+  backdrop-filter: blur(14px);
+  z-index: 10003;
   pointer-events: none;
   opacity: 0;
   visibility: hidden;
@@ -499,7 +496,7 @@ body{
 }
 
 .menuDropdown[hidden] {
-  display: flex !important;
+  display: grid !important;
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
@@ -524,6 +521,7 @@ body{
   overflow: hidden;
   transform: scale(0.8);
   animation: menuItemGrow 0.5s ease forwards;
+  z-index: 1;
 }
 
 @keyframes menuItemGrow {
@@ -743,6 +741,72 @@ body{
   transition: transform 0.15s ease, opacity 0.15s ease, border-color 0.15s ease;
 }
 
+.menuBar .studyBackBtn,
+.menuBar .playPauseBtn {
+  position: relative;
+  top: auto;
+  left: auto;
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: none;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 10px;
+  z-index: 10004;
+  font-size: 0.95rem;
+  background: rgba(8, 16, 36, 0.72);
+  border: 1px solid rgba(255,255,255,0.24);
+  animation: none;
+  flex: 0 0 auto;
+}
+
+.menuBar .instrumentToggle {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  font-size: 20px;
+  margin: 0;
+}
+
+.menuBar .studyBackBtn:hover,
+.menuBar .playPauseBtn:hover {
+  border-color: rgba(255,255,255,0.22);
+  transform: translateY(-1px);
+}
+
+.menuBar .studyBackBtn:active,
+.menuBar .playPauseBtn:active {
+  transform: scale(0.95);
+}
+
+.menuBar .studyBackBtn .menuItemIcon,
+.menuBar .playPauseBtn .menuItemIcon {
+  font-size: 1rem;
+  line-height: 1;
+  position: relative;
+  z-index: 10005;
+  filter: grayscale(1) brightness(1.2);
+}
+
+.menuBar .studyBackBtn[aria-disabled="true"] {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+@media (max-width: 700px) {
+  .menuDropdown {
+    grid-template-columns: repeat(3, minmax(64px, 72px));
+    gap: 10px;
+    padding: 10px;
+  }
+}
+
+.menuDropdown .playPauseBtn[aria-pressed="true"] {
+  background: rgba(18, 44, 88, 0.88);
+}
+
 .playPauseBtn:hover {
   border-color: rgba(255,255,255,0.45);
   transform: scale(1.06);
@@ -933,7 +997,7 @@ body:not(.gameActive) .instrumentToggleGroup {
   pointer-events: none;
 }
 
-body:not(.gameActive) .triangleMenu::after {
+body:not(.gameActive) .menuBar {
   opacity: 0;
   visibility: hidden;
 }
@@ -1827,21 +1891,16 @@ body.gameOverVisible .bassContainer {
     padding-left: 12px;
   }
 
-  .triangleToggle {
-    top: 10px;
-    left: 10px;
-  }
-
-  .triangleMenu::after {
+  .menuBar {
     top: 0;
     left: 0;
-    width: 48px;
+    width: 56px;
     height: 100vh;
   }
 
   .menuReviewNext {
-    top: 172px;
-    left: 10px;
+    top: auto;
+    left: auto;
   }
 
   .studyBackBtn {
@@ -3294,8 +3353,32 @@ body.gameOverVisible .bassContainer {
   pointer-events: none;
 }
 
-.guitarFretboard.showNoteLabels .guitarPosition::after {
-  content: attr(data-note);
+.guitarFretboard.showNoteLabels .guitarPosition[data-scale-label]:not([data-scale-label=""])::after {
+  content: attr(data-scale-label);
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.1em;
+  height: 2.1em;
+  font-size: clamp(10px, 1.5vw, 18px);
+  font-weight: 800;
+  color: rgba(255,255,255,0.95);
+  line-height: 1;
+  white-space: nowrap;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.72);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.28);
+  text-shadow: 0 1px 3px rgba(0,0,0,0.75);
+  pointer-events: none;
+  z-index: 130;
+}
+
+.guitarFretboard.showDegreeLabels .guitarPosition[data-degree]:not([data-degree=""])::after {
+  content: attr(data-degree);
   position: absolute;
   left: 50%;
   top: 50%;
@@ -3323,7 +3406,7 @@ body.gameOverVisible .bassContainer {
   transform: translate(0, -50%);
 }
 
-.guitarFretboard.showNoteLabels .guitarPosition[data-fret="0"]::before {
+.guitarFretboard.showNoteLabels .guitarPosition[data-fret="0"][data-scale-label]:not([data-scale-label=""])::before {
   content: "";
   position: absolute;
   left: -7px;
@@ -3467,8 +3550,32 @@ body.gameOverVisible .bassContainer {
   animation: pulse-question 1.5s ease-in-out infinite;
 }
 
-.bassFretboard.showNoteLabels .bassPosition::after {
-  content: attr(data-note);
+.bassFretboard.showNoteLabels .bassPosition[data-scale-label]:not([data-scale-label=""])::after {
+  content: attr(data-scale-label);
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.1em;
+  height: 2.1em;
+  font-size: clamp(10px, 1.5vw, 18px);
+  font-weight: 800;
+  color: rgba(255,255,255,0.95);
+  line-height: 1;
+  white-space: nowrap;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.72);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.28);
+  text-shadow: 0 1px 3px rgba(0,0,0,0.75);
+  pointer-events: none;
+  z-index: 130;
+}
+
+.bassFretboard.showDegreeLabels .bassPosition[data-degree]:not([data-degree=""])::after {
+  content: attr(data-degree);
   position: absolute;
   left: 50%;
   top: 50%;
@@ -3496,7 +3603,7 @@ body.gameOverVisible .bassContainer {
   transform: translate(0, -50%);
 }
 
-.bassFretboard.showNoteLabels .bassPosition[data-fret="0"]::before {
+.bassFretboard.showNoteLabels .bassPosition[data-fret="0"][data-scale-label]:not([data-scale-label=""])::before {
   content: "";
   position: absolute;
   left: -7px;
@@ -3658,8 +3765,20 @@ body.gameOverVisible .bassContainer {
   border: 2px solid rgba(56, 189, 248, 0.95) !important;
 }
 
-.pianoKeyboard.showNoteLabels .pianoKey::before {
-  content: attr(data-note);
+.pianoKeyboard.showNoteLabels .pianoKey[data-scale-label]:not([data-scale-label=""])::before {
+  content: attr(data-scale-label);
+  position: absolute;
+  left: 50%;
+  bottom: 8px;
+  transform: translateX(-50%);
+  font-size: clamp(9px, 1.2vw, 14px);
+  font-weight: 800;
+  z-index: 101;
+  pointer-events: none;
+}
+
+.pianoKeyboard.showDegreeLabels .pianoKey[data-degree]:not([data-degree=""])::before {
+  content: attr(data-degree);
   position: absolute;
   left: 50%;
   bottom: 8px;
@@ -3674,7 +3793,17 @@ body.gameOverVisible .bassContainer {
   color: rgba(10,10,10,0.85);
 }
 
+.pianoKeyboard.showDegreeLabels .pianoKey.white::before {
+  color: rgba(10,10,10,0.85);
+}
+
 .pianoKeyboard.showNoteLabels .pianoKey.black::before {
+  color: rgba(255,255,255,0.92);
+  bottom: 6px;
+  font-size: 9px;
+}
+
+.pianoKeyboard.showDegreeLabels .pianoKey.black::before {
   color: rgba(255,255,255,0.92);
   bottom: 6px;
   font-size: 9px;

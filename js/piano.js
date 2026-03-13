@@ -147,10 +147,12 @@ export function updatePianoVisualization(pianoKeyboard, rootKey, scaleType, SCAL
   
   // Calculate all notes in the scale using the existing pcToNote function
   const scaleNotes = new Set();
-  scale.forEach(offset => {
+  const noteDegrees = new Map();
+  scale.forEach((offset, index) => {
     const notePitchClass = (rootPC + offset) % 12;
     const noteName = pcToNote(notePitchClass);
     scaleNotes.add(noteName);
+    noteDegrees.set(noteName, String(index + 1));
   });
   
   console.log(`=== PIANO UPDATE: ${rootKey} ${scaleType} ===`);
@@ -175,9 +177,13 @@ export function updatePianoVisualization(pianoKeyboard, rootKey, scaleType, SCAL
     // Notes NOT in the scale: red overlay
     if (scaleNotes.has(note)) {
       key.classList.add('inScale');
+      key.dataset.scaleLabel = note;
+      key.dataset.degree = noteDegrees.get(note) || '';
       inScaleKeys.push(note);
     } else {
       key.classList.add('shaded');
+      key.dataset.scaleLabel = '';
+      key.dataset.degree = '';
       shadedKeys.push(note);
     }
   });

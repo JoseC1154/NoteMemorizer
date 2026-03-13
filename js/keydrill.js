@@ -391,7 +391,7 @@ updateResponsiveNoteBaseSizes();
     pausedByInstrumentExpand: false,
     pausedByStudyBack: false,
     instrumentExpanded: false,
-    expandedNotesVisible: false,
+    instrumentLabelMode: "off",
     finishScaleReviewMode: false,
     current: null, // { keyRoot, degreeLabel, correctNote, options[] }
     studyBackupCurrent: null,
@@ -840,10 +840,21 @@ updateResponsiveNoteBaseSizes();
 
   function applyExpandedNoteLabels() {
     const teachModeForcesLabels = settings.questionMode === "teachMajorScale" && state.active;
-    const showLabels = (state.instrumentExpanded && state.expandedNotesVisible) || teachModeForcesLabels;
-    if (pianoKeyboard) pianoKeyboard.classList.toggle('showNoteLabels', showLabels);
-    if (guitarFretboard) guitarFretboard.classList.toggle('showNoteLabels', showLabels);
-    if (bassFretboard) bassFretboard.classList.toggle('showNoteLabels', showLabels);
+    const showLabels = (state.instrumentExpanded && state.instrumentLabelMode !== "off") || teachModeForcesLabels;
+    const showDegrees = !teachModeForcesLabels && showLabels && state.instrumentLabelMode === "degrees";
+    const showNotes = teachModeForcesLabels || (showLabels && state.instrumentLabelMode === "notes");
+    if (pianoKeyboard) {
+      pianoKeyboard.classList.toggle('showNoteLabels', showNotes);
+      pianoKeyboard.classList.toggle('showDegreeLabels', showDegrees);
+    }
+    if (guitarFretboard) {
+      guitarFretboard.classList.toggle('showNoteLabels', showNotes);
+      guitarFretboard.classList.toggle('showDegreeLabels', showDegrees);
+    }
+    if (bassFretboard) {
+      bassFretboard.classList.toggle('showNoteLabels', showNotes);
+      bassFretboard.classList.toggle('showDegreeLabels', showDegrees);
+    }
   }
 
   function getCurrentQuestionText() {
@@ -928,7 +939,6 @@ updateResponsiveNoteBaseSizes();
   function renderInstrumentExpandedState() {
     const active = getActiveVisualization();
     const expanded = state.instrumentExpanded;
-    const instrumentToggleGroup = document.querySelector('.instrumentToggleGroup');
 
     [pianoContainer, guitarContainer, bassContainer].forEach(container => {
       if (!container) return;
@@ -951,13 +961,19 @@ updateResponsiveNoteBaseSizes();
     [pianoNotesBtn, guitarNotesBtn, bassNotesBtn].forEach(btn => {
       if (!btn) return;
       btn.hidden = !(expanded || forceShowNotesBtn);
-      btn.setAttribute('aria-pressed', state.expandedNotesVisible ? 'true' : 'false');
-      btn.title = state.expandedNotesVisible ? 'Hide note labels' : 'Show note labels';
+      btn.setAttribute('aria-pressed', state.instrumentLabelMode !== 'off' ? 'true' : 'false');
+      btn.textContent = state.instrumentLabelMode === 'notes'
+        ? '1'
+        : (state.instrumentLabelMode === 'degrees' ? '-' : 'N');
+      btn.title = state.instrumentLabelMode === 'off'
+        ? 'Show scale notes'
+        : (state.instrumentLabelMode === 'notes' ? 'Show scale degrees' : 'Hide labels');
     });
 
-    if (instrumentToggleGroup) {
-      instrumentToggleGroup.hidden = expanded;
-    }
+    [instrumentPiano, instrumentGuitar, instrumentBass].forEach(btn => {
+      if (!btn) return;
+      btn.hidden = expanded;
+    });
 
     if (elMain) {
       elMain.classList.toggle('instrument-view-expanded', expanded);
@@ -1031,6 +1047,7 @@ updateResponsiveNoteBaseSizes();
 
     active.update(active.surface, keyForView, scaleForView, SCALE_TYPES, NOTE_TO_PC, pcToNote);
     clearInstrumentFeedback(active.surface);
+    applyTeachTimedMask(active.surface);
     applyFinishScaleMentionedHighlight(active.surface);
 
     if (settings.questionMode === "noteToDegree" && state.current?.questionNote) {
@@ -1048,6 +1065,20 @@ updateResponsiveNoteBaseSizes();
     renderExpandedQuestionOverlay();
     syncAnswerInputAvailability();
     updateResponsiveNoteBaseSizes();
+  }
+
+  function applyTeachTimedMask(surface) {
+    if (settings.questionMode !== "teachMajorScale" || state.teachMode.phase !== "timed" || !surface) return;
+
+    let noteSelector = ".pianoKey";
+    if (surface === guitarFretboard) noteSelector = ".guitarPosition";
+    if (surface === bassFretboard) noteSelector = ".bassPosition";
+
+    const noteElements = surface.querySelectorAll(noteSelector);
+    noteElements.forEach(el => {
+      el.classList.remove("inScale", "questionNote");
+      el.classList.add("shaded");
+    });
   }
 
   function applyFinishScaleMentionedHighlight(surface) {
@@ -1253,7 +1284,9 @@ updateResponsiveNoteBaseSizes();
     if (!elPlayPauseBtn) return;
     const isPressed = !!(state.active && state.pausedByUser);
     elPlayPauseBtn.setAttribute("aria-pressed", isPressed ? "true" : "false");
-    elPlayPauseBtn.textContent = isPressed ? "▶" : "⏸";
+    const icon = elPlayPauseBtn.querySelector(".menuItemIcon");
+    if (icon) icon.textContent = isPressed ? "▶" : "⏸";
+    else elPlayPauseBtn.textContent = isPressed ? "▶" : "⏸";
     elPlayPauseBtn.title = isPressed ? "Resume game" : "Pause game";
   }
 
@@ -1501,27 +1534,42 @@ updateResponsiveNoteBaseSizes();
     );
   };
 
-  function setReviewNextMenuButtonVisible(visible) {
-    const menuRoot = document.querySelector('.triangleMenu');
-    if (!menuRoot) return;
+  function setBarMenuButton({ id, icon, title, onClick, visible }) {
+    const menuBar = document.querySelector('.menuBar');
+    if (!menuBar) return;
 
-    let reviewBtn = document.getElementById('btnNextAfterScaleReviewBar');
-    if (!reviewBtn) {
-      reviewBtn = document.createElement('button');
-      reviewBtn.type = 'button';
-      reviewBtn.id = 'btnNextAfterScaleReviewBar';
-      reviewBtn.className = 'menuReviewNext';
-      reviewBtn.textContent = 'Next';
-      reviewBtn.hidden = true;
-      reviewBtn.addEventListener('click', (e) => {
+    let barBtn = document.getElementById(id);
+    if (!barBtn) {
+      barBtn = document.createElement('button');
+      barBtn.type = 'button';
+      barBtn.id = id;
+      barBtn.className = 'menuReviewNext';
+      barBtn.hidden = true;
+      barBtn.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        advanceFromFinishScaleReview();
+        if (typeof barBtn._menuAction === "function") {
+          barBtn._menuAction();
+        }
       });
-      menuRoot.appendChild(reviewBtn);
+      menuBar.appendChild(barBtn);
     }
 
-    reviewBtn.hidden = !visible;
+    barBtn.textContent = icon;
+    barBtn.title = title;
+    barBtn.setAttribute('aria-label', title);
+    barBtn._menuAction = onClick;
+    barBtn.hidden = !visible;
+  }
+
+  function setReviewNextMenuButtonVisible(visible) {
+    setBarMenuButton({
+      id: 'btnNextAfterScaleReviewBar',
+      icon: '↻',
+      title: 'Replay / next',
+      visible,
+      onClick: advanceFromFinishScaleReview
+    });
   }
 
   const advanceFromFinishScaleReview = () => {
@@ -2173,7 +2221,9 @@ updateResponsiveNoteBaseSizes();
   }
 
   function toggleExpandedNotesVisibility() {
-    state.expandedNotesVisible = !state.expandedNotesVisible;
+    state.instrumentLabelMode = state.instrumentLabelMode === "off"
+      ? "notes"
+      : (state.instrumentLabelMode === "notes" ? "degrees" : "off");
     renderInstrumentExpandedState();
   }
 

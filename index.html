@@ -14,13 +14,21 @@
     <p class="splashInstructions">Master your instrument by identifying notes and scale degrees.</p>
   </div>
 
-  <div class="triangleMenu">    <div class="menuBackdrop"></div>    <button class="triangleToggle" id="menuToggle" type="button" aria-haspopup="true" aria-expanded="false">
-      <span class="plusIcon">+</span>
-    </button>
-    <div class="instrumentToggleGroup" aria-label="Instrument selection">
+  <div class="triangleMenu">
+    <div class="menuBackdrop"></div>
+    <div class="menuBar">
+      <button class="triangleToggle" id="menuToggle" type="button" aria-haspopup="true" aria-expanded="false">
+        <span class="plusIcon">+</span>
+      </button>
       <button class="instrumentToggle" id="instrumentPiano" type="button" aria-pressed="true" title="Show piano">🎹</button>
       <button class="instrumentToggle" id="instrumentGuitar" type="button" aria-pressed="false" title="Show guitar">🎸</button>
       <button class="instrumentToggle" id="instrumentBass" type="button" aria-pressed="false" title="Show bass">🎸</button>
+      <button class="menuItem studyBackBtn" id="studyBackBtn" type="button" title="Back step study view (max 3)" aria-disabled="true">
+        <span class="menuItemIcon">↶</span>
+      </button>
+      <button class="menuItem playPauseBtn" id="playPauseBtn" type="button" aria-pressed="false" title="Pause game">
+        <span class="menuItemIcon">⏸</span>
+      </button>
     </div>
     <div class="menuDropdown" id="menuDropdown" hidden>
       <button class="menuItem" id="btnStats" type="button" aria-label="Statistics">
@@ -40,8 +48,6 @@
       <p class="levelInfo" id="levelInfo" hidden></p>
       <div class="questionBoxWrap">
         <div class="questionBox" id="questionBox" aria-live="polite" aria-atomic="true">
-          <span class="studyBackBtn" id="studyBackBtn" title="Back step study view (max 3)" aria-disabled="true">↶</span>
-          <span class="playPauseBtn" id="playPauseBtn" role="button" tabindex="0" aria-pressed="false" title="Pause game">⏸</span>
           <div class="questionStats">
             <span class="questionStat" id="lives">3 ♥</span>
             <span class="questionStat score" id="score">0</span>

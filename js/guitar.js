@@ -125,8 +125,11 @@ export function updateGuitarVisualization(guitarFretboard, rootKey, scaleType, S
   if (rootPC === undefined) return;
 
   const scaleNotes = new Set();
-  scale.forEach(offset => {
-    scaleNotes.add(pcToNote(rootPC + offset));
+  const noteDegrees = new Map();
+  scale.forEach((offset, index) => {
+    const noteName = pcToNote(rootPC + offset);
+    scaleNotes.add(noteName);
+    noteDegrees.set(noteName, String(index + 1));
   });
 
   const positions = guitarFretboard.querySelectorAll(".guitarPosition");
@@ -134,8 +137,12 @@ export function updateGuitarVisualization(guitarFretboard, rootKey, scaleType, S
     position.classList.remove("shaded", "inScale", "questionNote");
     if (scaleNotes.has(position.dataset.note)) {
       position.classList.add("inScale");
+      position.dataset.scaleLabel = position.dataset.note;
+      position.dataset.degree = noteDegrees.get(position.dataset.note) || "";
     } else {
       position.classList.add("shaded");
+      position.dataset.scaleLabel = "";
+      position.dataset.degree = "";
     }
   });
 }

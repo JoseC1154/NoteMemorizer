@@ -125,8 +125,11 @@ export function updateBassVisualization(bassFretboard, keyRoot, scaleType, SCALE
   const scaleOffsets = SCALE_TYPES[scaleType] || SCALE_TYPES["major"];
   const rootPC = NOTE_TO_PC.get(keyRoot);
   const scaleNotes = new Set();
-  scaleOffsets.forEach(offset => {
-    scaleNotes.add((rootPC + offset) % 12);
+  const noteDegrees = new Map();
+  scaleOffsets.forEach((offset, index) => {
+    const notePc = (rootPC + offset) % 12;
+    scaleNotes.add(notePc);
+    noteDegrees.set(notePc, String(index + 1));
   });
 
   // Update positions
@@ -136,8 +139,12 @@ export function updateBassVisualization(bassFretboard, keyRoot, scaleType, SCALE
     const notePC = NOTE_TO_PC.get(note);
     if (scaleNotes.has(notePC)) {
       position.classList.add("inScale");
+      position.dataset.scaleLabel = note;
+      position.dataset.degree = noteDegrees.get(notePC) || "";
     } else {
       position.classList.remove("inScale");
+      position.dataset.scaleLabel = "";
+      position.dataset.degree = "";
     }
   });
 }
