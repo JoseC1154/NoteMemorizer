@@ -847,8 +847,8 @@ export function nextAfterFeedback(state, settings, answerButtons, lockAnswers, n
   const effectiveDelay = Math.max(0, delayMs ?? settings.modalDuration) + 100;
   setTimeout(() => {
     if (!state.active) return;
-    // Clear the correctAnswer highlight
-    answerButtons.forEach(btn => btn.classList.remove('correctAnswer'));
+    // Clear answer feedback markers before the next question
+    answerButtons.forEach(btn => btn.classList.remove('correctAnswer', 'wrongSelection'));
     lockAnswers(state, answerButtons, false);
     nextQuestionFn();
   }, effectiveDelay);
@@ -858,6 +858,7 @@ export function handleCorrect(
   state,
   settings,
   chosen,
+  selectedButton,
   answerButtons,
   elLives,
   elScore,
@@ -942,6 +943,20 @@ export function handleCorrect(
 
   updateRiskVisual(state);
 
+  if (selectedButton) {
+    selectedButton.classList.add('correctSelection');
+  }
+
+  const correctValue = settings.questionMode === "noteToDegree"
+    ? state.current.correctDegree
+    : state.current.correctNote;
+
+  answerButtons.forEach(btn => {
+    if (btn.dataset.note === correctValue) {
+      btn.classList.add('correctAnswer');
+    }
+  });
+
   // Check for progression level advancement
   const streakRequired = getProgressionStreakRequiredFn(settings);
   if (settings.gameMode === "progression" && state.progression.levelStreak >= streakRequired) {
@@ -954,28 +969,26 @@ export function handleCorrect(
     return;
   }
 
+  const shouldUseStatusModal = rewardAt20 || awardedLife || bonusAwarded;
+
   if (rewardAt20) {
     flashStatus(settings, elStatusPanel, elStatusText, true, `Correct: ${chosen} — 🎉 20 correct! +1 life & Speed up! (Score: ${state.score})`);
   } else if (awardedLife) {
     flashStatus(settings, elStatusPanel, elStatusText, true, `Correct: ${chosen} — +1 life! (Score: ${state.score})`);
   } else if (bonusAwarded) {
     flashStatus(settings, elStatusPanel, elStatusText, true, `Correct: ${chosen} — ⏳ +5 Bonus! (Streak: ${state.streak}) — Score: ${state.score}`);
-  } else {
-    const streakText = settings.gameMode === "progression" 
-      ? `Level ${state.progression.level} Progress: ${state.progression.levelStreak}/${getProgressionStreakRequiredFn(settings)}`
-      : `Streak: ${state.streak}`;
-    flashStatus(settings, elStatusPanel, elStatusText, true, `Correct: ${chosen} (${streakText}) — Score: ${state.score}`);
   }
 
   lockAnswers(state, answerButtons, true);
   stopTimerFn(state);
-  nextAfterFeedbackFn(state, settings, answerButtons, lockAnswers);
+  nextAfterFeedbackFn(state, settings, answerButtons, lockAnswers, shouldUseStatusModal ? undefined : 450);
 }
 
 export function handleWrong(
   state,
   settings,
   chosen,
+  selectedButton,
   answerButtons,
   elLives,
   elStatusPanel,
@@ -1026,6 +1039,10 @@ export function handleWrong(
     }
   });
 
+  if (selectedButton && selectedButton.dataset.note !== correctValue) {
+    selectedButton.classList.add('wrongSelection');
+  }
+
   if (state.lives <= 0) {
     flashStatus(settings, elStatusPanel, elStatusText, false, `The correct answer is ${correctValue}. Game Over.`);
     lockAnswers(state, answerButtons, true);
@@ -1036,10 +1053,9 @@ export function handleWrong(
     return;
   }
 
-  flashStatus(settings, elStatusPanel, elStatusText, false, `The correct answer is ${correctValue}.`);
   lockAnswers(state, answerButtons, true);
   stopTimerFn(state);
-  nextAfterFeedbackFn(state, settings, answerButtons, lockAnswers, 5000);
+  nextAfterFeedbackFn(state, settings, answerButtons, lockAnswers, 650);
 }
 
 export function handleTimeout(
@@ -1115,5 +1131,5 @@ export function onAnswerClick(state, btn, handleCorrectFn, handleWrongFn, settin
   console.log(`Answer clicked: ${chosen}, Correct: ${correct}`);
 
   if (chosen === correct) handleCorrectFn(chosen);
-  else handleWrongFn(chosen);
+  else handleWrongFn(chosen, btn);
 }

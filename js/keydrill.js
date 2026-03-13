@@ -1006,6 +1006,7 @@ updateResponsiveNoteBaseSizes();
     }
 
     active.update(active.surface, keyForView, scaleForView, SCALE_TYPES, NOTE_TO_PC, pcToNote);
+    clearInstrumentFeedback(active.surface);
     applyFinishScaleMentionedHighlight(active.surface);
 
     if (settings.questionMode === "noteToDegree" && state.current?.questionNote) {
@@ -1115,6 +1116,19 @@ updateResponsiveNoteBaseSizes();
       if (selectedNotes.has(note)) {
         el.classList.add("chordSelected");
       }
+    });
+  }
+
+  function clearInstrumentFeedback(surface) {
+    if (!surface) return;
+
+    let noteSelector = ".pianoKey";
+    if (surface === guitarFretboard) noteSelector = ".guitarPosition";
+    if (surface === bassFretboard) noteSelector = ".bassPosition";
+
+    const noteElements = surface.querySelectorAll(noteSelector);
+    noteElements.forEach(el => {
+      el.classList.remove("correctSelection", "wrongSelection");
     });
   }
 
@@ -1369,15 +1383,15 @@ updateResponsiveNoteBaseSizes();
     state, settings, answerButtons, lockAnswers, nextQuestionWrapper
   );
   
-  const handleCorrectWrapper = (chosen) => handleCorrect(
-    state, settings, chosen, answerButtons, elLives, elScore, elBonusCount, elBonusButton, elStatusPanel,
+  const handleCorrectWrapper = (chosen, selectedButton = null) => handleCorrect(
+    state, settings, chosen, selectedButton, answerButtons, elLives, elScore, elBonusCount, elBonusButton, elStatusPanel,
     elStatusText, elLevelInfo, soundCorrect, getVolumeMultiplier, recordQuestion, renderBonus, renderScore,
     renderLives, updateRiskVisual, flashStatus, lockAnswers, stopTimerWrapper, nextAfterFeedbackWrapper,
     getProgressionStreakRequired, advanceProgressionLevel, renderLevelInfo
   );
   
-  const handleWrongWrapper = (chosen) => handleWrong(
-    state, settings, chosen, answerButtons, elLives, elStatusPanel, elStatusText, soundWrong, getVolumeMultiplier,
+  const handleWrongWrapper = (chosen, selectedButton = null) => handleWrong(
+    state, settings, chosen, selectedButton, answerButtons, elLives, elStatusPanel, elStatusText, soundWrong, getVolumeMultiplier,
     recordQuestion, renderLives, updateRiskVisual, flashStatus, lockAnswers, stopTimerWrapper, nextAfterFeedbackWrapper,
     endGameWrapper
   );
@@ -1509,7 +1523,7 @@ updateResponsiveNoteBaseSizes();
       setTimeout(() => {
         if (selectedElement) selectedElement.classList.remove("wrongSelection");
         state.locked = false;
-        handleWrongWrapper(chosenNote);
+        handleWrongWrapper(chosenNote, selectedElement);
       }, 320);
       return;
     }
@@ -1520,7 +1534,7 @@ updateResponsiveNoteBaseSizes();
     if (state.current.remainingNotes.length === 0) {
       state.current.correctNote = chosenNote;
       state.locked = true;
-      handleCorrectWrapper(chosenNote);
+      handleCorrectWrapper(chosenNote, selectedElement);
       return;
     }
 
@@ -1549,13 +1563,13 @@ updateResponsiveNoteBaseSizes();
       if (!chosenNote) return;
 
       if (chosenNote === state.current.correctNote) {
-        handleCorrectWrapper(chosenNote);
+        handleCorrectWrapper(chosenNote, selectedElement);
       } else {
         if (selectedElement) {
           selectedElement.classList.add("wrongSelection");
           setTimeout(() => selectedElement.classList.remove("wrongSelection"), 600);
         }
-        handleWrongWrapper(chosenNote);
+        handleWrongWrapper(chosenNote, selectedElement);
       }
       return;
     }
@@ -1667,10 +1681,10 @@ updateResponsiveNoteBaseSizes();
       if (state.current.correctStep) {
         const stepMatch = state.current.correctStep.note === chosenNote
           && String(state.current.correctStep.octave) === String(chosenOctave);
-        if (stepMatch) handleCorrectWrapper(chosenNote);
+        if (stepMatch) handleCorrectWrapper(chosenNote, selectedElement);
         else markWrongWithDelay();
       } else if (chosenNote === state.current.correctNote) {
-        handleCorrectWrapper(chosenNote);
+        handleCorrectWrapper(chosenNote, selectedElement);
       } else {
         markWrongWithDelay();
       }
@@ -1699,7 +1713,7 @@ updateResponsiveNoteBaseSizes();
         return;
       }
 
-      if (chosenNote === stageTwoAnswer) handleCorrectWrapper(chosenNote);
+      if (chosenNote === stageTwoAnswer) handleCorrectWrapper(chosenNote, selectedElement);
       else markWrongWithDelay();
       return;
     }
@@ -1762,14 +1776,14 @@ updateResponsiveNoteBaseSizes();
 
       state.current.correctNote = solvedNote;
       state.locked = true;
-      handleCorrectWrapper(chosenNote);
+      handleCorrectWrapper(chosenNote, selectedElement);
       return;
     }
 
     const correct = state.current.correctNote;
-    if (chosenNote === correct) handleCorrectWrapper(chosenNote);
+    if (chosenNote === correct) handleCorrectWrapper(chosenNote, selectedElement);
     else if (settings.questionMode === "finishScale") markWrongWithDelay();
-    else handleWrongWrapper(chosenNote);
+    else handleWrongWrapper(chosenNote, selectedElement);
   };
 
   // =========================

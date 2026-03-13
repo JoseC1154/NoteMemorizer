@@ -87,8 +87,8 @@ export function renderAnswers(state, answerButtons) {
     b.textContent = opts[i] ?? "—";
     b.dataset.note = opts[i] ?? "";
     b.disabled = !state.active || state.locked || !q;
-    // Clear correctAnswer highlight when rendering new answers
-    b.classList.remove('correctAnswer');
+    // Clear per-question feedback markers when rendering new answers
+    b.classList.remove('correctAnswer', 'wrongSelection');
   });
 }
 
@@ -153,10 +153,9 @@ export function renderLevelInfo(state, settings, elLevelInfo) {
 export function flashStatus(settings, elStatusPanel, elStatusText, isGood, text) {
   const elStatusOverlay = document.getElementById("statusOverlay");
   const elStatusSuggestions = document.getElementById("statusSuggestions");
+  const statusClass = isGood ? "good" : "bad";
   
   elStatusPanel.classList.remove("good", "bad");
-  void elStatusPanel.offsetWidth;
-  elStatusPanel.classList.add(isGood ? "good" : "bad");
   elStatusText.textContent = text;
   
   // Hide suggestions by default
@@ -168,6 +167,9 @@ export function flashStatus(settings, elStatusPanel, elStatusText, isGood, text)
   // Show modal
   elStatusPanel.hidden = false;
   elStatusOverlay.hidden = false;
+  requestAnimationFrame(() => {
+    elStatusPanel.classList.add(statusClass);
+  });
 
   setTimeout(() => {
     elStatusPanel.classList.remove("good", "bad");
@@ -182,8 +184,6 @@ export function flashStatusWithSuggestions(elStatusPanel, elStatusText, text, su
   const elStatusSuggestions = document.getElementById("statusSuggestions");
   
   elStatusPanel.classList.remove("good", "bad");
-  void elStatusPanel.offsetWidth;
-  elStatusPanel.classList.add("bad");
   elStatusText.textContent = text;
   
   // Show suggestions
@@ -195,6 +195,9 @@ export function flashStatusWithSuggestions(elStatusPanel, elStatusText, text, su
   // Show modal - don't auto-hide for game over
   elStatusPanel.hidden = false;
   elStatusOverlay.hidden = false;
+  requestAnimationFrame(() => {
+    elStatusPanel.classList.add("bad");
+  });
 }
 
 export function updateRiskVisual(state) {

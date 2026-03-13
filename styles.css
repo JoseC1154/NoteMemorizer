@@ -1231,8 +1231,7 @@ body.gameActive .answerGrid {
 .statusOverlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.75);
-  backdrop-filter: blur(8px);
+  background: rgba(0, 0, 0, 0.66);
   z-index: 100;
   display: none;
   animation: fadeIn 0.2s ease;
@@ -1265,6 +1264,7 @@ body.gameActive .answerGrid {
   z-index: 101;
   display: none;
   animation: modalSlideIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  will-change: transform, opacity;
 }
 
 .statusPanel:not([hidden]) {
@@ -1333,17 +1333,18 @@ body.gameOverVisible .bassContainer {
 .statusPanel::before{
   content:"";
   position:absolute;
-  inset: -40%;
+  inset: -18%;
   background: linear-gradient(110deg,
-      rgba(20,180,255,0.65),
-      rgba(60,255,190,0.55),
-      rgba(255,60,60,0.55),
-      rgba(20,180,255,0.65));
-  background-size: 300% 300%;
-  animation: drift 5s linear infinite;
-  filter: blur(22px);
-  opacity: 0.55;
+      rgba(20,180,255,0.42),
+      rgba(60,255,190,0.34),
+      rgba(255,60,60,0.34),
+      rgba(20,180,255,0.42));
+  background-size: 220% 220%;
+  animation: drift 10s linear infinite;
+  filter: blur(12px);
+  opacity: 0.32;
   transform: translateZ(0);
+  will-change: transform, opacity;
 }
 @keyframes drift{
   0% { background-position: 0% 50%; transform: translate(-2%, -2%) rotate(0deg); }
@@ -1352,8 +1353,8 @@ body.gameOverVisible .bassContainer {
 }
 
 /* Good / Bad emphasis (JS toggles ONLY these classes) */
-.statusPanel.good::before{ opacity: 0.65; filter: blur(20px) saturate(1.2); }
-.statusPanel.bad::before { opacity: 0.75; filter: blur(20px) saturate(1.3) contrast(1.05); }
+.statusPanel.good::before{ opacity: 0.4; filter: blur(12px) saturate(1.08); }
+.statusPanel.bad::before { opacity: 0.45; filter: blur(12px) saturate(1.08); }
 
 .statusContent{
   position: relative;
@@ -1507,21 +1508,21 @@ body.gameOverVisible .bassContainer {
   position: relative;
   overflow: hidden;
   background: rgba(0,0,0,0.35);
+  will-change: transform;
 }
 
 .answerBtn::before {
   content: "";
   position: absolute;
-  inset: -40%;
+  inset: -18%;
   background: linear-gradient(110deg,
-      rgba(20,180,255,0.35),
-      rgba(60,255,190,0.28),
-      rgba(255,60,60,0.28),
-      rgba(20,180,255,0.35));
-  background-size: 300% 300%;
-  animation: drift 5s linear infinite;
-  filter: blur(18px);
-  opacity: 0.4;
+      rgba(20,180,255,0.22),
+      rgba(60,255,190,0.16),
+      rgba(255,60,60,0.16),
+      rgba(20,180,255,0.22));
+  background-size: 160% 160%;
+  filter: blur(10px);
+  opacity: 0.22;
   transform: translateZ(0);
 }
 
@@ -1531,8 +1532,8 @@ body.gameOverVisible .bassContainer {
 }
 
 .answerBtn:hover:not(:disabled)::before {
-  opacity: 0.55;
-  filter: blur(16px);
+  opacity: 0.32;
+  filter: blur(10px);
 }
 
 .answerBtn:hover:not(:disabled) {
@@ -1563,23 +1564,48 @@ body.gameOverVisible .bassContainer {
 .answerBtn.correctAnswer {
   font-size: clamp(24px, 5.5vw, 48px);
   font-weight: 900;
-  border: 3px solid rgba(74, 222, 128, 0.8);
+  border: 2px solid rgba(74, 222, 128, 0.82);
   background: rgba(74, 222, 128, 0.15);
-  box-shadow: 
-    0 0 20px rgba(74, 222, 128, 0.4),
-    inset 0 0 20px rgba(74, 222, 128, 0.2),
-    0 8px 20px rgba(0,0,0,0.25);
-  transform: scale(1.08);
-  animation: highlight-correct 0.4s ease-out;
+  box-shadow: 0 0 0 1px rgba(74, 222, 128, 0.18), 0 8px 20px rgba(0,0,0,0.22);
+  transform: scale(1.03);
+  animation: highlight-correct 0.22s ease-out;
 }
 
 .answerBtn.wrongSelection {
-  border: 3px solid rgba(239, 68, 68, 0.85);
+  border: 2px solid rgba(239, 68, 68, 0.88);
   background: rgba(239, 68, 68, 0.18);
-  box-shadow:
-    0 0 18px rgba(239, 68, 68, 0.45),
-    inset 0 0 18px rgba(239, 68, 68, 0.22),
-    0 8px 20px rgba(0,0,0,0.25);
+  box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.2), 0 8px 20px rgba(0,0,0,0.22);
+}
+
+.answerBtn.correctAnswer::after,
+.answerBtn.wrongSelection::after {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.82rem;
+  font-weight: 900;
+  line-height: 1;
+  color: #fff;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.answerBtn.correctAnswer::after {
+  content: "✓";
+  background: rgba(34, 197, 94, 0.96);
+  box-shadow: 0 3px 10px rgba(34, 197, 94, 0.22);
+}
+
+.answerBtn.wrongSelection::after {
+  content: "✕";
+  background: rgba(239, 68, 68, 0.96);
+  box-shadow: 0 3px 10px rgba(239, 68, 68, 0.2);
 }
 
 @keyframes highlight-correct {
@@ -1589,7 +1615,7 @@ body.gameOverVisible .bassContainer {
     background: rgba(74, 222, 128, 0.05);
   }
   100% {
-    transform: scale(1.08);
+    transform: scale(1.03);
     border-color: rgba(74, 222, 128, 0.8);
     background: rgba(74, 222, 128, 0.15);
   }
@@ -1851,7 +1877,7 @@ body.gameOverVisible .bassContainer {
   body.gameActive .main .guitarContainer,
   body.gameActive .main .bassContainer {
     grid-area: instrument;
-    margin: 6;
+    margin: 6px;
     min-height: 0;
     height: 100%;
     width: 95%;
@@ -2838,6 +2864,12 @@ body.gameOverVisible .bassContainer {
   z-index: 201 !important;
 }
 
+.pianoContainer.instrumentExpanded .answerBtn:disabled,
+.guitarContainer.instrumentExpanded .answerBtn:disabled,
+.bassContainer.instrumentExpanded .answerBtn:disabled {
+  opacity: 1 !important;
+}
+
 .pianoContainer.instrumentExpanded .instrumentExpandBtn,
 .guitarContainer.instrumentExpanded .instrumentExpandBtn,
 .bassContainer.instrumentExpanded .instrumentExpandBtn,
@@ -3088,8 +3120,32 @@ body.gameOverVisible .bassContainer {
 .bassPosition.wrongSelection,
 .pianoKey.wrongSelection {
   background: rgba(239, 68, 68, 0.9) !important;
-  box-shadow: 0 0 12px rgba(239, 68, 68, 0.75) !important;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.35) !important;
   border-color: rgba(255, 255, 255, 0.75) !important;
+}
+
+.guitarPosition.correctSelection,
+.bassPosition.correctSelection,
+.pianoKey.correctSelection {
+  background: rgba(34, 197, 94, 0.92) !important;
+  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.3) !important;
+  border-color: rgba(255, 255, 255, 0.82) !important;
+}
+
+.guitarPosition.correctSelection::before,
+.bassPosition.correctSelection::before,
+.pianoKey.correctSelection::before {
+  content: '✓';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  color: rgba(255, 255, 255, 0.98);
+  font-weight: 900;
+  font-size: clamp(12px, 1.7vw, 18px);
+  text-shadow: 0 1px 3px rgba(0,0,0,0.7);
+  z-index: 120;
+  pointer-events: none;
 }
 
 .guitarPosition.wrongSelection::before,
