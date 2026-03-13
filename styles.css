@@ -1851,7 +1851,7 @@ body.gameOverVisible .bassContainer {
   body.gameActive .main .guitarContainer,
   body.gameActive .main .bassContainer {
     grid-area: instrument;
-    margin: 0;
+    margin: 6;
     min-height: 0;
     height: 100%;
     width: 95%;
@@ -2718,8 +2718,8 @@ body.gameOverVisible .bassContainer {
 .instrumentExpandBtn {
   appearance: none;
   position: absolute;
-  top: 10px;
-  right: 15px;
+  top: 14px;
+  right: 22px;
   width: 34px;
   height: 34px;
   border-radius: 10px;
@@ -2852,7 +2852,7 @@ body.gameOverVisible .bassContainer {
 .guitarContainer.instrumentExpanded .instrumentQuestionOverlay,
 .bassContainer.instrumentExpanded .instrumentQuestionOverlay {
   top: 8px;
-  right: 112px;
+  right: 96px;
   z-index: 170;
 }
 
