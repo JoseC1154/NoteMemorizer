@@ -2143,6 +2143,15 @@ body.gameOverVisible .bassContainer {
   }
 }
 
+@media (max-width: 700px) and (orientation: portrait) {
+  .app {
+    padding-top: calc(max(28px, env(safe-area-inset-top)) + 56px);
+    padding-right: max(24px, env(safe-area-inset-right));
+    padding-bottom: max(24px, env(safe-area-inset-bottom));
+    padding-left: max(24px, env(safe-area-inset-left));
+  }
+}
+
 /* ========== Settings Modal ========== */
 .modalOverlay{
   position: fixed;
@@ -2710,7 +2719,7 @@ body.gameOverVisible .bassContainer {
   appearance: none;
   position: absolute;
   top: 10px;
-  right: 10px;
+  right: 15px;
   width: 34px;
   height: 34px;
   border-radius: 10px;
@@ -2740,7 +2749,7 @@ body.gameOverVisible .bassContainer {
   appearance: none;
   position: absolute;
   top: 10px;
-  right: 52px;
+  right: 57px;
   width: 34px;
   height: 34px;
   border-radius: 10px;
@@ -2843,7 +2852,7 @@ body.gameOverVisible .bassContainer {
 .guitarContainer.instrumentExpanded .instrumentQuestionOverlay,
 .bassContainer.instrumentExpanded .instrumentQuestionOverlay {
   top: 8px;
-  right: 96px;
+  right: 112px;
   z-index: 170;
 }
 
@@ -2888,7 +2897,7 @@ body.gameOverVisible .bassContainer {
   position: fixed;
   top: 0;
   left: var(--instrument-expanded-left);
-  right: 0;
+  right: 12px;
   bottom: 0;
   width: auto;
   margin: 0;
@@ -3483,5 +3492,9 @@ body.gameOverVisible .bassContainer {
     bottom: 0;
     padding: 6px;
     border-radius: 0;
+  }
+
+  .pianoContainer.instrumentExpanded {
+    right: 12px;
   }
 }
