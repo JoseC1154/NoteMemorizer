@@ -34,6 +34,9 @@ TODO:
 -when a answer is correct could we have a the background flash an appropriate green tone to match the asthetic of the app then when wrong red.
 - update statistic to include latest updates.
 - in scale recognition mode, the user should be able to select the note on the instrument ui.
+-I would like for the modes to use differen chord progressions degrees for the questions, for example 4536251,
+-when paused any selection of the notes or answer buttons should also un pause.
+-when the user has a streak of 20 it is necesary to remove the scale shading that seve as training wheels. then bring them back when the user loses the streak. 
 
 /* Show feedback in landscape when instrument is expanded */
 body.gameActive .statusPanel:not([hidden]) {
