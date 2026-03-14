@@ -38,14 +38,4 @@ TODO:
 -when paused any selection of the notes or answer buttons should also un pause.
 -when the user has a streak of 20 it is necesary to remove the scale shading that seve as training wheels. then bring them back when the user loses the streak. 
 
-/* Show feedback in landscape when instrument is expanded */
-body.gameActive .statusPanel:not([hidden]) {
-  display: block !important;
-  z-index: 10001;
-}
 
-body.gameActive .statusOverlay:not([hidden]) {
-  z-index: 10000;
-  background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: none;
-}
