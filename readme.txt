@@ -36,6 +36,8 @@ TODO:
 - in scale recognition mode, the user should be able to select the note on the instrument ui.
 -I would like for the modes to use differen chord progressions degrees for the questions, for example 4536251,
 -when paused any selection of the notes or answer buttons should also un pause.
--when the user has a streak of 20 it is necesary to remove the scale shading that seve as training wheels. then bring them back when the user loses the streak. 
+-when the user has a streak of 20 it is necesary to remove the scale shading that seve as training wheels. then bring them back when the user loses the streak.
+-note recognition modewhat note is highlited, what note is "C" / in the bass and guiter the ? "in the first four frets what note is 'E'?, select the E or E's in the first four frets." 
+-there are more modes should they each have their own JS file. Should we refactor. 
 
 
